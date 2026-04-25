@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WhatsApp CRM — Restaurant Dashboard</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0c0a09">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --surface-2: #f7f6f4;
+    --border: #ececea;
+    --border-strong: #d6d3d1;
+    --text: #0c0a09;
+    --text-muted: #57534e;
+    --text-subtle: #a8a29e;
+    --grid: #f2f1ef;
+    --hover: #f5f4f2;
+    --focus: #0c0a09;
+    --shadow: 0 1px 2px rgba(0,0,0,0.04);
+    --green: #3f6212;
+    --red: #dc2626;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text);
+    font-size: 13.5px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    height: 100vh; overflow: hidden;
+  }
+  button, input, textarea, select { font: inherit; color: inherit; }
+
+  /* ───── Top bar ───── */
+  .topbar {
+    height: 52px; border-bottom: 1px solid var(--border);
+    background: var(--surface); padding: 0 20px;
+    display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 220px; }
+  .brand-mark {
+    width: 26px; height: 26px; background: var(--text); color: #fff;
+    border-radius: 6px; display: grid; place-items: center;
+    font-size: 12px; font-weight: 700; letter-spacing: 0.02em;
+  }
+  .brand-text { line-height: 1.15; }
+  .brand-title { font-weight: 600; font-size: 13.5px; letter-spacing: -0.01em; }
+  .brand-sub { font-size: 10.5px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .top-search { flex: 1; max-width: 480px; margin: 0 20px; position: relative; }
+  .top-search input {
+    width: 100%; border: 1px solid var(--border); background: var(--surface-2);
+    border-radius: 8px; padding: 8px 12px 8px 32px; font-size: 13px; outline: none;
+    transition: border-color .12s, background .12s;
+  }
+  .top-search input:focus { border-color: var(--border-strong); background: var(--surface); }
+  .top-search svg { position: absolute; left: 10px; top: 9px; color: var(--text-subtle); }
+  .top-actions { display: flex; align-items: center; gap: 10px; }
+  .status-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 11px; border: 1px solid var(--border-strong);
+    border-radius: 999px; font-size: 12px; color: var(--text-muted); background: var(--surface);
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-subtle); box-shadow: 0 0 0 3px rgba(168,162,158,0.15); }
+  .status-dot.live { background: var(--green); box-shadow: 0 0 0 3px rgba(63,98,18,0.15); }
+  .btn {
+    padding: 7px 13px; border-radius: 7px; border: 1px solid var(--text);
+    background: var(--text); color: #fff; cursor: pointer; font-size: 12.5px; font-weight: 500;
+    transition: opacity .15s ease;
+  }
+  .btn:hover { opacity: .85; }
+  .btn.secondary { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+  .btn.ghost { background: transparent; border-color: transparent; color: var(--text-muted); }
+  .btn.ghost:hover { background: var(--hover); color: var(--text); }
+  .btn.sm { padding: 5px 10px; font-size: 12px; }
+  .btn.green { background: var(--green); color: #fff; border-color: var(--green); }
+  .avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--surface-2); border: 1px solid var(--border);
+    display: grid; place-items: center;
+    font-size: 11px; color: var(--text-muted); font-weight: 600;
+  }
+
+  /* ───── App shell ───── */
+  .shell { display: grid; grid-template-columns: 220px 1fr; height: calc(100vh - 52px); }
+
+  /* ───── Sidebar ───── */
+  .sidebar {
+    background: var(--surface); border-right: 1px solid var(--border);
+    padding: 16px 10px; overflow-y: auto; display: flex; flex-direction: column;
+  }
+  .nav-section {
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--text-subtle); padding: 10px 12px 6px;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 7px 12px; border-radius: 6px;
+    color: var(--text-muted); cursor: pointer; font-size: 13px;
+    position: relative; user-select: none;
+  }
+  .nav-item:hover { background: var(--hover); color: var(--text); }
+  .nav-item.active { background: var(--text); color: #fff; }
+  .nav-item .count {
+    margin-left: auto; font-size: 11px; color: var(--text-subtle);
+    background: var(--surface-2); border-radius: 999px; padding: 1px 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .nav-item.active .count { background: rgba(255,255,255,0.16); color: #fff; }
+  .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; opacity: .85; }
+  .sidebar-footer {
+    margin-top: auto; padding: 10px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sidebar-footer .who { font-size: 12px; line-height: 1.2; }
+  .sidebar-footer .who b { font-weight: 600; color: var(--text); display: block; font-size: 12.5px; }
+  .sidebar-footer .who span { color: var(--text-subtle); font-size: 11px; }
+
+  /* ───── Main ───── */
+  .main { overflow-y: auto; position: relative; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .page { max-width: 1320px; margin: 0 auto; padding: 24px 28px; }
+  .page.wide { max-width: none; padding: 0; height: 100%; }
+  .page-head {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 20px;
+  }
+  h1 { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; }
+  .subtitle { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+  .muted { color: var(--text-muted); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* ───── Card / Panel ───── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+  }
+  .panel-head {
+    padding: 14px 18px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .panel-body { padding: 18px; }
+  .panel-title { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+  .panel-sub { font-size: 11.5px; color: var(--text-muted); }
+
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 14px; }
+  .stat { padding: 16px 18px; }
+  .stat-label { color: var(--text-muted); font-size: 12px; }
+  .stat-value { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; margin-top: 8px; font-variant-numeric: tabular-nums; }
+  .stat-delta { margin-top: 6px; font-size: 11.5px; color: var(--text-subtle); }
+
+  .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .grid-2-eq { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+
+  /* ───── Table ───── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  th {
+    font-weight: 500; color: var(--text-muted); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    background: #fbfaf9; position: sticky; top: 0;
+  }
+  tr:last-child td { border-bottom: 0; }
+  tr:hover td { background: #fbfaf8; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 2px 8px; border: 1px solid var(--border-strong);
+    border-radius: 999px; font-size: 11px; color: var(--text-muted);
+    background: var(--surface); white-space: nowrap;
+  }
+  .chip.solid { background: var(--text); color: #fff; border-color: var(--text); }
+  .chip.green { background: rgba(63,98,18,0.1); color: var(--green); border-color: rgba(63,98,18,0.2); }
+  .chip.red { background: rgba(220,38,38,0.1); color: var(--red); border-color: rgba(220,38,38,0.2); }
+  .chip.amber { background: rgba(217,119,6,0.1); color: #b45309; border-color: rgba(217,119,6,0.2); }
+  .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  .empty-inline { padding: 28px 20px; text-align: center; color: var(--text-muted); font-size: 12.5px; }
+
+  /* ───── Inbox ───── */
+  .inbox { display: grid; grid-template-columns: 320px 1fr 320px; height: 100%; }
+  .inbox-col { border-right: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
+  .inbox-col:last-child { border-right: 0; }
+  .inbox-col-head {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; background: var(--surface);
+  }
+  .inbox-filters { display: flex; gap: 6px; padding: 10px 16px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+  .filter-pill {
+    padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border);
+    background: var(--surface); font-size: 11.5px; color: var(--text-muted);
+    cursor: pointer; white-space: nowrap;
+  }
+  .filter-pill.active { background: var(--text); color: #fff; border-color: var(--text); }
+  .thread-list { flex: 1; overflow-y: auto; }
+  .thread-item {
+    display: grid; grid-template-columns: 32px 1fr auto; gap: 10px;
+    padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; position: relative;
+  }
+  .thread-item:hover { background: var(--hover); }
+  .thread-item.active { background: var(--surface-2); }
+  .thread-item.active::before {
+    content: ""; position: absolute; left: 0; top: 10px; bottom: 10px;
+    width: 2px; background: var(--text); border-radius: 0 2px 2px 0;
+  }
+  .thread-name { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+  .thread-preview { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .thread-meta { text-align: right; }
+  .thread-time { font-size: 11px; color: var(--text-subtle); font-variant-numeric: tabular-nums; }
+  .thread-badge { display: inline-block; margin-top: 4px; font-size: 10.5px; background: var(--text); color: #fff; border-radius: 999px; padding: 1px 6px; }
+
+  .thread-view { background: var(--surface-2); display: flex; flex-direction: column; min-height: 0; }
+  .thread-header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 12px 20px; display: flex; align-items: center; justify-content: space-between;
+  }
+  .thread-header .who { display: flex; align-items: center; gap: 10px; }
+  .thread-header .who-name { font-weight: 600; font-size: 14px; }
+  .thread-header .who-sub { font-size: 11.5px; color: var(--text-muted); }
+
+  .thread-body {
+    flex: 1; overflow-y: auto; padding: 20px 24px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .bubble-row { display: flex; flex-direction: column; max-width: 75%; gap: 2px; }
+  .bubble-row.in { align-self: flex-start; }
+  .bubble-row.out { align-self: flex-end; align-items: flex-end; }
+  .bubble {
+    padding: 9px 13px; font-size: 13px; line-height: 1.45;
+    border-radius: 12px; white-space: pre-wrap; word-wrap: break-word;
+  }
+  .bubble.in { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  .bubble.out { background: var(--text); color: #fff; border-bottom-right-radius: 4px; }
+  .bubble-meta { font-size: 10.5px; color: var(--text-subtle); display: flex; gap: 8px; padding: 0 4px; }
+
+  .contact-panel { overflow-y: auto; padding: 18px; }
+  .contact-id { text-align: center; padding: 10px 0 18px; border-bottom: 1px solid var(--border); }
+  .contact-avatar {
+    width: 58px; height: 58px; border-radius: 50%;
+    background: var(--text); color: #fff; display: grid; place-items: center;
+    font-size: 20px; font-weight: 600; margin: 0 auto 10px;
+  }
+  .contact-name { font-weight: 600; font-size: 15px; }
+  .contact-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .contact-section { padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .contact-section:last-child { border: 0; }
+  .contact-section h3 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-subtle); margin-bottom: 10px; }
+  .kv { display: flex; justify-content: space-between; font-size: 12.5px; padding: 4px 0; }
+  .kv .k { color: var(--text-muted); }
+  .kv .v { font-variant-numeric: tabular-nums; font-weight: 500; }
+
+  /* ───── Daily log timeline ───── */
+  .timeline { padding: 8px 0; }
+  .timeline-row {
+    display: grid; grid-template-columns: 72px 24px 1fr 110px;
+    gap: 10px; padding: 10px 18px; border-bottom: 1px dashed var(--border); align-items: start;
+  }
+  .timeline-row:last-child { border-bottom: 0; }
+  .tl-time { font-size: 11.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; padding-top: 2px; }
+  .tl-marker { width: 8px; height: 8px; margin: 6px 0 0 6px; border-radius: 50%; background: var(--text); }
+  .tl-marker.out { background: transparent; border: 2px solid var(--text); }
+  .tl-body { font-size: 12.5px; }
+  .tl-from { font-weight: 600; font-size: 12px; }
+  .tl-msg { color: var(--text-muted); margin-top: 2px; }
+
+  /* ───── Templates ───── */
+  .template-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .template-card { padding: 16px; cursor: pointer; transition: border-color .15s; }
+  .template-card:hover { border-color: var(--border-strong); }
+  .template-title { font-weight: 600; font-size: 13px; margin-bottom: 6px; }
+  .template-body { font-size: 12.5px; color: var(--text-muted); line-height: 1.5; }
+  .template-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-subtle); }
+
+  /* ───── CRM ───── */
+  .crm-grid { display: grid; grid-template-columns: 1.6fr 1fr; gap: 12px; }
+  .variable-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .var-chip {
+    padding: 4px 10px; background: var(--surface-2); border: 1px solid var(--border);
+    border-radius: 6px; font-size: 11.5px; color: var(--text-muted); cursor: pointer;
+    font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  .var-chip:hover { background: var(--hover); color: var(--text); }
+  .compose-textarea {
+    width: 100%; min-height: 140px; border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px 14px; font-size: 13.5px; line-height: 1.55;
+    background: var(--surface-2); outline: none; resize: vertical; font-family: inherit;
+  }
+  .compose-textarea:focus { border-color: var(--border-strong); background: var(--surface); }
+  .compose-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11.5px; color: var(--text-subtle); }
+  .preview-box { margin-top: 14px; padding: 14px; background: var(--surface-2); border: 1px dashed var(--border-strong); border-radius: 10px; }
+  .preview-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-subtle); margin-bottom: 8px; }
+  .preview-bubble {
+    background: var(--text); color: #fff; padding: 9px 13px; font-size: 13px; line-height: 1.45;
+    border-radius: 12px 12px 4px 12px; max-width: 78%; margin-left: auto; white-space: pre-wrap;
+  }
+  .send-bar {
+    margin-top: 14px; padding: 14px 16px; border: 1px solid var(--text);
+    border-radius: 10px; background: var(--surface);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .send-bar .info { font-size: 13px; }
+  .send-bar .info b { font-weight: 600; }
+  .send-bar .info .hint { color: var(--text-muted); font-size: 11.5px; margin-top: 2px; }
+
+  .segments { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .segment {
+    padding: 4px 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text-muted);
+    border-radius: 999px; font-size: 11.5px; cursor: pointer;
+  }
+  .segment.active { background: var(--text); color: #fff; border-color: var(--text); }
+
+  .recipient-list { max-height: 420px; overflow-y: auto; }
+  .recipient-row {
+    display: grid; grid-template-columns: 18px 28px 1fr auto;
+    gap: 10px; align-items: center; padding: 9px 16px;
+    border-bottom: 1px solid var(--border); cursor: pointer;
+  }
+  .recipient-row:hover { background: #fbfaf8; }
+  .rchk {
+    width: 15px; height: 15px; border: 1.5px solid var(--border-strong);
+    border-radius: 4px; display: grid; place-items: center; color: #fff; font-size: 11px;
+  }
+  .rchk.on { background: var(--text); border-color: var(--text); }
+  .rname { font-size: 12.5px; font-weight: 500; }
+  .rsub { font-size: 11px; color: var(--text-muted); }
+
+  .recipients-foot {
+    padding: 10px 16px; border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: var(--text-muted); background: var(--surface-2);
+  }
+
+  /* ───── Phone log form ───── */
+  .phone-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .field {
+    width: 100%; padding: 8px 12px; border: 1px solid var(--border);
+    background: var(--surface-2); border-radius: 7px; font-size: 13px; outline: none;
+  }
+  .field:focus { border-color: var(--border-strong); background: var(--surface); }
+
+  /* ───── Offline banner ───── */
+  .offline-bar {
+    display: none; background: #fef3c7; color: #92400e; text-align: center;
+    padding: 6px; font-size: 12px; font-weight: 500;
+  }
+  .offline-bar.show { display: block; }
+
+  /* ───── Scrollbar ───── */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #e2e0dd; border-radius: 10px; border: 2px solid var(--surface); }
+
+  @media (max-width: 1100px) {
+    .shell { grid-template-columns: 64px 1fr; }
+    .nav-item span.lbl, .nav-section, .sidebar-footer .who, .brand-text { display: none; }
+    .nav-item { justify-content: center; padding: 10px; }
+    .inbox { grid-template-columns: 260px 1fr; }
+    .inbox .contact-panel-col { display: none; }
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .grid-2, .grid-2-eq { grid-template-columns: 1fr; }
+    .template-grid { grid-template-columns: 1fr; }
+    .crm-grid { grid-template-columns: 1fr; }
+    .phone-form { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="offline-bar" id="offlineBar">You're offline — showing cached data. Changes will sync when reconnected.</div>
+
+<!-- ═══════════════ TOP BAR ═══════════════ -->
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark" id="brandMark">TC</div>
+    <div class="brand-text">
+      <div class="brand-title" id="brandTitle">Restaurant CRM</div>
+      <div class="brand-sub">WhatsApp CRM</div>
+    </div>
+  </div>
+  <div class="top-search">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+    <input placeholder="Search contacts, messages, bookings..." id="globalSearch" />
+  </div>
+  <div class="top-actions">
+    <div class="status-pill"><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting...</span></div>
+    <div class="avatar" id="userAvatar">?</div>
+  </div>
+</header>
+
+<!-- ═══════════════ APP SHELL ═══════════════ -->
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="nav-section">Workspace</div>
+    <div class="nav-item active" data-view="overview">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+      <span class="lbl">Overview</span>
+    </div>
+    <div class="nav-item" data-view="inbox">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H5.17L4 17.17z"/></svg>
+      <span class="lbl">Inbox</span>
+      <span class="count" id="inboxCount">0</span>
+    </div>
+    <div class="nav-item" data-view="contacts">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg>
+      <span class="lbl">Contacts</span>
+      <span class="count" id="contactsCount">0</span>
+    </div>
+    <div class="nav-item" data-view="daily-log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+      <span class="lbl">Daily Log</span>
+    </div>
+
+    <div class="nav-section" style="margin-top:14px">Operations</div>
+    <div class="nav-item" data-view="phone-log">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.86 19.86 0 0 1 3.09 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.68 2.34a2 2 0 0 1-.45 2.11L8.09 11.5A16 16 0 0 0 12.5 15.91l2.33-2.33a2 2 0 0 1 2.11-.45c.74.32 1.53.55 2.34.68a2 2 0 0 1 1.72 2z"/></svg>
+      <span class="lbl">Phone Log</span>
+    </div>
+    <div class="nav-item" data-view="templates">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v4H4zM4 13h10v6H4zM17 13h3v6h-3z"/></svg>
+      <span class="lbl">Templates</span>
+    </div>
+    <div class="nav-item" data-view="crm">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 1 3.6 7.2L3 21l1.8-3.6A9 9 0 0 1 3 12z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg>
+      <span class="lbl">Automated CRM</span>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="avatar" id="sidebarAvatar">?</div>
+      <div class="who">
+        <b id="sidebarName">Owner</b>
+        <span>Last updated <span id="lastUpdated">—</span></span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- ═══════ OVERVIEW ═══════ -->
+    <section class="view active" data-view="overview">
+      <div class="page">
+        <div class="page-head">
+          <div><h1>Overview</h1><div class="subtitle">Real-time metrics from your WhatsApp CRM system.</div></div>
+        </div>
+        <section class="stats">
+          <div class="card stat"><div class="stat-label">Today's Bookings</div><div class="stat-value" id="ov-bookings">0</div><div class="stat-delta">reservations</div></div>
+          <div class="card stat"><div class="stat-label">Week Revenue</div><div class="stat-value" id="ov-revenue">0</div><div class="stat-delta">LKR collected</div></div>
+          <div class="card stat"><div class="stat-label">New Contacts</div><div class="stat-value" id="ov-contacts">0</div><div class="stat-delta">this week</div></div>
+          <div class="card stat"><div class="stat-label">Pending Payment</div><div class="stat-value" id="ov-pending">0</div><div class="stat-delta">bookings awaiting</div></div>
+        </section>
+        <section class="stats">
+          <div class="card stat"><div class="stat-label">Messages In</div><div class="stat-value" id="ov-msgin">0</div><div class="stat-delta">received this week</div></div>
+          <div class="card stat"><div class="stat-label">Messages Out</div><div class="stat-value" id="ov-msgout">0</div><div class="stat-delta">sent this week</div></div>
+          <div class="card stat"><div class="stat-label">Open Complaints</div><div class="stat-value" id="ov-complaints">0</div><div class="stat-delta">need attention</div></div>
+          <div class="card stat"><div class="stat-label">Total Customers</div><div class="stat-value" id="ov-total">0</div><div class="stat-delta">in database</div></div>
+        </section>
+        <section class="card" style="margin-top:12px">
+          <div class="panel-head"><div><div class="panel-title">Recent Conversations</div><div class="panel-sub">Latest messages across all channels</div></div></div>
+          <table>
+            <thead><tr><th>Direction</th><th>Customer</th><th>Message</th><th>Intent</th><th>Time</th></tr></thead>
+            <tbody id="ov-feed"><tr><td colspan="5" class="empty-inline">Loading...</td></tr></tbody>
+          </table>
+        </section>
+      </div>
+    </section>
+
+    <!-- ═══════ INBOX ═══════ -->
+    <section class="view" data-view="inbox">
+      <div class="page wide">
+        <div class="inbox">
+          <div class="inbox-col">
+            <div class="inbox-col-head"><div class="panel-title">Conversations</div></div>
+            <div class="inbox-filters">
+              <div class="filter-pill active" data-filter="all">All</div>
+              <div class="filter-pill" data-filter="BOOKING">Booking</div>
+              <div class="filter-pill" data-filter="INQUIRY">Inquiry</div>
+              <div class="filter-pill" data-filter="COMPLAINT">Complaint</div>
+            </div>
+            <div class="thread-list" id="threadList"><div class="empty-inline">Loading conversations...</div></div>
+          </div>
+          <div class="inbox-col">
+            <div class="thread-header">
+              <div class="who">
+                <div class="avatar" style="width:36px;height:36px;font-size:13px;" id="chatAvatar">—</div>
+                <div><div class="who-name" id="chatName">Select a conversation</div><div class="who-sub" id="chatPhone">Choose a contact from the left</div></div>
+              </div>
+            </div>
+            <div class="thread-body" id="chatMessages">
+              <div class="empty-inline" style="margin:auto">Select a conversation to view messages</div>
+            </div>
+          </div>
+          <div class="inbox-col contact-panel-col">
+            <div class="contact-panel">
+              <div class="contact-id">
+                <div class="contact-avatar" id="detailAvatar">—</div>
+                <div class="contact-name" id="detailName">No contact selected</div>
+                <div class="contact-sub" id="detailPhone">—</div>
+              </div>
+              <div class="contact-section">
+                <h3>Activity</h3>
+                <div class="kv"><span class="k">Segment</span><span class="v" id="detailSegment">—</span></div>
+                <div class="kv"><span class="k">Total visits</span><span class="v" id="detailVisits">0</span></div>
+                <div class="kv"><span class="k">First contact</span><span class="v" id="detailFirst">—</span></div>
+                <div class="kv"><span class="k">Last contact</span><span class="v" id="detailLast">—</span></div>
+              </div>
+              <div class="contact-section">
+                <h3>Notes</h3>
+                <div id="detailNotes" style="font-size:12.5px;color:var(--text-muted)">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ CONTACTS ═══════ -->
+    <section class="view" data-view="contacts">
+      <div class="page">
+        <div class="page-head">
+          <div><h1>Contacts</h1><div class="subtitle">Every customer who has messaged or been logged.</div></div>
+          <input type="text" class="field" placeholder="Search name or phone..." id="contactSearch" style="width:240px">
+        </div>
+        <div class="card">
+          <table>
+            <thead><tr><th>Name</th><th>Phone</th><th>Segment</th><th>Visits</th><th>Last Contact</th></tr></thead>
+            <tbody id="contactsTable"><tr><td colspan="5" class="empty-inline">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ DAILY LOG ═══════ -->
+    <section class="view" data-view="daily-log">
+      <div class="page">
+        <div class="page-head">
+          <div><h1>Daily Log</h1><div class="subtitle" id="dailyDate">Today's bookings and activity</div></div>
+          <button class="btn secondary sm" onclick="loadDailyLog()">Refresh</button>
+        </div>
+        <section class="stats">
+          <div class="card stat"><div class="stat-label">Bookings today</div><div class="stat-value" id="dl-bookings">0</div></div>
+          <div class="card stat"><div class="stat-label">Confirmed</div><div class="stat-value" id="dl-confirmed">0</div></div>
+          <div class="card stat"><div class="stat-label">Pending</div><div class="stat-value" id="dl-pending">0</div></div>
+          <div class="card stat"><div class="stat-label">Total guests</div><div class="stat-value" id="dl-guests">0</div></div>
+        </section>
+        <div class="card">
+          <div class="panel-head"><div class="panel-title">Today's Bookings</div></div>
+          <table>
+            <thead><tr><th>Time</th><th>Customer</th><th>Party</th><th>Occasion</th><th>Payment</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="dailyTable"><tr><td colspan="7" class="empty-inline">Loading...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ PHONE LOG ═══════ -->
+    <section class="view" data-view="phone-log">
+      <div class="page">
+        <div class="page-head">
+          <div><h1>Phone Log</h1><div class="subtitle">Manually log phone calls from customers.</div></div>
+        </div>
+        <div class="card" style="margin-bottom:16px">
+          <div class="panel-head"><div class="panel-title">Log a phone call</div></div>
+          <div class="panel-body">
+            <div class="phone-form">
+              <input class="field" id="pl-name" placeholder="Customer name">
+              <input class="field" id="pl-phone" placeholder="Phone number (e.g. 94771234567)">
+            </div>
+            <div class="phone-form">
+              <select class="field" id="pl-intent">
+                <option value="BOOKING">Booking enquiry</option>
+                <option value="INQUIRY">General enquiry</option>
+                <option value="COMPLAINT">Complaint</option>
+                <option value="CANCEL">Cancellation</option>
+                <option value="OTHER">Other</option>
+              </select>
+              <input class="field" id="pl-date" type="date" placeholder="Booking date (if applicable)">
+            </div>
+            <textarea class="field" id="pl-notes" placeholder="Notes — anything the customer mentioned" style="min-height:70px;resize:vertical;margin-bottom:12px"></textarea>
+            <div style="display:flex;gap:8px;align-items:center">
+              <button class="btn green sm" onclick="submitPhoneLog()">Save Phone Log</button>
+              <span id="pl-status" style="font-size:12px;color:var(--green);display:none">Saved!</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="panel-head"><div class="panel-title">Recent Phone Logs</div></div>
+          <table>
+            <thead><tr><th>Time</th><th>Name</th><th>Phone</th><th>Type</th><th>Notes</th></tr></thead>
+            <tbody id="phoneLogTable"><tr><td colspan="5" class="empty-inline">No phone logs yet</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ TEMPLATES ═══════ -->
+    <section class="view" data-view="templates">
+      <div class="page">
+        <div class="page-head">
+          <div><h1>Templates</h1><div class="subtitle">Message templates with variables like {{name}}, {{date}}, {{time}}.</div></div>
+        </div>
+        <div class="template-grid" id="templatesGrid"><div class="empty-inline">Loading...</div></div>
+      </div>
+    </section>
+
+    <!-- ═══════ AUTOMATED CRM ═══════ -->
+    <section class="view" data-view="crm">
+      <div class="page">
+        <div class="page-head">
+          <div><h1>Automated CRM</h1><div class="subtitle">Compose a message and send it to your customer segments.</div></div>
+        </div>
+        <section class="stats">
+          <div class="card stat"><div class="stat-label">Total campaigns</div><div class="stat-value" id="crm-total">0</div></div>
+          <div class="card stat"><div class="stat-label">Messages sent</div><div class="stat-value" id="crm-sent">0</div></div>
+          <div class="card stat"><div class="stat-label">VIP customers</div><div class="stat-value" id="crm-vip">0</div></div>
+          <div class="card stat"><div class="stat-label">Lapsed (30d+)</div><div class="stat-value" id="crm-lapsed">0</div></div>
+        </section>
+        <div class="crm-grid">
+          <div class="card">
+            <div class="panel-head"><div><div class="panel-title">Compose message</div><div class="panel-sub">Use variables to personalise for each contact.</div></div></div>
+            <div class="panel-body">
+              <div class="variable-chips">
+                <div class="var-chip" data-var="{{name}}">+ {{name}}</div>
+                <div class="var-chip" data-var="{{phone}}">+ {{phone}}</div>
+                <div class="var-chip" data-var="{{date}}">+ {{date}}</div>
+                <div class="var-chip" data-var="{{offer}}">+ {{offer}}</div>
+              </div>
+              <textarea id="crmCompose" class="compose-textarea" placeholder="Hi {{name}}, we wanted to let you know..."></textarea>
+              <div class="compose-meta"><div></div><div><span id="crmCharCount">0</span> / 1024</div></div>
+              <div class="preview-box">
+                <div class="preview-label">Preview</div>
+                <div class="preview-bubble" id="crmPreview">Start typing to see preview.</div>
+              </div>
+              <input class="field" id="crmCampaignName" placeholder="Campaign name" style="margin-top:14px">
+              <select class="field" id="crmSegment" style="margin-top:8px">
+                <option value="all">All customers</option>
+                <option value="new">New</option>
+                <option value="returning">Returning</option>
+                <option value="vip">VIP</option>
+                <option value="lapsed">Lapsed</option>
+              </select>
+              <div class="send-bar" style="margin-top:14px">
+                <div class="info"><b>Create Campaign</b><div class="hint">Saves to CRM campaigns and can be triggered from the dashboard.</div></div>
+                <button class="btn" onclick="saveCrmCampaign()">Save & Send</button>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="panel-head"><div><div class="panel-title">Campaigns</div><div class="panel-sub">Your saved campaigns</div></div></div>
+            <div id="crmCampaigns"><div class="empty-inline">No campaigns yet</div></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+// CONFIG — Replace these with your Supabase values
+// ═══════════════════════════════════════════
+const SUPABASE_URL  = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON = 'YOUR_SUPABASE_ANON_KEY';
+// ═══════════════════════════════════════════
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+// ── Helpers ──
+function fmt(ts) { if (!ts) return '—'; return new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}); }
+function fmtDate(d) { if (!d) return '—'; return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+function segChip(s) {
+  const m = {vip:'green',returning:'',lapsed:'red','first-timer':'amber',new:''};
+  return `<span class="chip ${m[s]||''}">${s||'new'}</span>`;
+}
+function payChip(s) {
+  const m = {paid:'green',unpaid:'',awaiting:'amber',expired:'red'};
+  return `<span class="chip ${m[s]||''}">${s||'unpaid'}</span>`;
+}
+function statusChip(s) {
+  const m = {confirmed:'green',pending:'amber',expired:'red',cancelled:'red'};
+  return `<span class="chip ${m[s]||''}">${s||'pending'}</span>`;
+}
+function initials(name) { return (name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2); }
+
+// ── Navigation ──
+const navItems = document.querySelectorAll('.nav-item');
+const views = document.querySelectorAll('.view');
+const loaders = { overview:loadOverview, inbox:loadInbox, contacts:loadContacts, 'daily-log':loadDailyLog, 'phone-log':loadPhoneLogs, templates:loadTemplates, crm:loadCRM };
+function show(view) {
+  navItems.forEach(n => n.classList.toggle('active', n.dataset.view === view));
+  views.forEach(v => v.classList.toggle('active', v.dataset.view === view));
+  if (loaders[view]) loaders[view]();
+}
+navItems.forEach(n => n.addEventListener('click', () => show(n.dataset.view)));
+
+// ── Connection check ──
+async function checkConnection() {
+  try {
+    const { error } = await sb.from('customers').select('id').limit(1);
+    if (error) throw error;
+    document.getElementById('statusDot').classList.add('live');
+    document.getElementById('statusText').textContent = 'Connected';
+    return true;
+  } catch(e) {
+    document.getElementById('statusText').textContent = 'Not connected';
+    return false;
+  }
+}
+
+// ── Offline detection ──
+window.addEventListener('offline', () => document.getElementById('offlineBar').classList.add('show'));
+window.addEventListener('online', () => { document.getElementById('offlineBar').classList.remove('show'); loadOverview(); });
+
+// ═══════ OVERVIEW ═══════
+async function loadOverview() {
+  const today = new Date().toISOString().slice(0,10);
+  const weekAgo = new Date(Date.now()-7*86400000).toISOString();
+  try {
+    const [r1,r2,r3,r4,r5,r6,r7,r8] = await Promise.all([
+      sb.from('bookings').select('id').eq('date',today),
+      sb.from('payments').select('amount').eq('status','paid').gte('paid_at',weekAgo),
+      sb.from('customers').select('id').gte('created_at',weekAgo),
+      sb.from('bookings').select('id').in('payment_status',['unpaid','awaiting']),
+      sb.from('conversations').select('id').eq('direction','inbound').gte('timestamp',weekAgo),
+      sb.from('conversations').select('id').eq('direction','outbound').gte('timestamp',weekAgo),
+      sb.from('conversations').select('id').eq('intent','COMPLAINT').gte('timestamp',weekAgo),
+      sb.from('customers').select('id'),
+    ]);
+    document.getElementById('ov-bookings').textContent = r1.data?.length??0;
+    document.getElementById('ov-revenue').textContent = (r2.data||[]).reduce((s,p)=>s+parseFloat(p.amount||0),0).toLocaleString();
+    document.getElementById('ov-contacts').textContent = r3.data?.length??0;
+    document.getElementById('ov-pending').textContent = r4.data?.length??0;
+    document.getElementById('ov-msgin').textContent = r5.data?.length??0;
+    document.getElementById('ov-msgout').textContent = r6.data?.length??0;
+    document.getElementById('ov-complaints').textContent = r7.data?.length??0;
+    document.getElementById('ov-total').textContent = r8.data?.length??0;
+    document.getElementById('contactsCount').textContent = r8.data?.length??0;
+  } catch(e) {}
+
+  try {
+    const { data } = await sb.from('conversations').select('message,intent,direction,timestamp,customers(name)').order('timestamp',{ascending:false}).limit(12);
+    const tb = document.getElementById('ov-feed');
+    if (!data?.length) { tb.innerHTML = '<tr><td colspan="5" class="empty-inline">No conversations yet</td></tr>'; return; }
+    tb.innerHTML = data.map(c => `<tr>
+      <td><span class="chip ${c.direction==='inbound'?'':'solid'}">${c.direction||'—'}</span></td>
+      <td>${c.customers?.name||'Unknown'}</td>
+      <td style="max-width:280px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.message||'—'}</td>
+      <td><span class="chip">${c.intent||'—'}</span></td>
+      <td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td>
+    </tr>`).join('');
+  } catch(e) {}
+  document.getElementById('lastUpdated').textContent = new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+}
+
+// ═══════ INBOX ═══════
+let allConvos=[], convoGroups=[];
+async function loadInbox() {
+  try {
+    const { data } = await sb.from('conversations').select('*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes)').order('timestamp',{ascending:false}).limit(300);
+    allConvos = data||[];
+    const groups = {};
+    allConvos.forEach(c => {
+      const k = c.customer_id||'unknown';
+      if (!groups[k]) groups[k] = { customer:c.customers, msgs:[] };
+      groups[k].msgs.push(c);
+    });
+    convoGroups = Object.values(groups);
+    document.getElementById('inboxCount').textContent = convoGroups.length;
+    renderThreads(convoGroups);
+  } catch(e) {}
+}
+function renderThreads(groups) {
+  const el = document.getElementById('threadList');
+  if (!groups.length) { el.innerHTML = '<div class="empty-inline">No conversations yet</div>'; return; }
+  el.innerHTML = groups.map((g,i) => {
+    const last = g.msgs[0];
+    const name = g.customer?.name||g.customer?.phone||'Unknown';
+    return `<div class="thread-item" onclick="openThread(${i})" id="thread-${i}">
+      <div class="avatar">${initials(name)}</div>
+      <div><div class="thread-name">${name}</div><div class="thread-preview">${(last.message||'—').slice(0,60)}</div></div>
+      <div class="thread-meta"><div class="thread-time">${fmt(last.timestamp)}</div>${g.msgs.length>1?`<div class="thread-badge">${g.msgs.length}</div>`:''}</div>
+    </div>`;
+  }).join('');
+}
+function openThread(i) {
+  document.querySelectorAll('.thread-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('thread-'+i)?.classList.add('active');
+  const g = convoGroups[i];
+  const c = g.customer;
+  const name = c?.name||c?.phone||'Unknown';
+  document.getElementById('chatAvatar').textContent = initials(name);
+  document.getElementById('chatName').textContent = name;
+  document.getElementById('chatPhone').textContent = c?.phone||'—';
+  document.getElementById('detailAvatar').textContent = initials(name);
+  document.getElementById('detailName').textContent = name;
+  document.getElementById('detailPhone').textContent = c?.phone||'—';
+  document.getElementById('detailSegment').textContent = c?.segment||'new';
+  document.getElementById('detailVisits').textContent = c?.visit_count||0;
+  document.getElementById('detailFirst').textContent = fmtDate(c?.first_contact);
+  document.getElementById('detailLast').textContent = fmtDate(c?.last_contact);
+  document.getElementById('detailNotes').textContent = c?.notes||'No notes';
+  const msgs = [...g.msgs].reverse();
+  document.getElementById('chatMessages').innerHTML = msgs.map(m => `
+    <div class="bubble-row ${m.direction==='inbound'?'in':'out'}">
+      <div class="bubble ${m.direction==='inbound'?'in':'out'}">${m.message||'—'}</div>
+      <div class="bubble-meta">${fmt(m.timestamp)} ${m.intent?'· '+m.intent:''}</div>
+    </div>`).join('');
+  document.getElementById('chatMessages').scrollTop = 99999;
+}
+// Inbox filters
+document.querySelectorAll('.inbox-filters .filter-pill').forEach(p => {
+  p.addEventListener('click', () => {
+    document.querySelectorAll('.inbox-filters .filter-pill').forEach(x=>x.classList.remove('active'));
+    p.classList.add('active');
+    const f = p.dataset.filter;
+    if (f==='all') renderThreads(convoGroups);
+    else {
+      const filtered = convoGroups.filter(g => g.msgs.some(m=>m.intent===f));
+      renderThreads(filtered);
+    }
+  });
+});
+
+// ═══════ CONTACTS ═══════
+let allCustomers=[];
+async function loadContacts() {
+  try {
+    const { data } = await sb.from('customers').select('*').order('last_contact',{ascending:false});
+    allCustomers = data||[];
+    renderContacts(allCustomers);
+  } catch(e) {}
+}
+function renderContacts(rows) {
+  const tb = document.getElementById('contactsTable');
+  if (!rows.length) { tb.innerHTML = '<tr><td colspan="5" class="empty-inline">No contacts yet</td></tr>'; return; }
+  tb.innerHTML = rows.map(c => `<tr>
+    <td style="font-weight:500">${c.name||'—'}</td>
+    <td class="muted">${c.phone||'—'}</td>
+    <td>${segChip(c.segment)}</td>
+    <td>${c.visit_count||0}</td>
+    <td class="muted" style="font-size:12px">${fmtDate(c.last_contact)}</td>
+  </tr>`).join('');
+}
+document.getElementById('contactSearch')?.addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  renderContacts(allCustomers.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q)));
+});
+
+// ═══════ DAILY LOG ═══════
+async function loadDailyLog() {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('dailyDate').textContent = new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  try {
+    const { data } = await sb.from('bookings').select('*,customers(name,phone)').eq('date',today).order('time');
+    const tb = document.getElementById('dailyTable');
+    const confirmed = (data||[]).filter(b=>b.status==='confirmed').length;
+    const pending = (data||[]).filter(b=>b.status==='pending').length;
+    const guests = (data||[]).reduce((s,b)=>s+(b.party_size||0),0);
+    document.getElementById('dl-bookings').textContent = data?.length??0;
+    document.getElementById('dl-confirmed').textContent = confirmed;
+    document.getElementById('dl-pending').textContent = pending;
+    document.getElementById('dl-guests').textContent = guests;
+    if (!data?.length) { tb.innerHTML = '<tr><td colspan="7" class="empty-inline">No bookings today</td></tr>'; return; }
+    tb.innerHTML = data.map(b => `<tr id="bk-${b.id}">
+      <td style="font-weight:600">${b.time||'—'}</td>
+      <td>${b.customers?.name||'—'}<br><span class="muted" style="font-size:11px">${b.customers?.phone||''}</span></td>
+      <td>${b.party_size||'—'}</td>
+      <td class="muted">${b.occasion||'—'}</td>
+      <td>${payChip(b.payment_status)}</td>
+      <td>${statusChip(b.status)}</td>
+      <td>${b.status==='confirmed'?'<span class="muted" style="font-size:12px">Done</span>':`<button class="btn green sm" onclick="confirmBooking('${b.id}')">Confirm</button>`}</td>
+    </tr>`).join('');
+  } catch(e) {}
+}
+async function confirmBooking(id) {
+  await sb.from('bookings').update({status:'confirmed',confirmed_by:'staff'}).eq('id',id);
+  loadDailyLog();
+}
+
+// ═══════ PHONE LOG ═══════
+async function submitPhoneLog() {
+  const name = document.getElementById('pl-name').value.trim();
+  const phone = document.getElementById('pl-phone').value.trim();
+  const intent = document.getElementById('pl-intent').value;
+  const notes = document.getElementById('pl-notes').value.trim();
+  const bookDate = document.getElementById('pl-date').value;
+  if (!name||!phone) return alert('Name and phone are required');
+  try {
+    const { data: existing } = await sb.from('customers').select('id').eq('phone',phone).single();
+    let cid;
+    if (existing) { cid=existing.id; await sb.from('customers').update({name,last_contact:new Date().toISOString()}).eq('id',cid); }
+    else { const { data:nc } = await sb.from('customers').insert({name,phone,segment:'new'}).select('id').single(); cid=nc?.id; }
+    await sb.from('conversations').insert({customer_id:cid,direction:'inbound',message:`[PHONE] ${notes||intent}`,intent,timestamp:new Date().toISOString()});
+    if (intent==='BOOKING'&&bookDate) await sb.from('bookings').insert({customer_id:cid,date:bookDate,status:'pending',payment_status:'unpaid'});
+    ['pl-name','pl-phone','pl-notes','pl-date'].forEach(id=>document.getElementById(id).value='');
+    const st=document.getElementById('pl-status'); st.style.display='inline'; setTimeout(()=>st.style.display='none',2500);
+    loadPhoneLogs();
+  } catch(e) { alert('Error saving: '+e.message); }
+}
+async function loadPhoneLogs() {
+  try {
+    const { data } = await sb.from('conversations').select('*,customers(name,phone)').like('message','[PHONE]%').order('timestamp',{ascending:false}).limit(30);
+    const tb = document.getElementById('phoneLogTable');
+    if (!data?.length) { tb.innerHTML = '<tr><td colspan="5" class="empty-inline">No phone logs yet</td></tr>'; return; }
+    tb.innerHTML = data.map(c => `<tr>
+      <td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td>
+      <td style="font-weight:500">${c.customers?.name||'—'}</td>
+      <td class="muted">${c.customers?.phone||'—'}</td>
+      <td><span class="chip">${c.intent||'—'}</span></td>
+      <td class="muted" style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(c.message||'').replace('[PHONE] ','')}</td>
+    </tr>`).join('');
+  } catch(e) {}
+}
+
+// ═══════ TEMPLATES ═══════
+async function loadTemplates() {
+  try {
+    const { data } = await sb.from('templates').select('*').order('created_at');
+    const grid = document.getElementById('templatesGrid');
+    if (!data?.length) { grid.innerHTML = '<div class="empty-inline">No templates yet</div>'; return; }
+    grid.innerHTML = data.map(t => `<div class="card template-card">
+      <div class="template-title">${t.name}</div>
+      <div class="template-body">${t.body||''}</div>
+      <div class="template-footer"><span class="chip">${t.category||'general'}</span></div>
+    </div>`).join('');
+  } catch(e) {}
+}
+
+// ═══════ CRM ═══════
+async function loadCRM() {
+  try {
+    const [r1,r2,r3] = await Promise.all([
+      sb.from('crm_campaigns').select('*').order('created_at',{ascending:false}),
+      sb.from('customers').select('id').eq('segment','vip'),
+      sb.from('customers').select('id').eq('segment','lapsed'),
+    ]);
+    const campaigns = r1.data||[];
+    document.getElementById('crm-total').textContent = campaigns.length;
+    document.getElementById('crm-sent').textContent = campaigns.reduce((s,c)=>s+(c.sent_count||0),0);
+    document.getElementById('crm-vip').textContent = r2.data?.length??0;
+    document.getElementById('crm-lapsed').textContent = r3.data?.length??0;
+    const el = document.getElementById('crmCampaigns');
+    if (!campaigns.length) { el.innerHTML = '<div class="empty-inline">No campaigns yet</div>'; return; }
+    el.innerHTML = campaigns.map(c => `<div style="padding:14px 18px;border-bottom:1px solid var(--border)">
+      <div style="font-weight:600;font-size:13px">${c.name}</div>
+      <div class="muted" style="font-size:12px;margin-top:4px">Segment: ${segChip(c.segment)} · Sent: ${c.sent_count||0} · ${fmtDate(c.last_run)}</div>
+      <div class="muted" style="font-size:12px;margin-top:6px;line-height:1.5">${(c.message_template||'').slice(0,100)}...</div>
+    </div>`).join('');
+  } catch(e) {}
+}
+// CRM compose
+const crmTA = document.getElementById('crmCompose');
+const crmPreview = document.getElementById('crmPreview');
+const crmCount = document.getElementById('crmCharCount');
+if (crmTA) {
+  crmTA.addEventListener('input', () => {
+    crmCount.textContent = crmTA.value.length;
+    const v = crmTA.value.replace(/\{\{name\}\}/g,'Friend').replace(/\{\{phone\}\}/g,'+94 ••••').replace(/\{\{date\}\}/g,'Sat, 24 Apr').replace(/\{\{offer\}\}/g,'10% off');
+    crmPreview.textContent = v||'Start typing to see preview.';
+  });
+}
+document.querySelectorAll('.var-chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    if (!crmTA) return;
+    const v = chip.dataset.var;
+    const s = crmTA.selectionStart;
+    crmTA.value = crmTA.value.slice(0,s)+v+crmTA.value.slice(crmTA.selectionEnd);
+    crmTA.focus(); crmTA.selectionStart=crmTA.selectionEnd=s+v.length;
+    crmTA.dispatchEvent(new Event('input'));
+  });
+});
+async function saveCrmCampaign() {
+  const name = document.getElementById('crmCampaignName').value.trim();
+  const template = crmTA.value.trim();
+  const segment = document.getElementById('crmSegment').value;
+  if (!name||!template) return alert('Campaign name and message are required');
+  try {
+    await sb.from('crm_campaigns').insert({name,segment,message_template:template});
+    document.getElementById('crmCampaignName').value='';
+    crmTA.value='';
+    crmTA.dispatchEvent(new Event('input'));
+    loadCRM();
+  } catch(e) { alert('Error: '+e.message); }
+}
+
+// ═══════ BOOT ═══════
+async function boot() {
+  const connected = await checkConnection();
+  if (connected) loadOverview();
+}
+boot();
+
+// Service worker registration
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>

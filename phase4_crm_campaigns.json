@@ -1,0 +1,285 @@
+{
+  "name": "Phase 4 — CRM Campaign Sender",
+  "nodes": [
+    {
+      "id": "node-webhook",
+      "name": "Campaign Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [200, 300],
+      "parameters": {
+        "path": "crm-campaign",
+        "httpMethod": "POST",
+        "responseMode": "lastNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "node-fetch-campaign",
+      "name": "Fetch Campaign",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [440, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/crm_campaigns",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.body.campaign_id ?? $json.campaign_id }}" },
+            { "name": "select", "value": "*" }
+          ]
+        },
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-extract-campaign",
+      "name": "Extract Campaign Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 300],
+      "parameters": {
+        "jsCode": "const campaigns = $input.first().json;\nconst campaign = Array.isArray(campaigns) ? campaigns[0] : campaigns;\n\nif (!campaign || !campaign.id) {\n  return [{ json: { error: 'Campaign not found', done: true } }];\n}\n\nreturn [{ json: {\n  campaign_id: campaign.id,\n  name: campaign.name,\n  segment: campaign.segment || 'all',\n  message_template: campaign.message_template || '',\n  done: false\n}}];\n"
+      }
+    },
+    {
+      "id": "node-fetch-customers",
+      "name": "Fetch Target Customers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [920, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/customers",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "select", "value": "id,phone,name,segment" },
+            { "name": "segment", "value": "={{ $json.segment === 'all' ? '' : 'eq.' + $json.segment }}" }
+          ]
+        },
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-prepare-messages",
+      "name": "Prepare Messages",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1160, 300],
+      "parameters": {
+        "jsCode": "const customers = $input.first().json;\nconst campaign = $('Extract Campaign Data').first().json;\nconst template = campaign.message_template;\n\nif (!Array.isArray(customers) || customers.length === 0) {\n  return [{ json: { error: 'No customers in segment', sent: 0 } }];\n}\n\nconst messages = customers.map(c => {\n  let body = template\n    .replace(/\\{\\{name\\}\\}/g, c.name || 'Valued Customer')\n    .replace(/\\{\\{phone\\}\\}/g, c.phone || '')\n    .replace(/\\{\\{segment\\}\\}/g, c.segment || '')\n    .replace(/\\{\\{date\\}\\}/g, new Date().toLocaleDateString('en-GB'))\n    .replace(/\\{\\{offer\\}\\}/g, '10% off your next visit');\n\n  return {\n    customer_id: c.id,\n    phone: c.phone,\n    name: c.name,\n    message_body: body,\n    campaign_id: campaign.campaign_id\n  };\n});\n\nreturn messages.map(m => ({ json: m }));\n"
+      }
+    },
+    {
+      "id": "node-send-wa",
+      "name": "Send WhatsApp Message",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1400, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.META_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.META_WHATSAPP_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": {{ JSON.stringify($json.message_body) }}\n  }\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-log-send",
+      "name": "Log CRM Send",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1640, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/crm_sends",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"campaign_id\": \"{{ $json.campaign_id }}\",\n  \"customer_id\": \"{{ $json.customer_id }}\",\n  \"status\": \"sent\"\n}",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-log-conversation",
+      "name": "Log Outbound Conversation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1880, 300],
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/conversations",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=minimal" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customer_id }}\",\n  \"direction\": \"outbound\",\n  \"message\": {{ JSON.stringify($json.message_body) }},\n  \"intent\": \"CRM_CAMPAIGN\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-update-campaign",
+      "name": "Update Campaign Stats",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [2120, 300],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/crm_campaigns",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.campaign_id }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"last_run\": \"{{ new Date().toISOString() }}\",\n  \"sent_count\": {{ $('Prepare Messages').all().length }}\n}",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-done",
+      "name": "Done",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2360, 300],
+      "parameters": {
+        "jsCode": "const total = $('Prepare Messages').all().length;\nreturn [{ json: { success: true, messages_sent: total, completed_at: new Date().toISOString() } }];\n"
+      }
+    }
+  ],
+  "connections": {
+    "Campaign Webhook": {
+      "main": [
+        [
+          { "node": "Fetch Campaign", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Campaign": {
+      "main": [
+        [
+          { "node": "Extract Campaign Data", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Extract Campaign Data": {
+      "main": [
+        [
+          { "node": "Fetch Target Customers", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Target Customers": {
+      "main": [
+        [
+          { "node": "Prepare Messages", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Prepare Messages": {
+      "main": [
+        [
+          { "node": "Send WhatsApp Message", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send WhatsApp Message": {
+      "main": [
+        [
+          { "node": "Log CRM Send", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Log CRM Send": {
+      "main": [
+        [
+          { "node": "Log Outbound Conversation", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Log Outbound Conversation": {
+      "main": [
+        [
+          { "node": "Update Campaign Stats", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Update Campaign Stats": {
+      "main": [
+        [
+          { "node": "Done", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-04-25T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,307 @@
+{
+  "name": "Phase 3 — Post-Visit Reviews & Lapsed Customers",
+  "nodes": [
+    {
+      "id": "node-schedule-daily",
+      "name": "Daily at 10 AM",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 10 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-fetch-yesterday-bookings",
+      "name": "Fetch Yesterday Confirmed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 200],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "date", "value": "=eq.{{ new Date(Date.now() - 86400000).toISOString().slice(0,10) }}" },
+            { "name": "status", "value": "eq.confirmed" },
+            { "name": "sequence_stage", "value": "neq.review_sent" },
+            { "name": "select", "value": "id,customer_id,date,time,party_size,customers(id,phone,name,visit_count,segment)" }
+          ]
+        },
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-loop-reviews",
+      "name": "Loop Review Sends",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [720, 200],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "node-send-review-request",
+      "name": "Send Review Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [980, 120],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.META_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.META_WHATSAPP_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers.name }}, we hope you enjoyed your visit to Tilapiya yesterday! We'd love to hear your feedback. Could you leave us a quick review? It truly means a lot to us: https://g.page/tilapiya/review\\n\\nThank you and see you again soon!\"\n  }\n}",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-update-visit-count",
+      "name": "Update Customer Visit Count",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1240, 120],
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\nconst customer = $('Loop Review Sends').item.json.customers;\nconst newVisitCount = (customer.visit_count ?? 0) + 1;\n\nlet newSegment = customer.segment;\nif (newVisitCount >= 5) {\n  newSegment = 'vip';\n} else if (newVisitCount >= 2) {\n  newSegment = 'returning';\n}\n\nreturn [{\n  json: {\n    customer_id: customer.id,\n    booking_id: $('Loop Review Sends').item.json.id,\n    new_visit_count: newVisitCount,\n    new_segment: newSegment\n  }\n}];\n"
+      }
+    },
+    {
+      "id": "node-patch-customer",
+      "name": "Patch Customer",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1500, 120],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/customers",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.customer_id }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"visit_count\": {{ $json.new_visit_count }},\n  \"segment\": \"{{ $json.new_segment }}\"\n}",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-patch-booking-review",
+      "name": "Set Booking review_sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1760, 120],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.booking_id }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"sequence_stage\": \"review_sent\" }",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-fetch-lapsed",
+      "name": "Fetch Lapsed Customers",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 480],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/customers",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "last_contact", "value": "=lt.{{ new Date(Date.now() - 30 * 86400000).toISOString() }}" },
+            { "name": "segment", "value": "neq.lapsed" },
+            { "name": "select", "value": "id,phone,name,segment,last_contact" }
+          ]
+        },
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-loop-lapsed",
+      "name": "Loop Lapsed Updates",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [720, 480],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "node-update-lapsed",
+      "name": "Set Segment Lapsed",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [980, 420],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/customers",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.id }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"segment\": \"lapsed\" }",
+        "options": {}
+      },
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Daily at 10 AM": {
+      "main": [
+        [
+          { "node": "Fetch Yesterday Confirmed", "type": "main", "index": 0 },
+          { "node": "Fetch Lapsed Customers", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Yesterday Confirmed": {
+      "main": [
+        [
+          { "node": "Loop Review Sends", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Loop Review Sends": {
+      "main": [
+        [],
+        [
+          { "node": "Send Review Request", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send Review Request": {
+      "main": [
+        [
+          { "node": "Update Customer Visit Count", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Update Customer Visit Count": {
+      "main": [
+        [
+          { "node": "Patch Customer", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Patch Customer": {
+      "main": [
+        [
+          { "node": "Set Booking review_sent", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Set Booking review_sent": {
+      "main": [
+        [
+          { "node": "Loop Review Sends", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Lapsed Customers": {
+      "main": [
+        [
+          { "node": "Loop Lapsed Updates", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Loop Lapsed Updates": {
+      "main": [
+        [],
+        [
+          { "node": "Set Segment Lapsed", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Set Segment Lapsed": {
+      "main": [
+        [
+          { "node": "Loop Lapsed Updates", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-04-24T00:00:00.000Z",
+  "versionId": "1"
+}

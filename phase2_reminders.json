@@ -1,0 +1,406 @@
+{
+  "name": "Phase 2 — Booking Reminders & Expiry",
+  "nodes": [
+    {
+      "id": "node-schedule",
+      "name": "Every 15 Minutes",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "parameters": {
+        "rule": {
+          "interval": [
+            { "field": "minutes", "minutesInterval": 15 }
+          ]
+        }
+      }
+    },
+    {
+      "id": "node-fetch-unpaid",
+      "name": "Fetch Unpaid Bookings (1h+)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 160],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "payment_status", "value": "eq.unpaid" },
+            { "name": "status", "value": "eq.pending" },
+            { "name": "sequence_stage", "value": "eq.none" },
+            { "name": "created_at", "value": "=lt.{{ new Date(Date.now() - 3600000).toISOString() }}" },
+            { "name": "select", "value": "id,customer_id,date,time,party_size,customers(phone,name)" }
+          ]
+        },
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-loop-payment-reminder",
+      "name": "Loop Payment Reminders",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [720, 160],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "node-send-payment-reminder",
+      "name": "Send Payment Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [980, 100],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.META_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.META_WHATSAPP_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers.name }}! Just a friendly reminder — your booking for {{ $json.date }} at {{ $json.time }} (party of {{ $json.party_size }}) is pending payment. Please complete your payment to confirm your reservation. Reply if you need help!\"\n  }\n}",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-update-stage-reminder1",
+      "name": "Update to reminder_1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1240, 100],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.id ?? $('Loop Payment Reminders').item.json.id }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"sequence_stage\": \"reminder_1\" }",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-fetch-tomorrow",
+      "name": "Fetch Tomorrow Bookings",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 400],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "date", "value": "=eq.{{ new Date(Date.now() + 86400000).toISOString().slice(0,10) }}" },
+            { "name": "reminder_sent_at", "value": "is.null" },
+            { "name": "status", "value": "in.(pending,confirmed)" },
+            { "name": "select", "value": "id,customer_id,date,time,party_size,customers(phone,name)" }
+          ]
+        },
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-loop-booking-reminder",
+      "name": "Loop Booking Reminders",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [720, 400],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "node-send-booking-reminder",
+      "name": "Send Booking Reminder",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [980, 340],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.META_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.META_WHATSAPP_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers.name }}, just a reminder — your reservation is tomorrow ({{ $json.date }}) at {{ $json.time }} for {{ $json.party_size }}. Any changes? Reply here or call us. See you soon!\"\n  }\n}",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-update-reminder-sent",
+      "name": "Update reminder_sent_at",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1240, 340],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.id ?? $('Loop Booking Reminders').item.json.id }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={ \"reminder_sent_at\": \"{{ new Date().toISOString() }}\" }",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-fetch-expired",
+      "name": "Fetch Expired Unpaid (24h+)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [460, 620],
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "payment_status", "value": "eq.unpaid" },
+            { "name": "status", "value": "eq.pending" },
+            { "name": "sequence_stage", "value": "eq.reminder_1" },
+            { "name": "created_at", "value": "=lt.{{ new Date(Date.now() - 86400000).toISOString() }}" },
+            { "name": "select", "value": "id,customer_id,customers(phone,name)" }
+          ]
+        },
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-loop-expire",
+      "name": "Loop Expire Bookings",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [720, 620],
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      }
+    },
+    {
+      "id": "node-expire-booking",
+      "name": "Set Status Expired",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [980, 560],
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/bookings",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "id", "value": "=eq.{{ $json.id }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{ \"status\": \"expired\", \"sequence_stage\": \"expired\" }",
+        "options": {}
+      },
+      "continueOnFail": true
+    },
+    {
+      "id": "node-send-expiry-notice",
+      "name": "Send Expiry Notice",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [1240, 560],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/{{ $env.META_PHONE_NUMBER_ID }}/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.META_WHATSAPP_TOKEN }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers?.phone ?? $('Loop Expire Bookings').item.json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers?.name ?? $('Loop Expire Bookings').item.json.customers.name }}, your unpaid booking has been released as we didn't receive payment within 24 hours. No worries — reply anytime to make a new reservation!\"\n  }\n}",
+        "options": {}
+      },
+      "continueOnFail": true
+    }
+  ],
+  "connections": {
+    "Every 15 Minutes": {
+      "main": [
+        [
+          { "node": "Fetch Unpaid Bookings (1h+)", "type": "main", "index": 0 },
+          { "node": "Fetch Tomorrow Bookings", "type": "main", "index": 0 },
+          { "node": "Fetch Expired Unpaid (24h+)", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Unpaid Bookings (1h+)": {
+      "main": [
+        [
+          { "node": "Loop Payment Reminders", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Loop Payment Reminders": {
+      "main": [
+        [],
+        [
+          { "node": "Send Payment Reminder", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send Payment Reminder": {
+      "main": [
+        [
+          { "node": "Update to reminder_1", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Update to reminder_1": {
+      "main": [
+        [
+          { "node": "Loop Payment Reminders", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Tomorrow Bookings": {
+      "main": [
+        [
+          { "node": "Loop Booking Reminders", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Loop Booking Reminders": {
+      "main": [
+        [],
+        [
+          { "node": "Send Booking Reminder", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send Booking Reminder": {
+      "main": [
+        [
+          { "node": "Update reminder_sent_at", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Update reminder_sent_at": {
+      "main": [
+        [
+          { "node": "Loop Booking Reminders", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Fetch Expired Unpaid (24h+)": {
+      "main": [
+        [
+          { "node": "Loop Expire Bookings", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Loop Expire Bookings": {
+      "main": [
+        [],
+        [
+          { "node": "Set Status Expired", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Set Status Expired": {
+      "main": [
+        [
+          { "node": "Send Expiry Notice", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Send Expiry Notice": {
+      "main": [
+        [
+          { "node": "Loop Expire Bookings", "type": "main", "index": 0 }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-04-24T00:00:00.000Z",
+  "versionId": "1"
+}

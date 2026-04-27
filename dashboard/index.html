@@ -10,6 +10,20 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+if(typeof supabase==='undefined'){
+  (function(){
+    var err={data:null,error:new Error('Supabase not loaded')};
+    function chain(){
+      var p=Promise.resolve(err);
+      var methods=['select','order','limit','eq','gte','lt','in','like','insert','update','single','delete'];
+      methods.forEach(function(m){p[m]=function(){return chain();};});
+      return p;
+    }
+    window.supabase={createClient:function(){return{from:function(){return{select:chain,insert:chain,update:chain,delete:chain};}};}};
+  })();
+}
+</script>
 <style>
   :root {
     --bg: #111110; --surface: #1c1c1a; --surface-2: #252523;
@@ -61,12 +75,12 @@
   .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-subtle); box-shadow: 0 0 0 3px rgba(168,162,158,0.15); }
   .status-dot.live { background: var(--green); box-shadow: 0 0 0 3px rgba(63,98,18,0.15); }
   .btn {
-    padding: 7px 13px; border-radius: 7px; border: 1px solid var(--text);
-    background: var(--text); color: #fff; cursor: pointer; font-size: 12.5px; font-weight: 500;
+    padding: 7px 13px; border-radius: 7px; border: 1px solid #e8e6e3;
+    background: #e8e6e3; color: #111110; cursor: pointer; font-size: 12.5px; font-weight: 500;
     transition: opacity .15s ease;
   }
   .btn:hover { opacity: .85; }
-  .btn.secondary { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+  .btn.secondary { background: var(--surface-2); color: var(--text); border-color: var(--border-strong); }
   .btn.sm { padding: 5px 10px; font-size: 12px; }
   .btn.green { background: var(--green); color: #fff; border-color: var(--green); }
   .avatar {
@@ -461,7 +475,13 @@
 <script>
 const SUPABASE_URL='YOUR_SUPABASE_URL';
 const SUPABASE_ANON='YOUR_SUPABASE_ANON_KEY';
-const sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
+let sb;
+try{
+  sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
+}catch(e){
+  console.warn('Supabase init failed',e);
+  sb=supabase.createClient('https://placeholder.supabase.co','placeholder');
+}
 
 function fmt(ts){if(!ts)return'—';return new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}
 function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
@@ -486,7 +506,7 @@ window.addEventListener('online',()=>{document.getElementById('offlineBar').clas
 async function loadOverview(){
   const today=new Date().toISOString().slice(0,10),weekAgo=new Date(Date.now()-7*864e5).toISOString(),thirtyAgo=new Date(Date.now()-30*864e5).toISOString();
   try{
-    const[r1,r2,r3,r4,r5,r6,r7,r8,r9,r10,r11]=await Promise.all([
+    const results=await Promise.allSettled([
       sb.from('bookings').select('id').eq('date',today),
       sb.from('payments').select('amount').eq('status','paid').gte('paid_at',weekAgo),
       sb.from('customers').select('id').gte('created_at',weekAgo),
@@ -499,36 +519,36 @@ async function loadOverview(){
       sb.from('loyalty').select('id'),
       sb.from('loyalty').select('id').in('tier',['Gold','Platinum'])
     ]);
-    document.getElementById('ov-bookings').textContent=r1.data?.length??0;
-    document.getElementById('ov-revenue').textContent=(r2.data||[]).reduce((s,p)=>s+parseFloat(p.amount||0),0).toLocaleString();
-    document.getElementById('ov-contacts').textContent=r3.data?.length??0;
-    document.getElementById('ov-pending').textContent=r4.data?.length??0;
-    document.getElementById('ov-msgin').textContent=r5.data?.length??0;
-    document.getElementById('ov-msgout').textContent=r6.data?.length??0;
-    document.getElementById('ov-complaints').textContent=r7.data?.length??0;
-    document.getElementById('ov-total').textContent=r8.data?.length??0;
-    document.getElementById('contactsCount').textContent=r8.data?.length??0;
-    const ratings=(r9.data||[]).map(f=>f.overall_rating).filter(v=>v!=null);
+    const g=i=>(results[i]&&results[i].status==='fulfilled'&&results[i].value?.data)||[];
+    document.getElementById('ov-bookings').textContent=g(0).length;
+    document.getElementById('ov-revenue').textContent=g(1).reduce((s,p)=>s+parseFloat(p.amount||0),0).toLocaleString();
+    document.getElementById('ov-contacts').textContent=g(2).length;
+    document.getElementById('ov-pending').textContent=g(3).length;
+    document.getElementById('ov-msgin').textContent=g(4).length;
+    document.getElementById('ov-msgout').textContent=g(5).length;
+    document.getElementById('ov-complaints').textContent=g(6).length;
+    document.getElementById('ov-total').textContent=g(7).length;
+    document.getElementById('contactsCount').textContent=g(7).length;
+    const ratings=g(8).map(f=>f.overall_rating).filter(v=>v!=null);
     document.getElementById('ov-avgrating').textContent=ratings.length?(ratings.reduce((s,v)=>s+v,0)/ratings.length).toFixed(1):'—';
-    document.getElementById('ov-loyalty').textContent=r10.data?.length??0;
-    document.getElementById('loyaltyCount').textContent=r10.data?.length??0;
-    document.getElementById('ov-goldplus').textContent=r11.data?.length??0;
-    const{data:lapsed}=await sb.from('customers').select('id').lt('last_contact',thirtyAgo);
-    document.getElementById('ov-lapsed').textContent=lapsed?.length??0;
-  }catch(e){}
+    document.getElementById('ov-loyalty').textContent=g(9).length;
+    document.getElementById('loyaltyCount').textContent=g(9).length;
+    document.getElementById('ov-goldplus').textContent=g(10).length;
+    try{const{data:lapsed}=await sb.from('customers').select('id').lt('last_contact',thirtyAgo);document.getElementById('ov-lapsed').textContent=lapsed?.length??0;}catch(le){}
+  }catch(e){console.warn('Overview stats error',e);}
   try{
     const{data}=await sb.from('conversations').select('message,intent,direction,timestamp,customers(name)').order('timestamp',{ascending:false}).limit(8);
     const tb=document.getElementById('ov-feed');
-    if(!data?.length){tb.innerHTML='<tr><td colspan="4" class="empty-inline">No conversations yet</td></tr>';return;}
-    tb.innerHTML=data.map(c=>`<tr><td><span class="chip ${c.direction==='inbound'?'':'solid'}">${c.direction||'—'}</span></td><td>${c.customers?.name||'Unknown'}</td><td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.message||'—'}</td><td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td></tr>`).join('');
-  }catch(e){}
+    if(!data?.length){tb.innerHTML='<tr><td colspan="4" class="empty-inline">No conversations yet</td></tr>';}
+    else{tb.innerHTML=data.map(c=>`<tr><td><span class="chip ${c.direction==='inbound'?'':'solid'}">${c.direction||'—'}</span></td><td>${c.customers?.name||'Unknown'}</td><td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.message||'—'}</td><td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td></tr>`).join('');}
+  }catch(e){document.getElementById('ov-feed').innerHTML='<tr><td colspan="4" class="empty-inline">No conversations yet — connect Supabase first</td></tr>';}
   try{
     const{data}=await sb.from('feedback').select('*,customers(name)').order('created_at',{ascending:false}).limit(5);
     const el=document.getElementById('ov-feedback-list');
     document.getElementById('feedbackCount').textContent=data?.length??0;
     if(!data?.length){el.innerHTML='<div class="empty-inline">No feedback yet</div>';}
     else{el.innerHTML=data.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${f.customers?.name||'Anon'}</span>${starsHTML(f.overall_rating||0)}</div>${f.comment?`<div class="feedback-comment">"${f.comment}"</div>`:''}<div style="font-size:11px;color:var(--text-subtle);margin-top:6px">${fmt(f.created_at)}</div></div>`).join('');}
-  }catch(e){}
+  }catch(e){document.getElementById('ov-feedback-list').innerHTML='<div class="empty-inline">No feedback yet — connect Supabase first</div>';}
   document.getElementById('lastUpdated').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   // Bookings bar chart
   try{
@@ -550,17 +570,18 @@ async function loadOverview(){
         y:{beginAtZero:true,grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#78716c',font:{size:11},stepSize:1}}
       }}
     });
-  }catch(e){}
+  }catch(e){console.warn('Chart error',e);}
 }
 
 let allConvos=[],convoGroups=[];
 async function loadInbox(){
   try{
-    const{data}=await sb.from('conversations').select('*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes)').order('timestamp',{ascending:false}).limit(300);
+    const{data,error}=await sb.from('conversations').select('*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes)').order('timestamp',{ascending:false}).limit(300);
+    if(error)throw error;
     allConvos=data||[];const groups={};
     allConvos.forEach(c=>{const k=c.customer_id||'unknown';if(!groups[k])groups[k]={customer:c.customers,customer_id:c.customer_id,msgs:[]};groups[k].msgs.push(c);});
     convoGroups=Object.values(groups);document.getElementById('inboxCount').textContent=convoGroups.length;renderThreads(convoGroups);
-  }catch(e){}
+  }catch(e){document.getElementById('threadList').innerHTML='<div class="empty-inline">No conversations yet. Connect Supabase to see data.</div>';convoGroups=[];}
 }
 function renderThreads(groups){
   const el=document.getElementById('threadList');
@@ -584,8 +605,12 @@ document.querySelectorAll('.inbox-filters .filter-pill').forEach(p=>{p.addEventL
 
 let allCustomers=[],customerLoyalty={};
 async function loadContacts(){
-  try{const[r1,r2]=await Promise.all([sb.from('customers').select('*').order('last_contact',{ascending:false}),sb.from('loyalty').select('customer_id,total_points,tier')]);
-  allCustomers=r1.data||[];customerLoyalty={};(r2.data||[]).forEach(l=>customerLoyalty[l.customer_id]=l);renderContacts(allCustomers);}catch(e){}
+  try{
+    const r1=await sb.from('customers').select('*').order('last_contact',{ascending:false});
+    allCustomers=r1.data||[];customerLoyalty={};
+    try{const r2=await sb.from('loyalty').select('customer_id,total_points,tier');(r2.data||[]).forEach(l=>customerLoyalty[l.customer_id]=l);}catch(le){/* loyalty table may not exist yet */}
+    renderContacts(allCustomers);
+  }catch(e){document.getElementById('contactsTable').innerHTML='<tr><td colspan="7" class="empty-inline">No contacts yet. Connect Supabase to see data.</td></tr>';}
 }
 function renderContacts(rows){
   const tb=document.getElementById('contactsTable');
@@ -601,25 +626,39 @@ async function loadDailyLog(){
   document.getElementById('dl-bookings').textContent=data?.length??0;document.getElementById('dl-confirmed').textContent=confirmed;document.getElementById('dl-pending').textContent=pending;document.getElementById('dl-guests').textContent=guests;
   const tb=document.getElementById('dailyTable');
   if(!data?.length){tb.innerHTML='<tr><td colspan="8" class="empty-inline">No bookings today</td></tr>';return;}
-  tb.innerHTML=data.map(b=>`<tr><td style="font-weight:600">${b.time||'—'}</td><td>${b.customers?.name||'—'}<br><span class="muted" style="font-size:11px">${b.customers?.phone||''}</span></td><td>${b.party_size||'—'}</td><td class="muted">${b.occasion||'—'}</td><td class="muted" style="font-size:12px">${b.dietary_notes||'—'}</td><td>${payChip(b.payment_status)}</td><td>${statusChip(b.status)}</td><td>${b.status==='confirmed'?'<span class="muted" style="font-size:12px">Done</span>':`<button class="btn green sm" onclick="confirmBooking('${b.id}')">Confirm</button>`}</td></tr>`).join('');}catch(e){}
+  tb.innerHTML=data.map(b=>`<tr><td style="font-weight:600">${b.time||'—'}</td><td>${b.customers?.name||'—'}<br><span class="muted" style="font-size:11px">${b.customers?.phone||''}</span></td><td>${b.party_size||'—'}</td><td class="muted">${b.occasion||'—'}</td><td class="muted" style="font-size:12px">${b.dietary_notes||'—'}</td><td>${payChip(b.payment_status)}</td><td>${statusChip(b.status)}</td><td>${b.status==='confirmed'?'<span class="muted" style="font-size:12px">Done</span>':`<button class="btn green sm" onclick="confirmBooking('${b.id}')">Confirm</button>`}</td></tr>`).join('');}catch(e){document.getElementById('dailyTable').innerHTML='<tr><td colspan="8" class="empty-inline">No bookings today</td></tr>';}
 }
 async function confirmBooking(id){await sb.from('bookings').update({status:'confirmed',confirmed_by:'staff'}).eq('id',id);loadDailyLog();}
 
 async function loadLoyalty(){
-  try{const[r1,r2,r3]=await Promise.all([sb.from('loyalty').select('*,customers(name,phone)').order('total_points',{ascending:false}),sb.from('rewards').select('*').eq('is_active',true).order('points_required'),sb.from('loyalty_transactions').select('*,customers(name)').order('created_at',{ascending:false}).limit(20)]);
-  const members=r1.data||[];document.getElementById('loyaltyCount').textContent=members.length;
-  document.getElementById('ly-bronze').textContent=members.filter(m=>m.tier==='Bronze').length;document.getElementById('ly-silver').textContent=members.filter(m=>m.tier==='Silver').length;
-  document.getElementById('ly-gold').textContent=members.filter(m=>m.tier==='Gold').length;document.getElementById('ly-plat').textContent=members.filter(m=>m.tier==='Platinum').length;
-  const el=document.getElementById('loyaltyList');
-  if(!members.length){el.innerHTML='<div class="empty-inline">No members yet. Auto-enrolled on first visit.</div>';}
-  else{el.innerHTML=members.map(m=>`<div class="loyalty-card"><div class="avatar" style="width:36px;height:36px;font-size:13px">${initials(m.customers?.name)}</div><div class="loyalty-info"><div class="loyalty-name">${m.customers?.name||'—'}</div><div class="loyalty-detail">${m.customers?.phone||'—'} · ${m.total_visits||0} visits · ${tierBadge(m.tier)}</div></div><div class="loyalty-points"><div class="loyalty-pts">${m.total_points||0}</div><div class="loyalty-pts-label">points</div></div></div>`).join('');}
-  const rEl=document.getElementById('rewardsList'),rewards=r2.data||[];
-  if(!rewards.length){rEl.innerHTML='<div class="empty-inline">No rewards</div>';}
-  else{rEl.innerHTML=rewards.map(r=>`<div class="reward-card"><div class="reward-name">${r.name}</div><div class="reward-desc">${r.description||''}</div><div class="reward-meta">${tierBadge(r.tier_required)}<span class="reward-pts">${r.points_required} pts</span></div></div>`).join('');}
-  const aEl=document.getElementById('pointsActivity'),activity=r3.data||[];
-  if(!activity.length){aEl.innerHTML='<div class="empty-inline">No activity</div>';}
-  else{aEl.innerHTML=activity.map(a=>{const sign=a.type==='redeemed'?'-':'+',color=a.type==='redeemed'?'var(--red)':'var(--green)';return`<div style="padding:10px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;font-weight:500">${a.customers?.name||'—'}</div><div style="font-size:11px;color:var(--text-muted)">${a.reason||a.type} · ${fmt(a.created_at)}</div></div><div style="font-weight:700;color:${color};font-size:14px">${sign}${Math.abs(a.points)}</div></div>`;}).join('');}
-  }catch(e){}
+  try{
+    const[s1,s2,s3]=await Promise.allSettled([
+      sb.from('loyalty').select('*,customers(name,phone)').order('total_points',{ascending:false}),
+      sb.from('rewards').select('*').eq('is_active',true).order('points_required'),
+      sb.from('loyalty_transactions').select('*,customers(name)').order('created_at',{ascending:false}).limit(20)
+    ]);
+    const members=(s1.status==='fulfilled'&&s1.value?.data)||[];
+    document.getElementById('loyaltyCount').textContent=members.length;
+    document.getElementById('ly-bronze').textContent=members.filter(m=>m.tier==='Bronze').length;
+    document.getElementById('ly-silver').textContent=members.filter(m=>m.tier==='Silver').length;
+    document.getElementById('ly-gold').textContent=members.filter(m=>m.tier==='Gold').length;
+    document.getElementById('ly-plat').textContent=members.filter(m=>m.tier==='Platinum').length;
+    const el=document.getElementById('loyaltyList');
+    if(!members.length){el.innerHTML='<div class="empty-inline">No members yet. Auto-enrolled on first visit.</div>';}
+    else{el.innerHTML=members.map(m=>`<div class="loyalty-card"><div class="avatar" style="width:36px;height:36px;font-size:13px">${initials(m.customers?.name)}</div><div class="loyalty-info"><div class="loyalty-name">${m.customers?.name||'—'}</div><div class="loyalty-detail">${m.customers?.phone||'—'} · ${m.total_visits||0} visits · ${tierBadge(m.tier)}</div></div><div class="loyalty-points"><div class="loyalty-pts">${m.total_points||0}</div><div class="loyalty-pts-label">points</div></div></div>`).join('');}
+    const rewards=(s2.status==='fulfilled'&&s2.value?.data)||[];
+    const rEl=document.getElementById('rewardsList');
+    if(!rewards.length){rEl.innerHTML='<div class="empty-inline">No rewards</div>';}
+    else{rEl.innerHTML=rewards.map(r=>`<div class="reward-card"><div class="reward-name">${r.name}</div><div class="reward-desc">${r.description||''}</div><div class="reward-meta">${tierBadge(r.tier_required)}<span class="reward-pts">${r.points_required} pts</span></div></div>`).join('');}
+    const activity=(s3.status==='fulfilled'&&s3.value?.data)||[];
+    const aEl=document.getElementById('pointsActivity');
+    if(!activity.length){aEl.innerHTML='<div class="empty-inline">No activity</div>';}
+    else{aEl.innerHTML=activity.map(a=>{const sign=a.type==='redeemed'?'-':'+',color=a.type==='redeemed'?'var(--red)':'var(--green)';return`<div style="padding:10px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;font-weight:500">${a.customers?.name||'—'}</div><div style="font-size:11px;color:var(--text-muted)">${a.reason||a.type} · ${fmt(a.created_at)}</div></div><div style="font-weight:700;color:${color};font-size:14px">${sign}${Math.abs(a.points)}</div></div>`;}).join('');}
+  }catch(e){
+    document.getElementById('loyaltyList').innerHTML='<div class="empty-inline">No loyalty data yet. Run the v2 schema SQL in Supabase first.</div>';
+    document.getElementById('rewardsList').innerHTML='<div class="empty-inline">No rewards yet</div>';
+    document.getElementById('pointsActivity').innerHTML='<div class="empty-inline">No activity yet</div>';
+  }
 }
 
 async function loadFeedback(){
@@ -635,7 +674,9 @@ async function loadFeedback(){
   const el=document.getElementById('feedbackList');
   if(!all.length){el.innerHTML='<div class="empty-inline">No feedback yet. Requested automatically after visits.</div>';}
   else{el.innerHTML=all.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${f.customers?.name||'Anon'}</span>${starsHTML(f.overall_rating||0)}</div>${f.comment?`<div class="feedback-comment">"${f.comment}"</div>`:''}<div class="feedback-scores"><div class="feedback-score"><div class="feedback-score-label">Food</div><div class="feedback-score-val">${f.food_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Service</div><div class="feedback-score-val">${f.service_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Ambience</div><div class="feedback-score-val">${f.ambience_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Recommend</div><div class="feedback-score-val">${f.would_recommend==null?'—':f.would_recommend?'Yes':'No'}</div></div></div><div style="font-size:11px;color:var(--text-subtle);margin-top:8px">${fmt(f.created_at)} · via ${f.collected_via||'whatsapp'}</div></div>`).join('');}
-  }catch(e){}
+  }catch(e){
+    document.getElementById('feedbackList').innerHTML='<div class="empty-inline">No feedback yet. Run the v2 schema SQL in Supabase first.</div>';
+  }
 }
 
 async function submitPhoneLog(){
@@ -653,23 +694,23 @@ async function loadPhoneLogs(){
   try{const{data}=await sb.from('conversations').select('*,customers(name,phone)').like('message','[PHONE]%').order('timestamp',{ascending:false}).limit(30);
   const tb=document.getElementById('phoneLogTable');
   if(!data?.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No logs yet</td></tr>';return;}
-  tb.innerHTML=data.map(c=>`<tr><td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td><td style="font-weight:500">${c.customers?.name||'—'}</td><td class="muted">${c.customers?.phone||'—'}</td><td><span class="chip">${c.intent||'—'}</span></td><td class="muted" style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(c.message||'').replace('[PHONE] ','')}</td></tr>`).join('');}catch(e){}
+  tb.innerHTML=data.map(c=>`<tr><td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td><td style="font-weight:500">${c.customers?.name||'—'}</td><td class="muted">${c.customers?.phone||'—'}</td><td><span class="chip">${c.intent||'—'}</span></td><td class="muted" style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(c.message||'').replace('[PHONE] ','')}</td></tr>`).join('');}catch(e){document.getElementById('phoneLogTable').innerHTML='<tr><td colspan="5" class="empty-inline">No logs yet</td></tr>';}
 }
 
 async function loadTemplates(){
   try{const{data}=await sb.from('templates').select('*').order('created_at');const grid=document.getElementById('templatesGrid');
   if(!data?.length){grid.innerHTML='<div class="empty-inline">No templates</div>';return;}
   const cc={booking:'green',payment:'amber',post_visit:'blue',crm:'purple',feedback:'amber',loyalty:'purple',general:''};
-  grid.innerHTML=data.map(t=>`<div class="card template-card"><div class="template-title">${t.name}</div><div class="template-body">${t.body||''}</div><div class="template-footer"><span class="chip ${cc[t.category]||''}">${t.category||'general'}</span></div></div>`).join('');}catch(e){}
+  grid.innerHTML=data.map(t=>`<div class="card template-card"><div class="template-title">${t.name}</div><div class="template-body">${t.body||''}</div><div class="template-footer"><span class="chip ${cc[t.category]||''}">${t.category||'general'}</span></div></div>`).join('');}catch(e){document.getElementById('templatesGrid').innerHTML='<div class="empty-inline">No templates yet</div>';}
 }
 
 async function loadCRM(){
-  try{const[r1,r2,r3]=await Promise.all([sb.from('crm_campaigns').select('*').order('created_at',{ascending:false}),sb.from('customers').select('id').eq('segment','vip'),sb.from('customers').select('id').eq('segment','lapsed')]);
-  const campaigns=r1.data||[];document.getElementById('crm-total').textContent=campaigns.length;document.getElementById('crm-sent').textContent=campaigns.reduce((s,c)=>s+(c.sent_count||0),0);
-  document.getElementById('crm-vip').textContent=r2.data?.length??0;document.getElementById('crm-lapsed').textContent=r3.data?.length??0;
+  try{const[s1,s2,s3]=await Promise.allSettled([sb.from('crm_campaigns').select('*').order('created_at',{ascending:false}),sb.from('customers').select('id').eq('segment','vip'),sb.from('customers').select('id').eq('segment','lapsed')]);
+  const campaigns=(s1.status==='fulfilled'&&s1.value?.data)||[];document.getElementById('crm-total').textContent=campaigns.length;document.getElementById('crm-sent').textContent=campaigns.reduce((s,c)=>s+(c.sent_count||0),0);
+  document.getElementById('crm-vip').textContent=(s2.status==='fulfilled'&&s2.value?.data?.length)||0;document.getElementById('crm-lapsed').textContent=(s3.status==='fulfilled'&&s3.value?.data?.length)||0;
   const el=document.getElementById('crmCampaigns');
   if(!campaigns.length){el.innerHTML='<div class="empty-inline">No campaigns</div>';return;}
-  el.innerHTML=campaigns.map(c=>`<div style="padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:13px">${c.name}</div><div class="muted" style="font-size:12px;margin-top:4px">${segChip(c.segment)} · Sent: ${c.sent_count||0} · ${fmtDate(c.last_run)}</div><div class="muted" style="font-size:12px;margin-top:6px">${(c.message_template||'').slice(0,100)}...</div></div>`).join('');}catch(e){}
+  el.innerHTML=campaigns.map(c=>`<div style="padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:13px">${c.name}</div><div class="muted" style="font-size:12px;margin-top:4px">${segChip(c.segment)} · Sent: ${c.sent_count||0} · ${fmtDate(c.last_run)}</div><div class="muted" style="font-size:12px;margin-top:6px">${(c.message_template||'').slice(0,100)}...</div></div>`).join('');}catch(e){document.getElementById('crmCampaigns').innerHTML='<div class="empty-inline">No campaigns yet</div>';}
 }
 const crmTA=document.getElementById('crmCompose'),crmPreview=document.getElementById('crmPreview'),crmCount=document.getElementById('crmCharCount');
 if(crmTA){crmTA.addEventListener('input',()=>{crmCount.textContent=crmTA.value.length;const v=crmTA.value.replace(/\{\{name\}\}/g,'Friend').replace(/\{\{phone\}\}/g,'+94 ••••').replace(/\{\{date\}\}/g,'Sat, 24 Apr').replace(/\{\{offer\}\}/g,'10% off').replace(/\{\{points\}\}/g,'120').replace(/\{\{tier\}\}/g,'Silver');crmPreview.textContent=v||'Start typing...';});}
@@ -678,7 +719,23 @@ async function saveCrmCampaign(){const name=document.getElementById('crmCampaign
 
 document.getElementById('globalSearch')?.addEventListener('input',async e=>{const q=e.target.value.trim();if(q.length<2)return;show('contacts');const s=document.getElementById('contactSearch');if(s){s.value=q;s.dispatchEvent(new Event('input'));}});
 
-async function boot(){const connected=await checkConnection();if(connected)loadOverview();}
+async function boot(){
+  const connected=await checkConnection();
+  loadOverview();
+  if(!connected){
+    // Pre-set all pages to show proper empty states so nothing is stuck on "Loading..."
+    document.getElementById('threadList').innerHTML='<div class="empty-inline">Connect Supabase to see conversations.</div>';
+    document.getElementById('contactsTable').innerHTML='<tr><td colspan="7" class="empty-inline">Connect Supabase to see contacts.</td></tr>';
+    document.getElementById('dailyTable').innerHTML='<tr><td colspan="8" class="empty-inline">Connect Supabase to see bookings.</td></tr>';
+    document.getElementById('loyaltyList').innerHTML='<div class="empty-inline">Connect Supabase and run v2 schema to see loyalty data.</div>';
+    document.getElementById('rewardsList').innerHTML='<div class="empty-inline">No rewards yet</div>';
+    document.getElementById('pointsActivity').innerHTML='<div class="empty-inline">No activity yet</div>';
+    document.getElementById('feedbackList').innerHTML='<div class="empty-inline">Connect Supabase and run v2 schema to see feedback.</div>';
+    document.getElementById('phoneLogTable').innerHTML='<tr><td colspan="5" class="empty-inline">No phone logs yet</td></tr>';
+    document.getElementById('templatesGrid').innerHTML='<div class="empty-inline">Connect Supabase to see templates.</div>';
+    document.getElementById('crmCampaigns').innerHTML='<div class="empty-inline">Connect Supabase to see campaigns.</div>';
+  }
+}
 boot();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 </script>

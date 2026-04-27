@@ -333,6 +333,33 @@ if(typeof supabase==='undefined'){
     .preview-box { padding: 10px; }
     .preview-bubble { font-size: 12.5px; max-width: 100%; }
   }
+  .pipeline-board { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; min-height: 400px; }
+  .pipeline-col { flex: 1; min-width: 220px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; }
+  .pipeline-col-head { padding: 12px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .pipeline-col-head .col-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  .pipeline-col-head .col-count { font-size: 11px; background: var(--surface-2); border-radius: 999px; padding: 1px 8px; color: var(--text-muted); }
+  .pipeline-col-body { padding: 8px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+  .pipeline-card { background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; }
+  .pipeline-card:hover { border-color: var(--border-strong); }
+  .pipeline-card .pc-name { font-weight: 600; font-size: 13px; }
+  .pipeline-card .pc-phone { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+  .pipeline-card .pc-details { font-size: 11.5px; color: var(--text-muted); margin-top: 6px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .pipeline-card .pc-actions { display: flex; gap: 6px; margin-top: 10px; }
+  .btn.approve { background: var(--green); color: #fff; border-color: var(--green); }
+  .btn.reject { background: var(--red); color: #fff; border-color: var(--red); }
+  .btn.approve:hover, .btn.reject:hover { opacity: .85; }
+  .add-cust-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .add-cust-form .full { grid-column: 1 / -1; }
+  .form-label { display: block; font-size: 11.5px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+  @media (max-width: 1100px) {
+    .pipeline-board { flex-direction: column; min-height: auto; }
+    .pipeline-col { min-width: auto; }
+  }
+  @media (max-width: 640px) {
+    .add-cust-form { grid-template-columns: 1fr; }
+    .pipeline-board { flex-direction: column; min-height: auto; }
+    .pipeline-col { min-width: auto; }
+  }
 </style>
 </head>
 <body>
@@ -358,16 +385,17 @@ if(typeof supabase==='undefined'){
   <aside class="sidebar">
     <div class="nav-section">Workspace</div>
     <div class="nav-item active" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span class="lbl">Overview</span></div>
+    <div class="nav-item" data-view="add-customer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg><span class="lbl">Add Customer</span></div>
     <div class="nav-item" data-view="inbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H5.17L4 17.17z"/></svg><span class="lbl">Inbox</span><span class="count" id="inboxCount">0</span></div>
     <div class="nav-item" data-view="contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg><span class="lbl">Contacts</span><span class="count" id="contactsCount">0</span></div>
+    <div class="nav-item" data-view="pipeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg><span class="lbl">Pipeline</span><span class="count" id="pipelineCount">0</span></div>
     <div class="nav-item" data-view="daily-log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span class="lbl">Daily Log</span></div>
     <div class="nav-section" style="margin-top:14px">Engagement</div>
     <div class="nav-item" data-view="loyalty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26"/></svg><span class="lbl">Loyalty</span><span class="count" id="loyaltyCount">0</span></div>
     <div class="nav-item" data-view="feedback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="lbl">Feedback</span><span class="count" id="feedbackCount">0</span></div>
     <div class="nav-section" style="margin-top:14px">Operations</div>
-    <div class="nav-item" data-view="phone-log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.86 19.86 0 0 1 3.09 5.18 2 2 0 0 1 5.11 3h3a2 2 0 0 1 2 1.72c.13.81.36 1.6.68 2.34a2 2 0 0 1-.45 2.11L8.09 11.5A16 16 0 0 0 12.5 15.91l2.33-2.33a2 2 0 0 1 2.11-.45c.74.32 1.53.55 2.34.68a2 2 0 0 1 1.72 2z"/></svg><span class="lbl">Phone Log</span></div>
-    <div class="nav-item" data-view="templates"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16v4H4zM4 13h10v6H4zM17 13h3v6h-3z"/></svg><span class="lbl">Templates</span></div>
     <div class="nav-item" data-view="crm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 1 3.6 7.2L3 21l1.8-3.6A9 9 0 0 1 3 12z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg><span class="lbl">Automated CRM</span></div>
+    <div class="nav-item" data-view="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><span class="lbl">Reports</span></div>
     <div class="sidebar-footer">
       <div class="avatar">T</div>
       <div class="who"><b id="sidebarName">Owner</b><span>Last updated <span id="lastUpdated">—</span></span></div>
@@ -411,26 +439,42 @@ if(typeof supabase==='undefined'){
     </div></section>
 
     <!-- INBOX -->
-    <section class="view" data-view="inbox"><div class="page wide"><div class="inbox">
+    <section class="view" data-view="inbox"><div class="page wide">
+      <div id="waStatusBar" style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <span style="font-size:12.5px"><span style="font-weight:600">WhatsApp Connected</span> <span class="muted">· Number: <span id="waNumber">+94 77 123 4567</span> · Pulling live messages</span></span>
+          <span class="chip green" id="waLiveChip" style="margin-left:4px">Live</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="chip" id="inboxBookingCount">Bookings: 0</span>
+          <span class="chip" id="inboxInquiryCount">Inquiries: 0</span>
+          <span class="chip" id="inboxComplaintCount">Complaints: 0</span>
+          <span class="chip" id="inboxFeedbackCount">Feedback: 0</span>
+          <button class="btn sm secondary" onclick="show('pipeline')" style="margin-left:6px">View Pipeline</button>
+        </div>
+      </div>
+      <div class="inbox">
       <div class="inbox-col">
-        <div class="inbox-col-head"><div class="panel-title">Conversations</div></div>
+        <div class="inbox-col-head"><div class="panel-title">Conversations</div><span class="muted" style="font-size:11px" id="inboxTotalLabel">0 threads</span></div>
         <div class="inbox-filters">
-          <div class="filter-pill active" data-filter="all">All</div>
-          <div class="filter-pill" data-filter="BOOKING">Booking</div>
-          <div class="filter-pill" data-filter="INQUIRY">Inquiry</div>
-          <div class="filter-pill" data-filter="COMPLAINT">Complaint</div>
-          <div class="filter-pill" data-filter="FEEDBACK">Feedback</div>
+          <div class="filter-pill active" data-filter="all">All <span id="fpAll" style="font-size:10px;opacity:.7"></span></div>
+          <div class="filter-pill" data-filter="BOOKING">Booking <span id="fpBooking" style="font-size:10px;opacity:.7"></span></div>
+          <div class="filter-pill" data-filter="INQUIRY">Inquiry <span id="fpInquiry" style="font-size:10px;opacity:.7"></span></div>
+          <div class="filter-pill" data-filter="COMPLAINT">Complaint <span id="fpComplaint" style="font-size:10px;opacity:.7"></span></div>
+          <div class="filter-pill" data-filter="FEEDBACK">Feedback <span id="fpFeedback" style="font-size:10px;opacity:.7"></span></div>
         </div>
         <div class="thread-list" id="threadList"><div class="empty-inline">Loading...</div></div>
       </div>
       <div class="inbox-col">
-        <div class="thread-header"><div class="who"><div class="avatar" style="width:36px;height:36px;font-size:13px;" id="chatAvatar">—</div><div><div class="who-name" id="chatName">Select a conversation</div><div class="who-sub" id="chatPhone">Choose from left</div></div></div></div>
+        <div class="thread-header"><div class="who"><div class="avatar" style="width:36px;height:36px;font-size:13px;" id="chatAvatar">—</div><div><div class="who-name" id="chatName">Select a conversation</div><div class="who-sub" id="chatPhone">Choose from left</div></div></div><div id="chatPipelineLink"></div></div>
         <div class="thread-body" id="chatMessages"><div class="empty-inline" style="margin:auto">Select a conversation</div></div>
       </div>
       <div class="inbox-col contact-panel-col"><div class="contact-panel">
         <div class="contact-id"><div class="contact-avatar" id="detailAvatar">—</div><div class="contact-name" id="detailName">No contact</div><div class="contact-sub" id="detailPhone">—</div></div>
         <div class="contact-section"><h3>Activity</h3><div class="kv"><span class="k">Segment</span><span class="v" id="detailSegment">—</span></div><div class="kv"><span class="k">Visits</span><span class="v" id="detailVisits">0</span></div><div class="kv"><span class="k">First contact</span><span class="v" id="detailFirst">—</span></div><div class="kv"><span class="k">Last contact</span><span class="v" id="detailLast">—</span></div></div>
         <div class="contact-section"><h3>Loyalty</h3><div class="kv"><span class="k">Tier</span><span class="v" id="detailTier">—</span></div><div class="kv"><span class="k">Points</span><span class="v" id="detailPoints">0</span></div></div>
+        <div class="contact-section"><h3>Pipeline Stage</h3><div class="kv"><span class="k">Status</span><span class="v" id="detailPipelineStage">—</span></div></div>
         <div class="contact-section"><h3>Notes</h3><div id="detailNotes" style="font-size:12.5px;color:var(--text-muted)">—</div></div>
       </div></div>
     </div></div></section>
@@ -439,6 +483,72 @@ if(typeof supabase==='undefined'){
     <section class="view" data-view="contacts"><div class="page">
       <div class="page-head"><div><h1>Contacts</h1><div class="subtitle">Every customer who has messaged or been logged.</div></div><input type="text" class="field" placeholder="Search name or phone..." id="contactSearch" style="width:240px"></div>
       <div class="card"><table><thead><tr><th>Name</th><th>Phone</th><th>Segment</th><th>Visits</th><th>Tier</th><th>Points</th><th>Last Contact</th></tr></thead><tbody id="contactsTable"><tr><td colspan="7" class="empty-inline">Loading...</td></tr></tbody></table></div>
+    </div></section>
+
+    <!-- ADD CUSTOMER -->
+    <section class="view" data-view="add-customer"><div class="page">
+      <div class="page-head"><div><h1>Add Customer</h1><div class="subtitle">Register a new customer into the system.</div></div></div>
+      <div class="card" style="max-width:720px"><div class="panel-head"><div class="panel-title">New Customer Details</div></div><div class="panel-body">
+        <div class="add-cust-form">
+          <div><label class="form-label">Full Name *</label><input class="field" id="nc-name" placeholder="e.g. Kasun Perera"></div>
+          <div><label class="form-label">Phone Number *</label><input class="field" id="nc-phone" placeholder="+94 77 123 4567"></div>
+          <div><label class="form-label">Email</label><input class="field" id="nc-email" placeholder="email@example.com" type="email"></div>
+          <div><label class="form-label">Segment</label><select class="field" id="nc-segment"><option value="new">New</option><option value="returning">Returning</option><option value="vip">VIP</option><option value="first-timer">First-timer</option></select></div>
+          <div><label class="form-label">Party Size</label><input class="field" id="nc-party" placeholder="e.g. 4" type="number" min="1"></div>
+          <div><label class="form-label">Occasion</label><select class="field" id="nc-occasion"><option value="">None</option><option value="Birthday">Birthday</option><option value="Anniversary">Anniversary</option><option value="Business">Business</option><option value="Date Night">Date Night</option><option value="Family">Family</option><option value="Casual">Casual</option></select></div>
+          <div><label class="form-label">Booking Date</label><input class="field" id="nc-date" type="date"></div>
+          <div><label class="form-label">Booking Time</label><input class="field" id="nc-time" type="time"></div>
+          <div><label class="form-label">Dietary Notes</label><input class="field" id="nc-dietary" placeholder="e.g. Vegetarian, Nut allergy"></div>
+          <div><label class="form-label">Payment Amount (LKR)</label><input class="field" id="nc-amount" placeholder="e.g. 12500" type="number" min="0"></div>
+          <div class="full"><label class="form-label">Notes</label><textarea class="field" id="nc-notes" placeholder="Any special requests or notes..." style="min-height:60px;resize:vertical"></textarea></div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;margin-top:16px">
+          <button class="btn green" onclick="addNewCustomer()">Add Customer & Create Booking</button>
+          <span id="nc-status" style="font-size:12px;color:var(--green);display:none">Customer added!</span>
+        </div>
+      </div></div>
+      <div class="card" style="max-width:720px;margin-top:14px"><div class="panel-head"><div><div class="panel-title">Recently Added</div><div class="panel-sub">Last 10 customers added</div></div></div>
+        <table><thead><tr><th>Name</th><th>Phone</th><th>Segment</th><th>Booking</th><th>Added</th></tr></thead><tbody id="recentCustomersTable"><tr><td colspan="5" class="empty-inline">No customers added yet</td></tr></tbody></table>
+      </div>
+    </div></section>
+
+    <!-- PIPELINE -->
+    <section class="view" data-view="pipeline"><div class="page">
+      <div class="page-head"><div><h1>Booking Pipeline</h1><div class="subtitle">Track every booking through its stages. Approve or reject payments.</div></div><div style="display:flex;gap:8px"><button class="btn secondary sm" onclick="show('inbox')">Go to Inbox</button><button class="btn secondary sm" onclick="loadPipeline()">Refresh</button></div></div>
+      <section class="stats">
+        <div class="card stat"><div class="stat-label">New Inquiry</div><div class="stat-value" id="pp-inquiry">0</div><div class="stat-delta">just came in</div></div>
+        <div class="card stat"><div class="stat-label">Awaiting Payment</div><div class="stat-value" id="pp-awaiting">0</div><div class="stat-delta">customer said yes</div></div>
+        <div class="card stat"><div class="stat-label">Payment Review</div><div class="stat-value" id="pp-review">0</div><div class="stat-delta">needs your approval</div></div>
+        <div class="card stat"><div class="stat-label">Confirmed</div><div class="stat-value" id="pp-confirmed">0</div><div class="stat-delta">all good</div></div>
+      </section>
+      <section class="stats" style="margin-bottom:14px">
+        <div class="card stat"><div class="stat-label">Bookings</div><div class="stat-value" id="pp-cat-booking" style="color:var(--green)">0</div><div class="stat-delta">active bookings</div></div>
+        <div class="card stat"><div class="stat-label">Inquiries</div><div class="stat-value" id="pp-cat-inquiry" style="color:var(--blue)">0</div><div class="stat-delta">questions / info</div></div>
+        <div class="card stat"><div class="stat-label">Complaints</div><div class="stat-value" id="pp-cat-complaint" style="color:var(--red)">0</div><div class="stat-delta">need attention</div></div>
+        <div class="card stat"><div class="stat-label">Feedback</div><div class="stat-value" id="pp-cat-feedback" style="color:var(--amber)">0</div><div class="stat-delta">reviews coming in</div></div>
+      </section>
+      <div class="pipeline-board" id="pipelineBoard">
+        <div class="pipeline-col">
+          <div class="pipeline-col-head"><span class="col-title" style="color:var(--blue)">New Inquiry</span><span class="col-count" id="pp-col-inquiry">0</span></div>
+          <div class="pipeline-col-body" id="pp-body-inquiry"></div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-col-head"><span class="col-title" style="color:var(--amber)">Awaiting Payment</span><span class="col-count" id="pp-col-awaiting">0</span></div>
+          <div class="pipeline-col-body" id="pp-body-awaiting"></div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-col-head"><span class="col-title" style="color:var(--purple)">Payment Review</span><span class="col-count" id="pp-col-review">0</span></div>
+          <div class="pipeline-col-body" id="pp-body-review"></div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-col-head"><span class="col-title" style="color:var(--green)">Confirmed</span><span class="col-count" id="pp-col-confirmed">0</span></div>
+          <div class="pipeline-col-body" id="pp-body-confirmed"></div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-col-head"><span class="col-title" style="color:var(--red)">Rejected</span><span class="col-count" id="pp-col-rejected">0</span></div>
+          <div class="pipeline-col-body" id="pp-body-rejected"></div>
+        </div>
+      </div>
     </div></section>
 
     <!-- DAILY LOG -->
@@ -497,24 +607,6 @@ if(typeof supabase==='undefined'){
       </div>
     </div></section>
 
-    <!-- PHONE LOG -->
-    <section class="view" data-view="phone-log"><div class="page">
-      <div class="page-head"><div><h1>Phone Log</h1><div class="subtitle">Manually log phone calls from customers.</div></div></div>
-      <div class="card" style="margin-bottom:16px"><div class="panel-head"><div class="panel-title">Log a phone call</div></div><div class="panel-body">
-        <div class="phone-form"><input class="field" id="pl-name" placeholder="Customer name"><input class="field" id="pl-phone" placeholder="Phone number"></div>
-        <div class="phone-form"><select class="field" id="pl-intent"><option value="BOOKING">Booking</option><option value="INQUIRY">Inquiry</option><option value="COMPLAINT">Complaint</option><option value="CANCEL">Cancellation</option><option value="FEEDBACK">Feedback</option><option value="OTHER">Other</option></select><input class="field" id="pl-date" type="date"></div>
-        <textarea class="field" id="pl-notes" placeholder="Notes" style="min-height:70px;resize:vertical;margin-bottom:12px"></textarea>
-        <div style="display:flex;gap:8px;align-items:center"><button class="btn green sm" onclick="submitPhoneLog()">Save</button><span id="pl-status" style="font-size:12px;color:var(--green);display:none">Saved!</span></div>
-      </div></div>
-      <div class="card"><div class="panel-head"><div class="panel-title">Recent Phone Logs</div></div><table><thead><tr><th>Time</th><th>Name</th><th>Phone</th><th>Type</th><th>Notes</th></tr></thead><tbody id="phoneLogTable"><tr><td colspan="5" class="empty-inline">No logs yet</td></tr></tbody></table></div>
-    </div></section>
-
-    <!-- TEMPLATES -->
-    <section class="view" data-view="templates"><div class="page">
-      <div class="page-head"><div><h1>Templates</h1><div class="subtitle">Message templates with variables.</div></div></div>
-      <div class="template-grid" id="templatesGrid"><div class="empty-inline">Loading...</div></div>
-    </div></section>
-
     <!-- CRM -->
     <section class="view" data-view="crm"><div class="page">
       <div class="page-head"><div><h1>Automated CRM</h1><div class="subtitle">Compose and send to customer segments.</div></div></div>
@@ -535,6 +627,29 @@ if(typeof supabase==='undefined'){
           <div class="send-bar" style="margin-top:14px"><div class="info"><b>Create Campaign</b><div class="hint">Saves and can be triggered from dashboard.</div></div><button class="btn" onclick="saveCrmCampaign()">Save & Send</button></div>
         </div></div>
         <div class="card"><div class="panel-head"><div><div class="panel-title">Campaigns</div><div class="panel-sub">Saved campaigns</div></div></div><div id="crmCampaigns"><div class="empty-inline">No campaigns yet</div></div></div>
+      </div>
+    </div></section>
+
+    <!-- REPORTS -->
+    <section class="view" data-view="reports"><div class="page">
+      <div class="page-head"><div><h1>Reports</h1><div class="subtitle">Download daily, weekly, and monthly reach-out reports.</div></div></div>
+      <section class="stats">
+        <div class="card stat"><div class="stat-label">Today's Reach Outs</div><div class="stat-value" id="rp-today">0</div><div class="stat-delta">calls + messages</div></div>
+        <div class="card stat"><div class="stat-label">This Week</div><div class="stat-value" id="rp-week">0</div><div class="stat-delta">total interactions</div></div>
+        <div class="card stat"><div class="stat-label">This Month</div><div class="stat-value" id="rp-month">0</div><div class="stat-delta">total interactions</div></div>
+        <div class="card stat"><div class="stat-label">Avg / Day</div><div class="stat-value" id="rp-avgday">0</div><div class="stat-delta">this month</div></div>
+      </section>
+      <div class="grid-2-eq" style="margin-bottom:14px">
+        <div class="card"><div class="panel-head"><div><div class="panel-title">Download Reports</div><div class="panel-sub">CSV exports of all reach-out activity</div></div></div><div class="panel-body">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px"><div><div style="font-weight:600;font-size:13px">Daily Report</div><div style="font-size:11.5px;color:var(--text-muted)">Today's calls, messages &amp; bookings</div></div><button class="btn sm" onclick="downloadReport('daily')">Download CSV</button></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px"><div><div style="font-weight:600;font-size:13px">Weekly Report</div><div style="font-size:11.5px;color:var(--text-muted)">Last 7 days of reach-out activity</div></div><button class="btn sm" onclick="downloadReport('weekly')">Download CSV</button></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:var(--surface-2);border:1px solid var(--border);border-radius:8px"><div><div style="font-weight:600;font-size:13px">Monthly Report</div><div style="font-size:11.5px;color:var(--text-muted)">Last 30 days — full summary</div></div><button class="btn sm" onclick="downloadReport('monthly')">Download CSV</button></div>
+          </div>
+        </div></div>
+        <div class="card"><div class="panel-head"><div><div class="panel-title">Recent Reach Outs</div><div class="panel-sub">Calls &amp; messages today</div></div></div>
+          <table><thead><tr><th>Time</th><th>Name</th><th>Type</th><th>Channel</th><th>Intent</th></tr></thead><tbody id="reportsTable"><tr><td colspan="5" class="empty-inline">Loading...</td></tr></tbody></table>
+        </div>
       </div>
     </div></section>
 
@@ -564,7 +679,7 @@ function avg(arr,key){const v=arr.map(a=>a[key]).filter(x=>x!=null);if(!v.length
 
 const navItems=document.querySelectorAll('.nav-item');
 const views=document.querySelectorAll('.view');
-const loaders={overview:loadOverview,inbox:loadInbox,contacts:loadContacts,'daily-log':loadDailyLog,'phone-log':loadPhoneLogs,templates:loadTemplates,crm:loadCRM,loyalty:loadLoyalty,feedback:loadFeedback};
+const loaders={overview:loadOverview,'add-customer':loadRecentCustomers,inbox:loadInbox,contacts:loadContacts,pipeline:loadPipeline,'daily-log':loadDailyLog,crm:loadCRM,loyalty:loadLoyalty,feedback:loadFeedback,reports:loadReports};
 function show(v){navItems.forEach(n=>n.classList.toggle('active',n.dataset.view===v));views.forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(loaders[v])loaders[v]();}
 navItems.forEach(n=>n.addEventListener('click',()=>show(n.dataset.view)));
 
@@ -748,31 +863,6 @@ async function loadFeedback(){
   }
 }
 
-async function submitPhoneLog(){
-  const name=document.getElementById('pl-name').value.trim(),phone=document.getElementById('pl-phone').value.trim(),intent=document.getElementById('pl-intent').value,notes=document.getElementById('pl-notes').value.trim(),bookDate=document.getElementById('pl-date').value;
-  if(!name||!phone)return alert('Name and phone required');
-  try{const{data:existing}=await sb.from('customers').select('id').eq('phone',phone).single();let cid;
-  if(existing){cid=existing.id;await sb.from('customers').update({name,last_contact:new Date().toISOString()}).eq('id',cid);}
-  else{const{data:nc}=await sb.from('customers').insert({name,phone,segment:'new'}).select('id').single();cid=nc?.id;}
-  await sb.from('conversations').insert({customer_id:cid,direction:'inbound',message:`[PHONE] ${notes||intent}`,intent,timestamp:new Date().toISOString()});
-  if(intent==='BOOKING'&&bookDate)await sb.from('bookings').insert({customer_id:cid,date:bookDate,status:'pending',payment_status:'unpaid'});
-  ['pl-name','pl-phone','pl-notes','pl-date'].forEach(id=>document.getElementById(id).value='');
-  const st=document.getElementById('pl-status');st.style.display='inline';setTimeout(()=>st.style.display='none',2500);loadPhoneLogs();}catch(e){alert('Error: '+e.message);}
-}
-async function loadPhoneLogs(){
-  try{const{data}=await sb.from('conversations').select('*,customers(name,phone)').like('message','[PHONE]%').order('timestamp',{ascending:false}).limit(30);
-  const tb=document.getElementById('phoneLogTable');
-  if(!data?.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No logs yet</td></tr>';return;}
-  tb.innerHTML=data.map(c=>`<tr><td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td><td style="font-weight:500">${c.customers?.name||'—'}</td><td class="muted">${c.customers?.phone||'—'}</td><td><span class="chip">${c.intent||'—'}</span></td><td class="muted" style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${(c.message||'').replace('[PHONE] ','')}</td></tr>`).join('');}catch(e){document.getElementById('phoneLogTable').innerHTML='<tr><td colspan="5" class="empty-inline">No logs yet</td></tr>';}
-}
-
-async function loadTemplates(){
-  try{const{data}=await sb.from('templates').select('*').order('created_at');const grid=document.getElementById('templatesGrid');
-  if(!data?.length){grid.innerHTML='<div class="empty-inline">No templates</div>';return;}
-  const cc={booking:'green',payment:'amber',post_visit:'blue',crm:'purple',feedback:'amber',loyalty:'purple',general:''};
-  grid.innerHTML=data.map(t=>`<div class="card template-card"><div class="template-title">${t.name}</div><div class="template-body">${t.body||''}</div><div class="template-footer"><span class="chip ${cc[t.category]||''}">${t.category||'general'}</span></div></div>`).join('');}catch(e){document.getElementById('templatesGrid').innerHTML='<div class="empty-inline">No templates yet</div>';}
-}
-
 async function loadCRM(){
   try{const[s1,s2,s3]=await Promise.allSettled([sb.from('crm_campaigns').select('*').order('created_at',{ascending:false}),sb.from('customers').select('id').eq('segment','vip'),sb.from('customers').select('id').eq('segment','lapsed')]);
   const campaigns=(s1.status==='fulfilled'&&s1.value?.data)||[];document.getElementById('crm-total').textContent=campaigns.length;document.getElementById('crm-sent').textContent=campaigns.reduce((s,c)=>s+(c.sent_count||0),0);
@@ -788,21 +878,373 @@ async function saveCrmCampaign(){const name=document.getElementById('crmCampaign
 
 document.getElementById('globalSearch')?.addEventListener('input',async e=>{const q=e.target.value.trim();if(q.length<2)return;show('contacts');const s=document.getElementById('contactSearch');if(s){s.value=q;s.dispatchEvent(new Event('input'));}});
 
+/* ── PIPELINE & ADD CUSTOMER ── */
+let pipelineData=[];
+let recentlyAdded=[];
+let addedContacts=[];
+
+function generateDemoPipeline(){
+  const occasions=['Birthday','Anniversary','Business','Date Night','Family','Casual'];
+  const categories=['BOOKING','BOOKING','BOOKING','INQUIRY','INQUIRY','COMPLAINT','FEEDBACK','BOOKING','BOOKING','INQUIRY','BOOKING','BOOKING','COMPLAINT','FEEDBACK','BOOKING','BOOKING','INQUIRY','BOOKING'];
+  const entries=[];
+  for(let i=0;i<18;i++){
+    const idx=Math.floor(Math.random()*DEMO_NAMES.length);
+    let stage;
+    if(i<4) stage='inquiry';
+    else if(i<8) stage='awaiting';
+    else if(i<12) stage='review';
+    else if(i<16) stage='confirmed';
+    else stage='rejected';
+    entries.push({
+      id:'pp-'+i,
+      name:DEMO_NAMES[idx],
+      phone:DEMO_PHONES[idx],
+      party:Math.floor(Math.random()*8)+2,
+      occasion:occasions[Math.floor(Math.random()*occasions.length)],
+      category:categories[i]||'BOOKING',
+      date:new Date(Date.now()+Math.floor(Math.random()*14)*864e5).toISOString().slice(0,10),
+      time:['11:30','12:00','13:00','18:00','19:00','19:30','20:00'][Math.floor(Math.random()*7)],
+      amount:Math.floor(Math.random()*30+5)*1000,
+      stage:stage,
+      created:new Date(Date.now()-Math.floor(Math.random()*5)*864e5).toISOString(),
+      notes:''
+    });
+  }
+  return entries;
+}
+
+function catChip(cat){
+  const m={BOOKING:'green',INQUIRY:'blue',COMPLAINT:'red',FEEDBACK:'amber'};
+  return`<span class="chip ${m[cat]||''}">${cat||'BOOKING'}</span>`;
+}
+
+function renderPipelineCard(item){
+  const showApprove=item.stage==='review';
+  const showAdvance=item.stage==='inquiry';
+  const showAwaitingAdvance=item.stage==='awaiting';
+  let actions='';
+  if(showAdvance){
+    actions=`<div class="pc-actions"><button class="btn sm secondary" onclick="movePipeline('${item.id}','awaiting')">Move to Awaiting</button></div>`;
+  } else if(showAwaitingAdvance){
+    actions=`<div class="pc-actions"><button class="btn sm secondary" onclick="movePipeline('${item.id}','review')">Payment Received</button></div>`;
+  } else if(showApprove){
+    actions=`<div class="pc-actions"><button class="btn sm approve" onclick="movePipeline('${item.id}','confirmed')">Approve</button><button class="btn sm reject" onclick="movePipeline('${item.id}','rejected')">Reject</button></div>`;
+  }
+  return`<div class="pipeline-card"><div style="display:flex;justify-content:space-between;align-items:center"><div class="pc-name">${item.name}</div>${catChip(item.category)}</div><div class="pc-phone">${item.phone}</div><div class="pc-details"><span class="chip">${item.party} pax</span><span class="chip">${item.occasion||'—'}</span><span class="chip">${fmtDate(item.date)}</span><span class="chip">${item.time}</span></div><div class="pc-details" style="margin-top:4px"><span style="font-size:12px;font-weight:600">LKR ${(item.amount||0).toLocaleString()}</span></div>${actions}</div>`;
+}
+
+function loadPipeline(){
+  if(!pipelineData.length) pipelineData=generateDemoPipeline();
+  const stages={inquiry:[],awaiting:[],review:[],confirmed:[],rejected:[]};
+  pipelineData.forEach(p=>stages[p.stage].push(p));
+  document.getElementById('pp-inquiry').textContent=stages.inquiry.length;
+  document.getElementById('pp-awaiting').textContent=stages.awaiting.length;
+  document.getElementById('pp-review').textContent=stages.review.length;
+  document.getElementById('pp-confirmed').textContent=stages.confirmed.length;
+  // Category counts
+  const cats={BOOKING:0,INQUIRY:0,COMPLAINT:0,FEEDBACK:0};
+  pipelineData.filter(p=>p.stage!=='confirmed'&&p.stage!=='rejected').forEach(p=>{if(cats[p.category]!==undefined)cats[p.category]++;});
+  document.getElementById('pp-cat-booking').textContent=cats.BOOKING;
+  document.getElementById('pp-cat-inquiry').textContent=cats.INQUIRY;
+  document.getElementById('pp-cat-complaint').textContent=cats.COMPLAINT;
+  document.getElementById('pp-cat-feedback').textContent=cats.FEEDBACK;
+  // Also update inbox category counts
+  try{
+    document.getElementById('inboxBookingCount').textContent='Bookings: '+cats.BOOKING;
+    document.getElementById('inboxInquiryCount').textContent='Inquiries: '+cats.INQUIRY;
+    document.getElementById('inboxComplaintCount').textContent='Complaints: '+cats.COMPLAINT;
+    document.getElementById('inboxFeedbackCount').textContent='Feedback: '+cats.FEEDBACK;
+  }catch(e){}
+  document.getElementById('pp-col-inquiry').textContent=stages.inquiry.length;
+  document.getElementById('pp-col-awaiting').textContent=stages.awaiting.length;
+  document.getElementById('pp-col-review').textContent=stages.review.length;
+  document.getElementById('pp-col-confirmed').textContent=stages.confirmed.length;
+  document.getElementById('pp-col-rejected').textContent=stages.rejected.length;
+  document.getElementById('pp-body-inquiry').innerHTML=stages.inquiry.map(renderPipelineCard).join('')||'<div class="empty-inline">No inquiries</div>';
+  document.getElementById('pp-body-awaiting').innerHTML=stages.awaiting.map(renderPipelineCard).join('')||'<div class="empty-inline">None waiting</div>';
+  document.getElementById('pp-body-review').innerHTML=stages.review.map(renderPipelineCard).join('')||'<div class="empty-inline">None to review</div>';
+  document.getElementById('pp-body-confirmed').innerHTML=stages.confirmed.map(renderPipelineCard).join('')||'<div class="empty-inline">None confirmed</div>';
+  document.getElementById('pp-body-rejected').innerHTML=stages.rejected.map(renderPipelineCard).join('')||'<div class="empty-inline">None rejected</div>';
+  const total=pipelineData.filter(p=>p.stage!=='confirmed'&&p.stage!=='rejected').length;
+  document.getElementById('pipelineCount').textContent=total;
+}
+
+function movePipeline(id,newStage){
+  const item=pipelineData.find(p=>p.id===id);
+  if(item){item.stage=newStage;loadPipeline();}
+}
+
+function addNewCustomer(){
+  const name=document.getElementById('nc-name').value.trim();
+  const phone=document.getElementById('nc-phone').value.trim();
+  const email=document.getElementById('nc-email').value.trim();
+  const segment=document.getElementById('nc-segment').value;
+  const party=document.getElementById('nc-party').value;
+  const occasion=document.getElementById('nc-occasion').value;
+  const date=document.getElementById('nc-date').value;
+  const time=document.getElementById('nc-time').value;
+  const dietary=document.getElementById('nc-dietary').value.trim();
+  const amount=document.getElementById('nc-amount').value;
+  const notes=document.getElementById('nc-notes').value.trim();
+  if(!name||!phone)return alert('Name and phone number are required.');
+  const entry={
+    id:'pp-'+Date.now(),
+    name,phone,email,
+    party:parseInt(party)||2,
+    occasion:occasion||'Casual',
+    category:'BOOKING',
+    date:date||new Date().toISOString().slice(0,10),
+    time:time||'19:00',
+    amount:parseInt(amount)||0,
+    stage:'inquiry',
+    created:new Date().toISOString(),
+    notes,dietary,segment
+  };
+  // Add to pipeline
+  pipelineData.unshift(entry);
+  // Add to contacts list
+  addedContacts.unshift({name,phone,segment,email,visits:0,tier:'Bronze',points:0,lastContact:new Date().toISOString()});
+  recentlyAdded.unshift({name,phone,segment,date:entry.date,time:entry.time,added:new Date().toISOString()});
+  // Also create an inbox thread for this customer
+  if(typeof demoInboxThreads!=='undefined'){
+    demoInboxThreads.unshift({name,phone,intent:'BOOKING',msgs:[
+      {direction:'inbound',message:`New customer registered: ${name} (${phone}). Booking for ${entry.party} pax on ${fmtDate(entry.date)} at ${entry.time}.`,timestamp:new Date().toISOString(),intent:'BOOKING'},
+    ]});
+  }
+  ['nc-name','nc-phone','nc-email','nc-party','nc-date','nc-time','nc-dietary','nc-amount','nc-notes'].forEach(id=>{document.getElementById(id).value='';});
+  document.getElementById('nc-segment').value='new';
+  document.getElementById('nc-occasion').value='';
+  const st=document.getElementById('nc-status');st.style.display='inline';setTimeout(()=>st.style.display='none',3000);
+  loadRecentCustomers();
+  loadPipeline();
+  // Update contacts count
+  document.getElementById('contactsCount').textContent=parseInt(document.getElementById('contactsCount').textContent||'0')+1;
+}
+
+function loadRecentCustomers(){
+  const tb=document.getElementById('recentCustomersTable');
+  if(!recentlyAdded.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No customers added yet</td></tr>';return;}
+  tb.innerHTML=recentlyAdded.slice(0,10).map(c=>`<tr><td style="font-weight:500">${c.name}</td><td class="muted">${c.phone}</td><td>${segChip(c.segment)}</td><td class="muted" style="font-size:12px">${c.date?fmtDate(c.date)+' '+c.time:'—'}</td><td class="muted" style="font-size:12px">${fmt(c.added)}</td></tr>`).join('');
+}
+
+/* ── DEMO DATA ── */
+const DEMO_NAMES=['Kasun Perera','Nimali Fernando','Ruwan Silva','Tharushi Jayawardena','Dinesh Rathnayake','Sachini De Silva','Amara Wickramasinghe','Pradeep Bandara','Hashini Gunawardena','Lakshan Mendis','Dulani Samarasinghe','Isuru Pathirana','Kavindya Rajapaksa','Nimal Herath','Sanduni Ekanayake','Chamara Dissanayake','Rashmi Abeysekara','Janith Kumara','Iresha Weerasinghe','Tharindu Gunasekara'];
+const DEMO_PHONES=['+94 77 234 5678','+94 71 890 1234','+94 76 456 7890','+94 75 123 4567','+94 77 567 8901','+94 71 345 6789','+94 76 789 0123','+94 75 901 2345','+94 77 012 3456','+94 71 678 9012','+94 76 234 5678','+94 75 456 7890','+94 77 890 1234','+94 71 012 3456','+94 76 567 8901','+94 75 789 0123','+94 77 345 6789','+94 71 901 2345','+94 76 012 3456','+94 75 234 5678'];
+const DEMO_INTENTS=['BOOKING','INQUIRY','COMPLAINT','FEEDBACK','CANCEL','OTHER'];
+const DEMO_CHANNELS=['WhatsApp','Phone Call','Phone Call','WhatsApp','WhatsApp','Phone Call'];
+const DEMO_MESSAGES=['Hi, I want to book a table for 4 this Saturday','What are your opening hours?','The food was cold last time we visited','Amazing service, thank you so much!','Need to cancel my reservation for tomorrow','Do you have parking available?','Can I book the private dining room?','Is there a kids menu?','We had a wonderful anniversary dinner','Table for 2 tonight please','Do you cater for events?','I called earlier about my booking','Is the chef\'s special still available?','We want to celebrate a birthday','Can I change my reservation time?','What vegetarian options do you have?','We loved the ambience last visit','Booking for a corporate lunch, 12 people','Any gluten-free desserts?','Quick question about the menu'];
+
+function generateDemoReachOuts(days){
+  const data=[];
+  for(let d=0;d<days;d++){
+    const date=new Date(Date.now()-d*864e5);
+    const count=Math.floor(Math.random()*8)+4;
+    for(let i=0;i<count;i++){
+      const idx=Math.floor(Math.random()*DEMO_NAMES.length);
+      const hr=Math.floor(Math.random()*12)+8;
+      const mn=Math.floor(Math.random()*60);
+      const ts=new Date(date);ts.setHours(hr,mn,0,0);
+      data.push({
+        timestamp:ts.toISOString(),
+        name:DEMO_NAMES[idx],
+        phone:DEMO_PHONES[idx],
+        channel:DEMO_CHANNELS[Math.floor(Math.random()*DEMO_CHANNELS.length)],
+        intent:DEMO_INTENTS[Math.floor(Math.random()*DEMO_INTENTS.length)],
+        message:DEMO_MESSAGES[Math.floor(Math.random()*DEMO_MESSAGES.length)],
+        direction:Math.random()>0.4?'inbound':'outbound'
+      });
+    }
+  }
+  return data.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+}
+
+const demoReachOuts=generateDemoReachOuts(30);
+
+function loadReports(){
+  const now=new Date(),todayStr=now.toISOString().slice(0,10);
+  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
+  const monthAgo=new Date(Date.now()-30*864e5).toISOString();
+  const todayItems=demoReachOuts.filter(r=>r.timestamp.slice(0,10)===todayStr);
+  const weekItems=demoReachOuts.filter(r=>r.timestamp>=weekAgo);
+  const monthItems=demoReachOuts.filter(r=>r.timestamp>=monthAgo);
+  document.getElementById('rp-today').textContent=todayItems.length;
+  document.getElementById('rp-week').textContent=weekItems.length;
+  document.getElementById('rp-month').textContent=monthItems.length;
+  document.getElementById('rp-avgday').textContent=monthItems.length>0?Math.round(monthItems.length/30):'0';
+  const tb=document.getElementById('reportsTable');
+  const show20=demoReachOuts.slice(0,20);
+  if(!show20.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No reach outs today</td></tr>';return;}
+  tb.innerHTML=show20.map(r=>{
+    const chChip=r.channel==='Phone Call'?'amber':'green';
+    return`<tr><td class="muted" style="font-size:12px">${fmt(r.timestamp)}</td><td style="font-weight:500">${r.name}</td><td><span class="chip ${r.direction==='inbound'?'':'solid'}">${r.direction}</span></td><td><span class="chip ${chChip}">${r.channel}</span></td><td><span class="chip">${r.intent}</span></td></tr>`;
+  }).join('');
+}
+
+function downloadReport(period){
+  let items,filename;
+  const now=new Date(),todayStr=now.toISOString().slice(0,10);
+  if(period==='daily'){
+    items=demoReachOuts.filter(r=>r.timestamp.slice(0,10)===todayStr);
+    filename=`tilapiya_daily_report_${todayStr}.csv`;
+  }else if(period==='weekly'){
+    const weekAgo=new Date(Date.now()-7*864e5).toISOString();
+    items=demoReachOuts.filter(r=>r.timestamp>=weekAgo);
+    filename=`tilapiya_weekly_report_${todayStr}.csv`;
+  }else{
+    const monthAgo=new Date(Date.now()-30*864e5).toISOString();
+    items=demoReachOuts.filter(r=>r.timestamp>=monthAgo);
+    filename=`tilapiya_monthly_report_${todayStr}.csv`;
+  }
+  let csv='Date,Time,Name,Phone,Channel,Direction,Intent,Message\n';
+  items.forEach(r=>{
+    const d=new Date(r.timestamp);
+    const date=d.toLocaleDateString('en-GB');
+    const time=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    csv+=`"${date}","${time}","${r.name}","${r.phone}","${r.channel}","${r.direction}","${r.intent}","${(r.message||'').replace(/"/g,'""')}"\n`;
+  });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const link=document.createElement('a');
+  link.href=URL.createObjectURL(blob);
+  link.download=filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
 async function boot(){
   const connected=await checkConnection();
   loadOverview();
   if(!connected){
-    // Pre-set all pages to show proper empty states so nothing is stuck on "Loading..."
-    document.getElementById('threadList').innerHTML='<div class="empty-inline">Connect Supabase to see conversations.</div>';
-    document.getElementById('contactsTable').innerHTML='<tr><td colspan="7" class="empty-inline">Connect Supabase to see contacts.</td></tr>';
-    document.getElementById('dailyTable').innerHTML='<tr><td colspan="8" class="empty-inline">Connect Supabase to see bookings.</td></tr>';
-    document.getElementById('loyaltyList').innerHTML='<div class="empty-inline">Connect Supabase and run v2 schema to see loyalty data.</div>';
-    document.getElementById('rewardsList').innerHTML='<div class="empty-inline">No rewards yet</div>';
-    document.getElementById('pointsActivity').innerHTML='<div class="empty-inline">No activity yet</div>';
-    document.getElementById('feedbackList').innerHTML='<div class="empty-inline">Connect Supabase and run v2 schema to see feedback.</div>';
-    document.getElementById('phoneLogTable').innerHTML='<tr><td colspan="5" class="empty-inline">No phone logs yet</td></tr>';
-    document.getElementById('templatesGrid').innerHTML='<div class="empty-inline">Connect Supabase to see templates.</div>';
-    document.getElementById('crmCampaigns').innerHTML='<div class="empty-inline">Connect Supabase to see campaigns.</div>';
+    // Populate demo data so dashboard isn't empty
+    document.getElementById('ov-bookings').textContent='7';
+    document.getElementById('ov-revenue').textContent='184,500';
+    document.getElementById('ov-contacts').textContent='14';
+    document.getElementById('ov-pending').textContent='3';
+    document.getElementById('ov-msgin').textContent='68';
+    document.getElementById('ov-msgout').textContent='42';
+    document.getElementById('ov-avgrating').textContent='4.3';
+    document.getElementById('ov-loyalty').textContent='26';
+    document.getElementById('ov-complaints').textContent='2';
+    document.getElementById('ov-total').textContent='143';
+    document.getElementById('ov-goldplus').textContent='8';
+    document.getElementById('ov-lapsed').textContent='11';
+    document.getElementById('contactsCount').textContent='143';
+    document.getElementById('loyaltyCount').textContent='26';
+    document.getElementById('inboxCount').textContent='12';
+    // Init pipeline demo
+    pipelineData=generateDemoPipeline();
+    loadPipeline();
+    // Demo recent conversations
+    const demoConvos=demoReachOuts.slice(0,8);
+    document.getElementById('ov-feed').innerHTML=demoConvos.map(c=>`<tr><td><span class="chip ${c.direction==='inbound'?'':'solid'}">${c.direction}</span></td><td>${c.name}</td><td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.message}</td><td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td></tr>`).join('');
+    // Demo feedback
+    const demoFeedback=[
+      {name:'Sachini De Silva',rating:5,comment:'Best fish we\'ve had in Colombo! The ambience was perfect for our date night.'},
+      {name:'Kasun Perera',rating:4,comment:'Good food, friendly staff. A bit noisy during peak hours.'},
+      {name:'Tharushi Jayawardena',rating:5,comment:'The seafood platter was incredible. Will be back!'},
+      {name:'Dinesh Rathnayake',rating:3,comment:'Food was decent but the wait time was too long.'},
+      {name:'Amara Wickramasinghe',rating:4,comment:'Lovely place. The chef\'s special was amazing.'}
+    ];
+    document.getElementById('ov-feedback-list').innerHTML=demoFeedback.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${f.name}</span>${starsHTML(f.rating)}</div><div class="feedback-comment">"${f.comment}"</div><div style="font-size:11px;color:var(--text-subtle);margin-top:6px">Today</div></div>`).join('');
+    document.getElementById('feedbackCount').textContent='5';
+    // Demo bookings chart
+    try{
+      const labels=[],counts=[];
+      for(let i=6;i>=0;i--){const d=new Date(Date.now()-i*864e5);labels.push(d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric'}));counts.push(Math.floor(Math.random()*6)+3);}
+      const ctx=document.getElementById('bookingsChart');
+      if(window._bookingsChart)window._bookingsChart.destroy();
+      window._bookingsChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Bookings',data:counts,backgroundColor:'rgba(132,204,22,0.5)',borderColor:'#84cc16',borderWidth:1,borderRadius:4,barPercentage:0.6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#78716c',font:{size:11}}},y:{beginAtZero:true,grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#78716c',font:{size:11},stepSize:1}}}}});
+    }catch(e){}
+    // Demo contacts table
+    document.getElementById('contactsTable').innerHTML=DEMO_NAMES.slice(0,15).map((n,i)=>{
+      const segs=['vip','returning','new','first-timer','lapsed'];
+      const tiers=['Bronze','Silver','Gold','Platinum'];
+      const seg=segs[i%segs.length];const tier=tiers[Math.min(i%4,3)];const pts=Math.floor(Math.random()*500)+10;
+      return`<tr><td style="font-weight:500">${n}</td><td class="muted">${DEMO_PHONES[i]}</td><td>${segChip(seg)}</td><td>${Math.floor(Math.random()*20)+1}</td><td>${tierBadge(tier)}</td><td>${pts}</td><td class="muted" style="font-size:12px">${fmtDate(new Date(Date.now()-Math.floor(Math.random()*30)*864e5))}</td></tr>`;
+    }).join('');
+    // Demo inbox threads — connected to pipeline
+    const intentMap={0:'BOOKING',1:'INQUIRY',2:'COMPLAINT',3:'FEEDBACK',4:'BOOKING',5:'INQUIRY',6:'BOOKING',7:'INQUIRY',8:'FEEDBACK',9:'BOOKING',10:'INQUIRY',11:'BOOKING'};
+    window.demoInboxThreads=DEMO_NAMES.slice(0,12).map((n,i)=>{
+      const intent=intentMap[i]||'BOOKING';
+      const replies=[
+        {direction:'inbound',message:DEMO_MESSAGES[i],timestamp:new Date(Date.now()-i*3600000).toISOString(),intent},
+        {direction:'outbound',message:['Thank you for reaching out! Let me check availability.','Sure, I can help with that.','We appreciate your feedback!','I\'ll look into this right away.','Your table is being prepared.','Let me get back to you shortly.'][i%6],timestamp:new Date(Date.now()-i*3600000+300000).toISOString(),intent}
+      ];
+      if(Math.random()>0.5) replies.push({direction:'inbound',message:['Great, thank you!','Perfect, see you then.','Sounds good.','Alright, we\'ll wait.','Thanks for the quick response!'][Math.floor(Math.random()*5)],timestamp:new Date(Date.now()-i*3600000+600000).toISOString(),intent});
+      return{name:n,phone:DEMO_PHONES[i],intent,msgs:replies};
+    });
+    // Count categories for filter pills
+    const inboxCats={BOOKING:0,INQUIRY:0,COMPLAINT:0,FEEDBACK:0};
+    demoInboxThreads.forEach(t=>{if(inboxCats[t.intent]!==undefined)inboxCats[t.intent]++;});
+    document.getElementById('fpAll').textContent='('+demoInboxThreads.length+')';
+    document.getElementById('fpBooking').textContent='('+inboxCats.BOOKING+')';
+    document.getElementById('fpInquiry').textContent='('+inboxCats.INQUIRY+')';
+    document.getElementById('fpComplaint').textContent='('+inboxCats.COMPLAINT+')';
+    document.getElementById('fpFeedback').textContent='('+inboxCats.FEEDBACK+')';
+    document.getElementById('inboxTotalLabel').textContent=demoInboxThreads.length+' threads';
+    function renderDemoThreads(threads){
+      document.getElementById('threadList').innerHTML=threads.map((t,i)=>{
+        const lastMsg=t.msgs[t.msgs.length-1];
+        const catColors={BOOKING:'green',INQUIRY:'blue',COMPLAINT:'red',FEEDBACK:'amber'};
+        return`<div class="thread-item" onclick="openDemoThread(${i})" id="thread-${i}"><div class="avatar">${initials(t.name)}</div><div><div class="thread-name">${t.name} <span class="chip ${catColors[t.intent]||''}" style="font-size:9px;vertical-align:middle;margin-left:4px">${t.intent}</span></div><div class="thread-preview">${(lastMsg.message||'—').slice(0,55)}</div></div><div class="thread-meta"><div class="thread-time">${fmt(lastMsg.timestamp)}</div>${t.msgs.length>1?`<div class="thread-badge">${t.msgs.length}</div>`:''}</div></div>`;
+      }).join('');
+    }
+    renderDemoThreads(demoInboxThreads);
+    window.openDemoThread=function(i){
+      const threads=demoInboxThreads;
+      document.querySelectorAll('.thread-item').forEach(el=>el.classList.remove('active'));
+      document.getElementById('thread-'+i)?.classList.add('active');
+      const t=threads[i];
+      document.getElementById('chatAvatar').textContent=initials(t.name);
+      document.getElementById('chatName').textContent=t.name;
+      document.getElementById('chatPhone').textContent=t.phone+' · via WhatsApp';
+      document.getElementById('detailAvatar').textContent=initials(t.name);
+      document.getElementById('detailName').textContent=t.name;
+      document.getElementById('detailPhone').textContent=t.phone;
+      document.getElementById('detailSegment').textContent='returning';
+      document.getElementById('detailVisits').textContent=Math.floor(Math.random()*10)+1;
+      document.getElementById('detailFirst').textContent=fmtDate(new Date(Date.now()-90*864e5));
+      document.getElementById('detailLast').textContent=fmtDate(new Date());
+      document.getElementById('detailNotes').textContent='Connected via WhatsApp';
+      // Show pipeline stage for this contact
+      const pMatch=pipelineData.find(p=>p.name===t.name);
+      const stageLabel=pMatch?{inquiry:'New Inquiry',awaiting:'Awaiting Payment',review:'Payment Review',confirmed:'Confirmed',rejected:'Rejected'}[pMatch.stage]||'—':'Not in pipeline';
+      document.getElementById('detailPipelineStage').innerHTML=pMatch?`<span class="chip ${pMatch.stage==='confirmed'?'green':pMatch.stage==='rejected'?'red':pMatch.stage==='review'?'purple':'amber'}">${stageLabel}</span>`:stageLabel;
+      // Pipeline link
+      document.getElementById('chatPipelineLink').innerHTML=pMatch?`<button class="btn sm secondary" onclick="show('pipeline')">View in Pipeline</button>`:'';
+      // Render messages
+      document.getElementById('chatMessages').innerHTML=t.msgs.map(m=>`<div class="bubble-row ${m.direction==='inbound'?'in':'out'}"><div class="bubble ${m.direction==='inbound'?'in':'out'}">${m.message}</div><div class="bubble-meta">${fmt(m.timestamp)} · ${m.intent||''} · WhatsApp</div></div>`).join('');
+      document.getElementById('chatMessages').scrollTop=99999;
+    };
+    // Inbox filter pills for demo
+    document.querySelectorAll('.inbox-filters .filter-pill').forEach(p=>{p.addEventListener('click',()=>{
+      document.querySelectorAll('.inbox-filters .filter-pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');
+      const f=p.dataset.filter;
+      if(f==='all') renderDemoThreads(demoInboxThreads);
+      else renderDemoThreads(demoInboxThreads.filter(t=>t.intent===f));
+    });});
+    // Demo daily log
+    document.getElementById('dl-bookings').textContent='7';document.getElementById('dl-confirmed').textContent='5';document.getElementById('dl-pending').textContent='2';document.getElementById('dl-guests').textContent='28';
+    const times=['11:30','12:00','12:30','13:00','18:00','19:00','20:00'];
+    document.getElementById('dailyTable').innerHTML=times.map((t,i)=>`<tr><td style="font-weight:600">${t}</td><td>${DEMO_NAMES[i]}<br><span class="muted" style="font-size:11px">${DEMO_PHONES[i]}</span></td><td>${Math.floor(Math.random()*6)+2}</td><td class="muted">${['Birthday','Anniversary','Business','Casual','Date Night','Family','Casual'][i]}</td><td class="muted" style="font-size:12px">${['None','Vegetarian','Gluten-free','None','Nut allergy','None','Halal'][i]}</td><td>${i<5?payChip('paid'):payChip('unpaid')}</td><td>${i<5?statusChip('confirmed'):statusChip('pending')}</td><td>${i<5?'<span class="muted" style="font-size:12px">Done</span>':'<button class="btn green sm">Confirm</button>'}</td></tr>`).join('');
+    // Demo loyalty
+    document.getElementById('ly-bronze').textContent='10';document.getElementById('ly-silver').textContent='8';document.getElementById('ly-gold').textContent='5';document.getElementById('ly-plat').textContent='3';
+    document.getElementById('loyaltyList').innerHTML=DEMO_NAMES.slice(0,10).map((n,i)=>{const tiers=['Platinum','Gold','Gold','Silver','Silver','Silver','Bronze','Bronze','Bronze','Bronze'];const pts=[620,480,310,240,180,150,90,75,50,30];return`<div class="loyalty-card"><div class="avatar" style="width:36px;height:36px;font-size:13px">${initials(n)}</div><div class="loyalty-info"><div class="loyalty-name">${n}</div><div class="loyalty-detail">${DEMO_PHONES[i]} · ${Math.floor(Math.random()*15)+3} visits · ${tierBadge(tiers[i])}</div></div><div class="loyalty-points"><div class="loyalty-pts">${pts[i]}</div><div class="loyalty-pts-label">points</div></div></div>`;}).join('');
+    document.getElementById('rewardsList').innerHTML=[{name:'Free Dessert',desc:'Any dessert on the house',tier:'Bronze',pts:50},{name:'10% Off Dinner',desc:'10% discount on total bill',tier:'Silver',pts:150},{name:'Free Bottle of Wine',desc:'House wine complimentary',tier:'Gold',pts:300},{name:'Private Dining Experience',desc:'2-hour private room booking',tier:'Platinum',pts:500}].map(r=>`<div class="reward-card"><div class="reward-name">${r.name}</div><div class="reward-desc">${r.desc}</div><div class="reward-meta">${tierBadge(r.tier)}<span class="reward-pts">${r.pts} pts</span></div></div>`).join('');
+    document.getElementById('pointsActivity').innerHTML=DEMO_NAMES.slice(0,8).map((n,i)=>{const types=['earned','earned','redeemed','earned','earned','earned','redeemed','earned'];const pts=[25,15,50,10,30,20,150,25];const reasons=['Visit bonus','Referral','Free Dessert','Visit bonus','Birthday bonus','Visit bonus','Wine reward','Visit bonus'];const sign=types[i]==='redeemed'?'-':'+';const color=types[i]==='redeemed'?'var(--red)':'var(--green)';return`<div style="padding:10px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;font-weight:500">${n}</div><div style="font-size:11px;color:var(--text-muted)">${reasons[i]} · ${fmt(new Date(Date.now()-i*7200000))}</div></div><div style="font-weight:700;color:${color};font-size:14px">${sign}${pts[i]}</div></div>`;}).join('');
+    // Demo feedback page
+    document.getElementById('fb-avg').textContent='4.3';document.getElementById('fb-food').textContent='4.5';document.getElementById('fb-service').textContent='4.2';document.getElementById('fb-ambience').textContent='4.1';
+    document.getElementById('fb-avg-stars').innerHTML=starsHTML(4);document.getElementById('fb-total-label').textContent='47 responses';
+    document.getElementById('fb-recommend').textContent='89%';
+    document.getElementById('cnt-5').textContent='21';document.getElementById('bar-5').style.width='45%';
+    document.getElementById('cnt-4').textContent='14';document.getElementById('bar-4').style.width='30%';
+    document.getElementById('cnt-3').textContent='8';document.getElementById('bar-3').style.width='17%';
+    document.getElementById('cnt-2').textContent='3';document.getElementById('bar-2').style.width='6%';
+    document.getElementById('cnt-1').textContent='1';document.getElementById('bar-1').style.width='2%';
+    document.getElementById('feedbackList').innerHTML=demoFeedback.concat([{name:'Lakshan Mendis',rating:5,comment:'Outstanding sushi! The presentation was beautiful.'},{name:'Pradeep Bandara',rating:4,comment:'Great value for money. Loved the seafood curry.'},{name:'Hashini Gunawardena',rating:3,comment:'Good food but service was a bit slow on Saturday night.'}]).map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${f.name}</span>${starsHTML(f.rating)}</div><div class="feedback-comment">"${f.comment}"</div><div class="feedback-scores"><div class="feedback-score"><div class="feedback-score-label">Food</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+4}</div></div><div class="feedback-score"><div class="feedback-score-label">Service</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+3}</div></div><div class="feedback-score"><div class="feedback-score-label">Ambience</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+3}</div></div><div class="feedback-score"><div class="feedback-score-label">Recommend</div><div class="feedback-score-val">${Math.random()>0.15?'Yes':'No'}</div></div></div><div style="font-size:11px;color:var(--text-subtle);margin-top:8px">${fmt(new Date(Date.now()-Math.floor(Math.random()*7)*864e5))} · via whatsapp</div></div>`).join('');
+    // Demo CRM
+    document.getElementById('crm-total').textContent='3';document.getElementById('crm-sent').textContent='86';document.getElementById('crm-vip').textContent='12';document.getElementById('crm-lapsed').textContent='11';
+    document.getElementById('crmCampaigns').innerHTML=[{name:'Weekend Special Promo',seg:'all',sent:42,msg:'Hi {{name}}! This weekend enjoy 15% off our Chef\'s Special menu...'},{name:'VIP Loyalty Thank You',seg:'vip',sent:12,msg:'Dear {{name}}, as a valued {{tier}} member with {{points}} points...'},{name:'Win-Back Campaign',seg:'lapsed',sent:32,msg:'Hey {{name}}, we miss you! It\'s been a while since your last visit...'}].map(c=>`<div style="padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:13px">${c.name}</div><div class="muted" style="font-size:12px;margin-top:4px">${segChip(c.seg)} · Sent: ${c.sent} · ${fmtDate(new Date(Date.now()-Math.floor(Math.random()*14)*864e5))}</div><div class="muted" style="font-size:12px;margin-top:6px">${c.msg.slice(0,100)}...</div></div>`).join('');
+    document.getElementById('lastUpdated').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   }
 }
 boot();

@@ -468,7 +468,14 @@ if(typeof supabase==='undefined'){
       </div>
       <div class="inbox-col">
         <div class="thread-header"><div class="who"><div class="avatar" style="width:36px;height:36px;font-size:13px;" id="chatAvatar">—</div><div><div class="who-name" id="chatName">Select a conversation</div><div class="who-sub" id="chatPhone">Choose from left</div></div></div><div id="chatPipelineLink"></div></div>
-        <div class="thread-body" id="chatMessages"><div class="empty-inline" style="margin:auto">Select a conversation</div></div>
+        <div class="thread-body" id="chatMessages" style="flex:1;overflow-y:auto"><div class="empty-inline" style="margin:auto">Select a conversation</div></div>
+        <div id="replyBox" style="display:none;padding:10px 16px;border-top:1px solid #2a2a2a;background:#1a1a1a;flex-shrink:0">
+          <div style="display:flex;gap:8px;align-items:center">
+            <input type="text" id="replyInput" placeholder="Type your reply..." style="flex:1;padding:10px 14px;border-radius:20px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;outline:none" onkeydown="if(event.key==='Enter')sendManualReply()">
+            <button onclick="sendManualReply()" style="padding:10px 20px;border-radius:20px;border:none;background:#0c0a09;color:#c8b88a;font-weight:600;cursor:pointer;font-size:14px;white-space:nowrap">Send</button>
+          </div>
+          <div id="replyStatus" style="font-size:12px;color:#888;margin-top:4px;display:none"></div>
+        </div>
       </div>
       <div class="inbox-col contact-panel-col"><div class="contact-panel">
         <div class="contact-id"><div class="contact-avatar" id="detailAvatar">—</div><div class="contact-name" id="detailName">No contact</div><div class="contact-sub" id="detailPhone">—</div></div>
@@ -1249,6 +1256,102 @@ async function boot(){
 }
 boot();
 if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+
+    // --- Manual Reply Function ---
+    // Auto-detect active conversation via MutationObserver
+    (function(){
+      var observer = new MutationObserver(function(){
+        var phoneEl = document.getElementById('detailPhone');
+        var box = document.getElementById('replyBox');
+        if(phoneEl && phoneEl.textContent && phoneEl.textContent.trim().length > 3){
+          _currentReplyPhone = phoneEl.textContent.trim();
+          // Try to find customer ID from current data
+          if(window.C && window.C.customers){
+            var found = window.C.customers.find(function(c){ return c.phone === _currentReplyPhone; });
+            if(found) _currentReplyCustomerId = found.id;
+          }
+          if(box) box.style.display = 'block';
+        } else {
+          if(box) box.style.display = 'none';
+        }
+      });
+      var target = document.getElementById('detailPhone');
+      if(target) observer.observe(target, {childList:true, characterData:true, subtree:true});
+      // Also observe chatMessages
+      var chat = document.getElementById('chatMessages');
+      if(chat){
+        var obs2 = new MutationObserver(function(){
+          var phoneEl = document.getElementById('detailPhone');
+          var box = document.getElementById('replyBox');
+          if(phoneEl && phoneEl.textContent && phoneEl.textContent.trim().length > 3){
+            if(box) box.style.display = 'block';
+          }
+        });
+        obs2.observe(chat, {childList:true});
+      }
+    })();
+    var _currentReplyPhone = null;
+    var _currentReplyCustomerId = null;
+
+    function showReplyBox(phone, customerId) {
+      _currentReplyPhone = phone;
+      _currentReplyCustomerId = customerId;
+      var box = document.getElementById('replyBox');
+      if (box) { box.style.display = 'block'; }
+      var input = document.getElementById('replyInput');
+      if (input) { input.value = ''; input.focus(); }
+      var status = document.getElementById('replyStatus');
+      if (status) { status.style.display = 'none'; }
+    }
+
+    async function sendManualReply() {
+      var input = document.getElementById('replyInput');
+      var status = document.getElementById('replyStatus');
+      var message = input.value.trim();
+      if (!message || !_currentReplyPhone) return;
+
+      status.style.display = 'block';
+      status.style.color = '#888';
+      status.textContent = 'Sending...';
+      input.disabled = true;
+
+      try {
+        var resp = await fetch('/api/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: _currentReplyPhone,
+            message: message,
+            customer_id: _currentReplyCustomerId
+          })
+        });
+        var data = await resp.json();
+        if (resp.ok) {
+          status.style.color = '#4caf50';
+          status.textContent = 'Sent!';
+          input.value = '';
+          // Add message to chat UI
+          var chatDiv = document.getElementById('chatMessages');
+          var msgEl = document.createElement('div');
+          msgEl.className = 'msg-bubble outbound';
+          var now = new Date();
+          var timeStr = now.getDate() + ' ' + now.toLocaleString('default',{month:'short'}) + ', ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
+          msgEl.innerHTML = '<div class="msg-text">' + message.replace(/</g,'&lt;') + '</div><div class="msg-meta">' + timeStr + ' · manual_reply</div>';
+          chatDiv.appendChild(msgEl);
+          chatDiv.scrollTop = chatDiv.scrollHeight;
+          setTimeout(function(){ status.style.display = 'none'; }, 2000);
+        } else {
+          status.style.color = '#f44336';
+          status.textContent = 'Error: ' + (data.error || 'Failed to send');
+        }
+      } catch(e) {
+        status.style.color = '#f44336';
+        status.textContent = 'Network error: ' + e.message;
+      }
+      input.disabled = false;
+      input.focus();
+    }
+
 </script>
 </body>
 </html>

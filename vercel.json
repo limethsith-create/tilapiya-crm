@@ -1,3 +1,10 @@
 {
-  "outputDirectory": "dashboard"
+    "builds": [
+          { "src": "api/*.js", "use": "@vercel/node" },
+          { "src": "dashboard/**", "use": "@vercel/static" }
+    ],
+    "routes": [
+          { "src": "/api/(.*)", "dest": "/api/$1" },
+          { "src": "/(.*)", "dest": "/dashboard/$1" }
+    ]
 }

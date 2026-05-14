@@ -6,7 +6,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN || 'tilapiya_verify_2026';
 const WA_TOKEN = process.env.META_WHATSAPP_TOKEN;
 const WA_PHONE_ID = process.env.META_PHONE_NUMBER_ID;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 // --- TILAPIYA RESTAURANT KNOWLEDGE BASE ---
 const RESTAURANT_INFO = `
@@ -242,10 +242,10 @@ function getQuickReply(intent) {
   }
 }
 
-// --- AI REPLY (GPT-4o Mini) ---
+// --- AI REPLY (Groq - Llama 3.1 8B, FREE) ---
 async function getAIReply(customerMessage, conversationHistory) {
-  if (!OPENAI_API_KEY) {
-    console.error('No OPENAI_API_KEY set');
+  if (!GROQ_API_KEY) {
+    console.error('No GROQ_API_KEY set');
     return "Thank you for your message! Our team will get back to you shortly.\n\nCall us anytime: +94 77 949 4394";
   }
   try {
@@ -259,14 +259,14 @@ async function getAIReply(customerMessage, conversationHistory) {
       }
     }
     messages.push({ role: 'user', content: customerMessage });
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + OPENAI_API_KEY,
+        'Authorization': 'Bearer ' + GROQ_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'llama-3.1-8b-instant',
         messages: messages,
         max_tokens: 300,
         temperature: 0.7
@@ -276,10 +276,10 @@ async function getAIReply(customerMessage, conversationHistory) {
     if (data.choices && data.choices[0] && data.choices[0].message) {
       return data.choices[0].message.content;
     }
-    console.error('OpenAI unexpected response:', JSON.stringify(data));
+    console.error('Groq unexpected response:', JSON.stringify(data));
     return "Thank you for your message! Our team will get back to you shortly.\n\nCall us: +94 77 949 4394";
   } catch (err) {
-    console.error('OpenAI error:', err);
+    console.error('Groq error:', err);
     return "Thank you for your message! Our team will get back to you shortly.\n\nCall us: +94 77 949 4394";
   }
 }

@@ -157,7 +157,7 @@ async function supabaseRequest(path, method, body) {
     'Authorization': 'Bearer ' + SUPABASE_KEY,
     'Content-Type': 'application/json'
   };
-  if (method === 'POST') headers['Prefer'] = 'return=representation';
+  if (method === 'POST' || method === 'PATCH') headers['Prefer'] = 'return=representation';
   const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
     method, headers,
     body: body ? JSON.stringify(body) : undefined
@@ -167,7 +167,9 @@ async function supabaseRequest(path, method, body) {
     console.error('Supabase error:', path, res.status, err);
     return null;
   }
-  return res.json();
+  const text = await res.text();
+  if (!text) return null;
+  try { return JSON.parse(text); } catch (e) { return null; }
 }
 
 // --- CUSTOMER MANAGEMENT ---

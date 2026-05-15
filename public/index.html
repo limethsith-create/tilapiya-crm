@@ -188,6 +188,7 @@ if(typeof supabase==='undefined'){
   .bubble-row.out { align-self: flex-end; align-items: flex-end; }
   .bubble { padding: 9px 13px; font-size: 13px; line-height: 1.45; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
   .bubble.in { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+  @keyframes fadeSlideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
   .bubble.out { background: #e8e6e3; color: #111110; border-bottom-right-radius: 4px; }
   .bubble-meta { font-size: 10.5px; color: var(--text-subtle); display: flex; gap: 8px; padding: 0 4px; }
   .contact-panel { overflow-y: auto; padding: 18px; }
@@ -468,7 +469,7 @@ if(typeof supabase==='undefined'){
         <div class="thread-list" id="threadList"><div class="empty-inline">Loading...</div></div>
       </div>
       <div class="inbox-col">
-        <div class="thread-header"><div class="who"><div class="avatar" style="width:36px;height:36px;font-size:13px;" id="chatAvatar">—</div><div><div class="who-name" id="chatName">Select a conversation</div><div class="who-sub" id="chatPhone">Choose from left</div></div></div><div style="display:flex;gap:8px;align-items:center"><div id="modeToggleWrap" style="display:none"><button id="modeToggleBtn" onclick="toggleReplyMode()" style="padding:6px 14px;border-radius:16px;border:1px solid #3a3a3a;background:#1a1a1a;color:#84cc16;font-size:11px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px"><span id="modeIcon">🤖</span><span id="modeLabel">Bot Active</span></button></div><div id="chatPipelineLink"></div></div></div>
+        <div class="thread-header"><div class="who"><div class="avatar" style="width:36px;height:36px;font-size:13px;" id="chatAvatar">—</div><div><div class="who-name" id="chatName">Select a conversation</div><div class="who-sub" id="chatPhone">Choose from left</div></div></div><div style="display:flex;gap:8px;align-items:center"><div id="chatPipelineLink"></div></div></div>
         <div class="thread-body" id="chatMessages" style="flex:1;overflow-y:auto"><div class="empty-inline" style="margin:auto">Select a conversation</div></div>
         <div id="replyBox" style="display:none;padding:10px 16px;border-top:1px solid #2a2a2a;background:#1a1a1a;flex-shrink:0">
           <div style="display:flex;gap:8px;align-items:center">
@@ -844,7 +845,7 @@ async function loadOverview(){
 let allConvos=[],convoGroups=[];
 async function loadInbox(){
   try{
-    const{data,error}=await sb.from('conversations').select('*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes,reply_mode)').order('timestamp',{ascending:false}).limit(300);
+    const{data,error}=await sb.from('conversations').select('*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes,)').order('timestamp',{ascending:false}).limit(300);
     if(error)throw error;
     allConvos=data||[];const groups={};
     allConvos.forEach(c=>{const k=c.customer_id||'unknown';if(!groups[k])groups[k]={customer:c.customers,customer_id:c.customer_id,msgs:[]};groups[k].msgs.push(c);});
@@ -865,17 +866,16 @@ async function loadInbox(){
   }catch(e){console.error('Inbox load error:',e);document.getElementById('threadList').innerHTML='<div class="empty-inline">No conversations yet. Connect Supabase to see data.</div>';convoGroups=[];}
 }
 
-// --- REAL-TIME & POLLING ---
+// --- REAL-TIME & POLLING (FAST) ---
 let _inboxPollTimer=null;
 let _threadPollTimer=null;
 let _activeThreadIdx=null;
 let _realtimeChannel=null;
+let _lastKnownMsgIds=new Set();
 
 function startInboxPolling(){
   stopInboxPolling();
-  _inboxPollTimer=setInterval(()=>{
-    loadInbox();
-  },8000);
+  _inboxPollTimer=setInterval(()=>{loadInbox();},3000);
 }
 function stopInboxPolling(){
   if(_inboxPollTimer){clearInterval(_inboxPollTimer);_inboxPollTimer=null;}
@@ -890,34 +890,53 @@ function startThreadPolling(idx){
       const g=convoGroups[_activeThreadIdx];
       if(!g)return;
       const lastTs=g.msgs[0]?.timestamp;
-      const{data}=await sb.from('conversations').select('*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes,reply_mode)').eq('customer_id',g.customer_id).gt('timestamp',lastTs||'2000-01-01').order('timestamp',{ascending:true});
+      const{data}=await sb.from('conversations').select('*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes)').eq('customer_id',g.customer_id).gt('timestamp',lastTs||'2000-01-01').order('timestamp',{ascending:true});
       if(data&&data.length>0){
+        let added=false;
         data.forEach(m=>{
           if(!g.msgs.find(x=>x.id===m.id)){
             g.msgs.unshift(m);
-            const chatDiv=document.getElementById('chatMessages');
-            const el=document.createElement('div');
-            el.className='bubble-row '+(m.direction==='inbound'?'in':'out');
-            el.innerHTML='<div class="bubble '+(m.direction==='inbound'?'in':'out')+'">'+(m.message||'—')+'</div><div class="bubble-meta">'+fmt(m.timestamp)+(m.intent?' · '+m.intent:'')+'</div>';
-            chatDiv.appendChild(el);
-            chatDiv.scrollTop=chatDiv.scrollHeight;
+            appendBubble(m);
+            added=true;
           }
         });
-        renderThreads(convoGroups);
-        document.getElementById('thread-'+_activeThreadIdx)?.classList.add('active');
+        if(added){
+          renderThreads(convoGroups);
+          document.getElementById('thread-'+_activeThreadIdx)?.classList.add('active');
+        }
       }
     }catch(e){console.warn('Thread poll error',e);}
-  },5000);
+  },2000);
 }
 function stopThreadPolling(){
   if(_threadPollTimer){clearInterval(_threadPollTimer);_threadPollTimer=null;}
+}
+function appendBubble(m){
+  const chatDiv=document.getElementById('chatMessages');
+  if(!chatDiv)return;
+  const el=document.createElement('div');
+  el.className='bubble-row '+(m.direction==='inbound'?'in':'out');
+  el.innerHTML='<div class="bubble '+(m.direction==='inbound'?'in':'out')+'">'+(m.message||'—')+'</div><div class="bubble-meta">'+fmt(m.timestamp)+(m.intent?' · '+m.intent:'')+'</div>';
+  el.style.animation='fadeSlideIn 0.25s ease-out';
+  chatDiv.appendChild(el);
+  chatDiv.scrollTop=chatDiv.scrollHeight;
 }
 
 function setupRealtime(){
   try{
     _realtimeChannel=sb.channel('conversations-changes')
       .on('postgres_changes',{event:'INSERT',schema:'public',table:'conversations'},payload=>{
-        console.log('New message via realtime:',payload.new);
+        console.log('RT message:',payload.new?.direction,payload.new?.message?.slice(0,30));
+        const msg=payload.new;
+        // If we have an active thread open, check if this message belongs to it
+        if(_activeThreadIdx!=null&&msg){
+          const g=convoGroups[_activeThreadIdx];
+          if(g&&msg.customer_id===g.customer_id&&!g.msgs.find(x=>x.id===msg.id)){
+            g.msgs.unshift(msg);
+            appendBubble(msg);
+          }
+        }
+        // Always refresh inbox sidebar
         const activeView=document.querySelector('.view.active');
         if(activeView&&activeView.dataset.view==='inbox'){
           loadInbox().then(()=>{
@@ -927,7 +946,9 @@ function setupRealtime(){
           });
         }
       })
-      .subscribe();
+      .subscribe((status)=>{
+        console.log('Realtime status:',status);
+      });
   }catch(e){console.warn('Realtime setup failed, polling only:',e);}
 }
 
@@ -941,10 +962,7 @@ async function openThread(i){
   document.querySelectorAll('.thread-item').forEach(el=>el.classList.remove('active'));document.getElementById('thread-'+i)?.classList.add('active');
   const g=convoGroups[i],c=g.customer,name=c?.name||c?.phone||'Unknown';
   document.getElementById('chatAvatar').textContent=initials(name);document.getElementById('chatName').textContent=name;document.getElementById('chatPhone').textContent=c?.phone||'—';
-  // Show mode toggle and set current mode
   _currentReplyCustomerId=g.customer_id;_currentReplyPhone=c?.phone||'';
-  document.getElementById('modeToggleWrap').style.display='block';
-  _currentCustomerMode=(c?.reply_mode)||'bot';updateModeUI(_currentCustomerMode);
   document.getElementById('replyBox').style.display='block';
   document.getElementById('detailAvatar').textContent=initials(name);document.getElementById('detailName').textContent=name;document.getElementById('detailPhone').textContent=c?.phone||'—';
   document.getElementById('detailSegment').textContent=c?.segment||'new';document.getElementById('detailVisits').textContent=c?.visit_count||0;
@@ -1531,33 +1549,6 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
       input.focus();
     }
 
-    // --- Bot/Manual Mode Toggle ---
-    var _currentCustomerMode = 'bot';
-    async function toggleReplyMode(){
-      if(!_currentReplyCustomerId) return;
-      var newMode = _currentCustomerMode === 'bot' ? 'manual' : 'bot';
-      var btn = document.getElementById('modeToggleBtn');
-      btn.style.opacity='0.5';
-      try{
-        var resp = await fetch(API_BASE + '/api/toggle-mode',{method:'POST',headers:dashHeaders(),body:JSON.stringify({customer_id:_currentReplyCustomerId,mode:newMode})});
-        var data = await resp.json();
-        if(resp.ok){
-          _currentCustomerMode = newMode;
-          updateModeUI(newMode);
-        } else { alert('Error: '+(data.error||'Failed')); }
-      }catch(e){ alert('Network error: '+e.message); }
-      btn.style.opacity='1';
-    }
-    function updateModeUI(mode){
-      var icon=document.getElementById('modeIcon');
-      var label=document.getElementById('modeLabel');
-      var btn=document.getElementById('modeToggleBtn');
-      if(mode==='bot'){
-        icon.textContent='🤖'; label.textContent='Bot Active'; btn.style.color='#84cc16'; btn.style.borderColor='#3a5a0a';
-      } else {
-        icon.textContent='👤'; label.textContent='Manual Mode'; btn.style.color='#f59e0b'; btn.style.borderColor='#92400e';
-      }
-    }
 
     // --- New Message to Any Number ---
     function showNewMessageModal(){
@@ -1566,4 +1557,4 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
       var modal = document.createElement('div');
       modal.id='newMsgModal';
       modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
-      modal.innerHTML='<div style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:24px;width:400px;max-width:90vw"><h3 st
+      modal.innerHTML='<div style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:24px;width:400px;max-width:90vw"><h3 style="margin:0 0 16px;color:#e0e0e0;font-size:16px">Send New WhatsApp Message</h3><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Phone Number (with country code)</label><input id="newMsgPhone" placeholder="+94 71 886 4824" style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;margin-bottom:12px;box-sizing:border-box"><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Message</label><textarea id="newMsgText" rows="3" placeholder="Type your message..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;resize:vertical;margin-bottom:12px;box-sizing:border-box"></textarea><div id="newMsgStatus" style="font-size:12px;margin-bottom:8px;display:none"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button onclick="document.getElementById(\'newMsgModal\').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid #3a3a3a;background:transparent

@@ -1,16 +1,16 @@
 {
-  "name": "Phase 2 — Booking Reminders & Expiry",
+  "name": "Phase 2 â Booking Reminders & Expiry",
   "nodes": [
     {
       "id": "node-schedule",
-      "name": "Every 15 Minutes",
+      "name": "Every 2 Hours",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1,
       "position": [200, 300],
       "parameters": {
         "rule": {
           "interval": [
-            { "field": "minutes", "minutesInterval": 15 }
+            { "field": "hours", "hoursInterval": 2 }
           ]
         }
       }
@@ -74,7 +74,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers.name }}! Just a friendly reminder — your booking for {{ $json.date }} at {{ $json.time }} (party of {{ $json.party_size }}) is pending payment. Please complete your payment to confirm your reservation. Reply if you need help!\"\n  }\n}",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers.name }}! Just a friendly reminder â your booking for {{ $json.date }} at {{ $json.time }} (party of {{ $json.party_size }}) is pending payment. Please complete your payment to confirm your reservation. Reply if you need help!\"\n  }\n}",
         "options": {}
       },
       "continueOnFail": true
@@ -167,7 +167,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers.name }}, just a reminder — your reservation is tomorrow ({{ $json.date }}) at {{ $json.time }} for {{ $json.party_size }}. Any changes? Reply here or call us. See you soon!\"\n  }\n}",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers.name }}, just a reminder â your reservation is tomorrow ({{ $json.date }}) at {{ $json.time }} for {{ $json.party_size }}. Any changes? Reply here or call us. See you soon!\"\n  }\n}",
         "options": {}
       },
       "continueOnFail": true
@@ -291,7 +291,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers?.phone ?? $('Loop Expire Bookings').item.json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers?.name ?? $('Loop Expire Bookings').item.json.customers.name }}, your unpaid booking has been released as we didn't receive payment within 24 hours. No worries — reply anytime to make a new reservation!\"\n  }\n}",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers?.phone ?? $('Loop Expire Bookings').item.json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers?.name ?? $('Loop Expire Bookings').item.json.customers.name }}, your unpaid booking has been released as we didn't receive payment within 24 hours. No worries â reply anytime to make a new reservation!\"\n  }\n}",
         "options": {}
       },
       "continueOnFail": true

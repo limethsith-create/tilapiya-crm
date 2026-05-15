@@ -20,12 +20,15 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
+  // Skip caching for: Supabase, API routes, Groq, OpenAI, Facebook/Meta
   if (url.hostname.includes('supabase.co') || url.hostname.includes('supabase.in')) return;
+  if (url.pathname.startsWith('/api/')) return;
+  if (url.hostname.includes('groq.com') || url.hostname.includes('openai.com') || url.hostname.includes('facebook.com') || url.hostname.includes('graph.facebook.com')) return;
   e.respondWith(
     caches.match(e.request).then(cached => {
       if (cached) return cached;
       return fetch(e.request).then(response => {
-        if (e.request.method === 'GET' && response.status === 200) {
+        if (e.request.method === 'GET' && response.status === 200 && url.origin === self.location.origin) {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
         }

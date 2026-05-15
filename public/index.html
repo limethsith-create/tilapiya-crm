@@ -665,6 +665,8 @@ if(typeof supabase==='undefined'){
 </div>
 
 <script>
+const API_BASE = window.location.origin; // Vercel API base
+
 const SUPABASE_URL='https://awahengrenjpdfuyvllj.supabase.co';
 const SUPABASE_ANON='sb_publishable_PMx3NIGNIde7j9elA0_t6w_msmnqFm-';
 let sb;
@@ -1001,12 +1003,12 @@ async function loadPipeline(){
   document.getElementById('pipelineCount').textContent=total;
 }
 
-function movePipeline(id,newStage){
+async function movePipeline(id,newStage){
   const item=pipelineData.find(p=>p.id===id);
   if(item){item.stage=newStage;loadPipeline();}
 }
 
-function addNewCustomer(){
+async function addNewCustomer(){
   const name=document.getElementById('nc-name').value.trim();
   const phone=document.getElementById('nc-phone').value.trim();
   const email=document.getElementById('nc-email').value.trim();
@@ -1019,38 +1021,22 @@ function addNewCustomer(){
   const amount=document.getElementById('nc-amount').value;
   const notes=document.getElementById('nc-notes').value.trim();
   if(!name||!phone)return alert('Name and phone number are required.');
-  const entry={
-    id:'pp-'+Date.now(),
-    name,phone,email,
-    party:parseInt(party)||2,
-    occasion:occasion||'Casual',
-    category:'BOOKING',
-    date:date||new Date().toISOString().slice(0,10),
-    time:time||'19:00',
-    amount:parseInt(amount)||0,
-    stage:'inquiry',
-    created:new Date().toISOString(),
-    notes,dietary,segment
-  };
-  // Add to pipeline
-  pipelineData.unshift(entry);
-  // Add to contacts list
-  addedContacts.unshift({name,phone,segment,email,visits:0,tier:'Bronze',points:0,lastContact:new Date().toISOString()});
-  recentlyAdded.unshift({name,phone,segment,date:entry.date,time:entry.time,added:new Date().toISOString()});
-  // Also create an inbox thread for this customer
-  if(typeof demoInboxThreads!=='undefined'){
-    demoInboxThreads.unshift({name,phone,intent:'BOOKING',msgs:[
-      {direction:'inbound',message:`New customer registered: ${name} (${phone}). Booking for ${entry.party} pax on ${fmtDate(entry.date)} at ${entry.time}.`,timestamp:new Date().toISOString(),intent:'BOOKING'},
-    ]});
-  }
-  ['nc-name','nc-phone','nc-email','nc-party','nc-date','nc-time','nc-dietary','nc-amount','nc-notes'].forEach(id=>{document.getElementById(id).value='';});
-  document.getElementById('nc-segment').value='new';
-  document.getElementById('nc-occasion').value='';
-  const st=document.getElementById('nc-status');st.style.display='inline';setTimeout(()=>st.style.display='none',3000);
-  loadRecentCustomers();
-  loadPipeline();
-  // Update contacts count
-  document.getElementById('contactsCount').textContent=parseInt(document.getElementById('contactsCount').textContent||'0')+1;
+  try{
+    const{data:custData,error:custErr}=await sb.from('customers').upsert({phone,name,segment,notes,email:email||null,last_contact:new Date().toISOString()},{onConflict:'phone'}).select();
+    if(custErr)throw custErr;
+    const customerId=custData&&custData[0]?custData[0].id:null;
+    if(customerId&&date){
+      const{error:bookErr}=await sb.from('bookings').insert({customer_id:customerId,date,time:time||'19:00',party_size:parseInt(party)||2,occasion:occasion||null,dietary_notes:dietary||null,payment_amount:parseFloat(amount)||null,status:'pending',payment_status:'unpaid'});
+      if(bookErr)console.warn('Booking insert error:',bookErr);
+    }
+    recentlyAdded.unshift({name,phone,segment,date:date||new Date().toISOString().slice(0,10),time:time||'19:00',added:new Date().toISOString()});
+    ['nc-name','nc-phone','nc-email','nc-party','nc-date','nc-time','nc-dietary','nc-amount','nc-notes'].forEach(id=>{document.getElementById(id).value='';});
+    document.getElementById('nc-segment').value='new';
+    document.getElementById('nc-occasion').value='';
+    const st=document.getElementById('nc-status');st.style.display='inline';setTimeout(()=>st.style.display='none',3000);
+    loadRecentCustomers();loadPipeline();
+    document.getElementById('contactsCount').textContent=parseInt(document.getElementById('contactsCount').textContent||'0')+1;
+  }catch(e){alert('Error saving customer: '+e.message);console.error('addNewCustomer error:',e);}
 }
 
 function loadRecentCustomers(){
@@ -1294,8 +1280,8 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
         if(phoneEl && phoneEl.textContent && phoneEl.textContent.trim().length > 3){
           _currentReplyPhone = phoneEl.textContent.trim();
           // Try to find customer ID from current data
-          if(window.C && window.C.customers){
-            var found = window.C.customers.find(function(c){ return c.phone === _currentReplyPhone; });
+          if(allCustomers && allCustomers.length){
+            var found = allCustomers.find(function(c){ return c.phone === _currentReplyPhone; });
             if(found) _currentReplyCustomerId = found.id;
           }
           if(box) box.style.display = 'block';
@@ -1344,7 +1330,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
       input.disabled = true;
 
       try {
-        var resp = await fetch('/api/send', {
+        var resp = await fetch(API_BASE + '/api/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1361,10 +1347,10 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
           // Add message to chat UI
           var chatDiv = document.getElementById('chatMessages');
           var msgEl = document.createElement('div');
-          msgEl.className = 'msg-bubble outbound';
+          msgEl.className = 'bubble-row out';
           var now = new Date();
           var timeStr = now.getDate() + ' ' + now.toLocaleString('default',{month:'short'}) + ', ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-          msgEl.innerHTML = '<div class="msg-text">' + message.replace(/</g,'&lt;') + '</div><div class="msg-meta">' + timeStr + ' · manual_reply</div>';
+          msgEl.innerHTML = '<div class="bubble out">' + message.replace(/</g,'&lt;') + '</div><div class="bubble-meta">' + timeStr + ' · manual_reply</div>';
           chatDiv.appendChild(msgEl);
           chatDiv.scrollTop = chatDiv.scrollHeight;
           setTimeout(function(){ status.style.display = 'none'; }, 2000);
@@ -1388,7 +1374,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
       var btn = document.getElementById('modeToggleBtn');
       btn.style.opacity='0.5';
       try{
-        var resp = await fetch('/api/toggle-mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_id:_currentReplyCustomerId,mode:newMode})});
+        var resp = await fetch(API_BASE + '/api/toggle-mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_id:_currentReplyCustomerId,mode:newMode})});
         var data = await resp.json();
         if(resp.ok){
           _currentCustomerMode = newMode;
@@ -1428,7 +1414,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
       if(!phone.startsWith('+'))phone='+94'+phone.replace(/^0/,'');
       status.style.display='block';status.style.color='#888';status.textContent='Sending...';
       try{
-        var resp=await fetch('/api/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:phone,message:msg})});
+        var resp=await fetch(API_BASE + '/api/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:phone,message:msg})});
         var data=await resp.json();
         if(resp.ok){status.style.color='#4caf50';status.textContent='Sent! Message delivered.';setTimeout(function(){document.getElementById('newMsgModal')?.remove();loadInbox();},1500);}
         else{status.style.color='#f44336';status.textContent='Error: '+(data.error||JSON.stringify(data.details||''));}

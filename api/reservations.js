@@ -1,11 +1,13 @@
 // Vercel Serverless Function - Reservations API for POS integration
-// POST /api/reservations - Create/update a booking from POS
+// FIXED: CORS locked down, no fallback secret, better validation
+// POST /api/reservations - Create a booking from POS
 // GET /api/reservations - Pull bookings (with optional date filter)
-// GET /api/reservations?customer_phone=+94... - Get bookings for a customer
+// PATCH /api/reservations - Update a booking
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
-const API_SECRET = process.env.POS_API_SECRET || 'tilapiya_pos_2026';
+const API_SECRET = process.env.POS_API_SECRET; // NO fallback — must be set in env
+const DASHBOARD_ORIGIN = process.env.DASHBOARD_ORIGIN || '';
 
 async function supabaseRequest(path, method, body) {
   const headers = {
@@ -29,12 +31,18 @@ async function supabaseRequest(path, method, body) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const origin = DASHBOARD_ORIGIN || 'https://tilapiya-crm.netlify.app';
+  res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  // Simple API key auth - POS sends this in Authorization header
+  // API key auth — FAIL if not configured
+  if (!API_SECRET) {
+    console.error('POS_API_SECRET not set in environment variables');
+    return res.status(500).json({ error: 'Server misconfigured: API secret not set' });
+  }
   const auth = req.headers['authorization'] || '';
   const token = auth.replace('Bearer ', '');
   if (token !== API_SECRET) {
@@ -52,7 +60,6 @@ module.exports = async function handler(req, res) {
 
       let data = await supabaseRequest(query, 'GET');
 
-      // Filter by customer phone if provided
       if (customer_phone && data) {
         const phone = customer_phone.replace(/\s/g, '');
         data = data.filter(b => b.customers && b.customers.phone && b.customers.phone.replace(/\s/g, '').includes(phone));
@@ -63,13 +70,12 @@ module.exports = async function handler(req, res) {
 
     // POST - Create a new reservation from POS
     if (req.method === 'POST') {
-      const { customer_name, customer_phone, date, time, party_size, occasion, dietary_notes, payment_status, status, pos_reference } = req.body;
+      const { customer_name, customer_phone, date, time, party_size, occasion, dietary_notes, payment_status, status: bookingStatus, pos_reference } = req.body;
 
       if (!customer_phone || !date || !time) {
         return res.status(400).json({ error: 'Required fields: customer_phone, date, time' });
       }
 
-      // Upsert customer
       const existing = await supabaseRequest('customers?phone=eq.' + encodeURIComponent(customer_phone) + '&select=id', 'GET');
       let customerId;
       if (existing && existing.length > 0) {
@@ -87,7 +93,6 @@ module.exports = async function handler(req, res) {
 
       if (!customerId) return res.status(500).json({ error: 'Failed to create customer' });
 
-      // Create booking
       const booking = await supabaseRequest('bookings', 'POST', {
         customer_id: customerId,
         date, time,
@@ -95,7 +100,7 @@ module.exports = async function handler(req, res) {
         occasion: occasion || null,
         dietary_notes: dietary_notes || null,
         payment_status: payment_status || 'unpaid',
-        status: status || 'pending',
+        status: bookingStatus || 'pending',
         pos_reference: pos_reference || null,
         created_at: new Date().toISOString()
       });
@@ -109,8 +114,24 @@ module.exports = async function handler(req, res) {
 
     // PATCH - Update a reservation
     if (req.method === 'PATCH') {
-      const { booking_id, ...updates } = req.body;
+      const { booking_id, date, time, party_size, occasion, dietary_notes, payment_status, status: bookingStatus, pos_reference, payment_amount, payment_ref, confirmed_by } = req.body;
       if (!booking_id) return res.status(400).json({ error: 'Required: booking_id' });
+
+      // Whitelist allowed fields — never allow customer_id or id to be changed
+      const updates = {};
+      if (date !== undefined) updates.date = date;
+      if (time !== undefined) updates.time = time;
+      if (party_size !== undefined) updates.party_size = party_size;
+      if (occasion !== undefined) updates.occasion = occasion;
+      if (dietary_notes !== undefined) updates.dietary_notes = dietary_notes;
+      if (payment_status !== undefined) updates.payment_status = payment_status;
+      if (bookingStatus !== undefined) updates.status = bookingStatus;
+      if (pos_reference !== undefined) updates.pos_reference = pos_reference;
+      if (payment_amount !== undefined) updates.payment_amount = payment_amount;
+      if (payment_ref !== undefined) updates.payment_ref = payment_ref;
+      if (confirmed_by !== undefined) updates.confirmed_by = confirmed_by;
+
+      if (Object.keys(updates).length === 0) return res.status(400).json({ error: 'No valid fields to update' });
 
       const result = await supabaseRequest('bookings?id=eq.' + booking_id, 'PATCH', updates);
       return res.status(200).json({ status: 'updated', booking: result && result[0] ? result[0] : null });

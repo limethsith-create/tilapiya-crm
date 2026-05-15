@@ -1,1 +1,29 @@
-{}
+{
+  "version": 2,
+  "builds": [
+    { "src": "api/**/*.js", "use": "@vercel/node" },
+    { "src": "public/**", "use": "@vercel/static" }
+  ],
+  "routes": [
+    { "src": "/api/webhook", "dest": "/api/webhook.js" },
+    { "src": "/api/send", "dest": "/api/send.js" },
+    { "src": "/api/toggle-mode", "dest": "/api/toggle-mode.js" },
+    { "src": "/api/reservations", "dest": "/api/reservations.js" },
+    { "src": "/api/auth", "dest": "/api/auth.js" },
+    { "src": "/api/pos-checkin", "dest": "/api/pos-checkin.js" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ],
+  "headers": [
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
+      ]
+    },
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key

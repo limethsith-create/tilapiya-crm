@@ -1,8 +1,33 @@
 // Vercel Serverless Function - Send WhatsApp message from CRM
+// FIXED: CORS locked down, auth required, better error handling
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const WA_TOKEN = process.env.META_WHATSAPP_TOKEN;
 const WA_PHONE_ID = process.env.META_PHONE_NUMBER_ID;
+const DASHBOARD_ORIGIN = process.env.DASHBOARD_ORIGIN || ''; // e.g. https://tilapiya-crm.netlify.app
+const DASHBOARD_SECRET = process.env.DASHBOARD_SECRET; // shared secret for dashboard API calls
+
+// --- CORS HELPER (locked down) ---
+function setCorsHeaders(res, req) {
+  const allowed = [DASHBOARD_ORIGIN, 'https://tilapiya-crm.vercel.app', 'https://tilapiya-crm.netlify.app'].filter(Boolean);
+  const reqOrigin = req?.headers?.origin || '';
+  const origin = allowed.includes(reqOrigin) ? reqOrigin : allowed[0] || '*';
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Dashboard-Key');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+}
+
+// --- AUTH CHECK ---
+function isAuthorized(req) {
+  if (!DASHBOARD_SECRET) {
+    console.error('DASHBOARD_SECRET not set — all requests will be rejected');
+    return false;
+  }
+  const key = req.headers['x-dashboard-key'] || '';
+  return key === DASHBOARD_SECRET;
+}
 
 async function supabaseRequest(path, method, body) {
   const headers = {
@@ -24,11 +49,14 @@ async function supabaseRequest(path, method, body) {
 }
 
 module.exports = async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  setCorsHeaders(res, req);
   if (req.method === 'OPTIONS') return res.status(200).end();
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // Auth check
+  if (!isAuthorized(req)) {
+    return res.status(401).json({ error: 'Unauthorized. Provide X-Dashboard-Key header.' });
+  }
 
   const { to, message, customer_id } = req.body;
   if (!to || !message) return res.status(400).json({ error: 'Missing to or message' });
@@ -54,10 +82,3 @@ module.exports = async function handler(req, res) {
         intent: 'manual_reply', timestamp: new Date().toISOString()
       });
     }
-
-    return res.status(200).json({ status: 'sent', wa: waData });
-  } catch (err) {
-    console.error('Send error:', err);
-    return res.status(500).json({ error: err.message });
-  }
-};

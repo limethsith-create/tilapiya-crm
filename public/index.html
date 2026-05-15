@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tilapiya — Restaurant CRM Dashboard</title>
-<link rel="manifest" href="manifest.json">h
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0c0a09">
-<meta name="apple-mobile-web-app-capable" contenth="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
@@ -665,7 +665,81 @@ if(typeof supabase==='undefined'){
 </div>
 
 <script>
+// --- AUTH GATE ---
 const API_BASE = window.location.origin; // Vercel API base
+let DASHBOARD_KEY = sessionStorage.getItem('tilapiya_dash_key') || '';
+const DASH_KEY_EXPIRY = parseInt(sessionStorage.getItem('tilapiya_dash_exp') || '0');
+
+function showAuthGate() {
+  document.querySelector('.shell').style.display = 'none';
+  document.querySelector('.topbar').style.display = 'none';
+  const gate = document.createElement('div');
+  gate.id = 'authGate';
+  gate.innerHTML = `
+    <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:40px;max-width:360px;width:100%;text-align:center;">
+        <div style="width:40px;height:40px;background:#e8e6e3;color:#111;border-radius:10px;display:grid;place-items:center;font-weight:700;font-size:14px;margin:0 auto 16px;">T</div>
+        <h2 style="font-size:18px;font-weight:600;margin-bottom:4px;color:var(--text);">Tilapiya CRM</h2>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:24px;">Enter your dashboard password</p>
+        <input id="authPass" type="password" placeholder="Password" style="width:100%;padding:10px 14px;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;font-size:13px;color:var(--text);outline:none;margin-bottom:12px;">
+        <div id="authError" style="color:#ef4444;font-size:12px;margin-bottom:12px;display:none;"></div>
+        <button id="authBtn" onclick="doLogin()" style="width:100%;padding:10px;border-radius:8px;border:1px solid #e8e6e3;background:#e8e6e3;color:#111;font-weight:600;font-size:13px;cursor:pointer;">Sign In</button>
+      </div>
+    </div>`;
+  document.body.prepend(gate);
+  document.getElementById('authPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('authPass').focus();
+}
+
+async function doLogin() {
+  const pass = document.getElementById('authPass').value;
+  const errEl = document.getElementById('authError');
+  const btn = document.getElementById('authBtn');
+  if (!pass) { errEl.textContent = 'Password required'; errEl.style.display = 'block'; return; }
+  btn.textContent = 'Signing in...'; btn.disabled = true;
+  try {
+    const r = await fetch(API_BASE + '/api/auth', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password: pass })
+    });
+    const data = await r.json();
+    if (r.ok && data.key) {
+      DASHBOARD_KEY = data.key;
+      sessionStorage.setItem('tilapiya_dash_key', data.key);
+      sessionStorage.setItem('tilapiya_dash_exp', String(data.expires || Date.now() + 86400000));
+      document.getElementById('authGate').remove();
+      document.querySelector('.shell').style.display = '';
+      document.querySelector('.topbar').style.display = '';
+      initApp();
+    } else {
+      errEl.textContent = data.error || 'Invalid password';
+      errEl.style.display = 'block';
+      btn.textContent = 'Sign In'; btn.disabled = false;
+    }
+  } catch (e) {
+    errEl.textContent = 'Connection error. Is the API running?';
+    errEl.style.display = 'block';
+    btn.textContent = 'Sign In'; btn.disabled = false;
+  }
+}
+
+// Helper: add auth header to dashboard API calls
+function dashHeaders() {
+  return { 'Content-Type': 'application/json', 'X-Dashboard-Key': DASHBOARD_KEY };
+}
+
+// Check if already authenticated
+if (DASHBOARD_KEY && DASH_KEY_EXPIRY > Date.now()) {
+  // Already have a valid key from this session
+  document.addEventListener('DOMContentLoaded', () => initApp());
+} else {
+  sessionStorage.removeItem('tilapiya_dash_key');
+  sessionStorage.removeItem('tilapiya_dash_exp');
+  DASHBOARD_KEY = '';
+  document.addEventListener('DOMContentLoaded', () => showAuthGate());
+}
+
+function initApp() {
 
 const SUPABASE_URL='https://awahengrenjpdfuyvllj.supabase.co';
 const SUPABASE_ANON='sb_publishable_PMx3NIGNIde7j9elA0_t6w_msmnqFm-';
@@ -690,7 +764,7 @@ function avg(arr,key){const v=arr.map(a=>a[key]).filter(x=>x!=null);if(!v.length
 const navItems=document.querySelectorAll('.nav-item');
 const views=document.querySelectorAll('.view');
 const loaders={overview:loadOverview,'add-customer':loadRecentCustomers,inbox:loadInbox,contacts:loadContacts,pipeline:loadPipeline,'daily-log':loadDailyLog,crm:loadCRM,loyalty:loadLoyalty,feedback:loadFeedback,reports:loadReports};
-function show(v){navItems.forEach(n=>n.classList.toggle('active',n.dataset.view===v));views.forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(loaders[v])loaders[v]();}
+function show(v){navItems.forEach(n=>n.classList.toggle('active',n.dataset.view===v));views.forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='inbox'){startInboxPolling();}else{stopInboxPolling();}if(loaders[v])loaders[v]();}
 navItems.forEach(n=>n.addEventListener('click',()=>show(n.dataset.view)));
 
 async function checkConnection(){try{const{error}=await sb.from('customers').select('id').limit(1);if(error)throw error;document.getElementById('statusDot').classList.add('live');document.getElementById('statusText').textContent='Connected';return true;}catch(e){document.getElementById('statusText').textContent='Not connected';return false;}}
@@ -790,12 +864,80 @@ async function loadInbox(){
     if(convoGroups.length>0)setTimeout(()=>openThread(0),100);
   }catch(e){console.error('Inbox load error:',e);document.getElementById('threadList').innerHTML='<div class="empty-inline">No conversations yet. Connect Supabase to see data.</div>';convoGroups=[];}
 }
+
+// --- REAL-TIME & POLLING ---
+let _inboxPollTimer=null;
+let _threadPollTimer=null;
+let _activeThreadIdx=null;
+let _realtimeChannel=null;
+
+function startInboxPolling(){
+  stopInboxPolling();
+  _inboxPollTimer=setInterval(()=>{
+    loadInbox();
+  },8000);
+}
+function stopInboxPolling(){
+  if(_inboxPollTimer){clearInterval(_inboxPollTimer);_inboxPollTimer=null;}
+  stopThreadPolling();
+}
+function startThreadPolling(idx){
+  stopThreadPolling();
+  _activeThreadIdx=idx;
+  _threadPollTimer=setInterval(async()=>{
+    if(_activeThreadIdx==null)return;
+    try{
+      const g=convoGroups[_activeThreadIdx];
+      if(!g)return;
+      const lastTs=g.msgs[0]?.timestamp;
+      const{data}=await sb.from('conversations').select('*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes,reply_mode)').eq('customer_id',g.customer_id).gt('timestamp',lastTs||'2000-01-01').order('timestamp',{ascending:true});
+      if(data&&data.length>0){
+        data.forEach(m=>{
+          if(!g.msgs.find(x=>x.id===m.id)){
+            g.msgs.unshift(m);
+            const chatDiv=document.getElementById('chatMessages');
+            const el=document.createElement('div');
+            el.className='bubble-row '+(m.direction==='inbound'?'in':'out');
+            el.innerHTML='<div class="bubble '+(m.direction==='inbound'?'in':'out')+'">'+(m.message||'—')+'</div><div class="bubble-meta">'+fmt(m.timestamp)+(m.intent?' · '+m.intent:'')+'</div>';
+            chatDiv.appendChild(el);
+            chatDiv.scrollTop=chatDiv.scrollHeight;
+          }
+        });
+        renderThreads(convoGroups);
+        document.getElementById('thread-'+_activeThreadIdx)?.classList.add('active');
+      }
+    }catch(e){console.warn('Thread poll error',e);}
+  },5000);
+}
+function stopThreadPolling(){
+  if(_threadPollTimer){clearInterval(_threadPollTimer);_threadPollTimer=null;}
+}
+
+function setupRealtime(){
+  try{
+    _realtimeChannel=sb.channel('conversations-changes')
+      .on('postgres_changes',{event:'INSERT',schema:'public',table:'conversations'},payload=>{
+        console.log('New message via realtime:',payload.new);
+        const activeView=document.querySelector('.view.active');
+        if(activeView&&activeView.dataset.view==='inbox'){
+          loadInbox().then(()=>{
+            if(_activeThreadIdx!=null){
+              document.getElementById('thread-'+_activeThreadIdx)?.classList.add('active');
+            }
+          });
+        }
+      })
+      .subscribe();
+  }catch(e){console.warn('Realtime setup failed, polling only:',e);}
+}
+
 function renderThreads(groups){
   const el=document.getElementById('threadList');
   if(!groups.length){el.innerHTML='<div class="empty-inline">No conversations</div>';return;}
   el.innerHTML=groups.map((g,i)=>{const last=g.msgs[0];const name=g.customer?.name||g.customer?.phone||'Unknown';return`<div class="thread-item" onclick="openThread(${i})" id="thread-${i}"><div class="avatar">${initials(name)}</div><div><div class="thread-name">${name}</div><div class="thread-preview">${(last.message||'—').slice(0,60)}</div></div><div class="thread-meta"><div class="thread-time">${fmt(last.timestamp)}</div>${g.msgs.length>1?`<div class="thread-badge">${g.msgs.length}</div>`:''}</div></div>`;}).join('');
 }
 async function openThread(i){
+  startThreadPolling(i);
   document.querySelectorAll('.thread-item').forEach(el=>el.classList.remove('active'));document.getElementById('thread-'+i)?.classList.add('active');
   const g=convoGroups[i],c=g.customer,name=c?.name||c?.phone||'Unknown';
   document.getElementById('chatAvatar').textContent=initials(name);document.getElementById('chatName').textContent=name;document.getElementById('chatPhone').textContent=c?.phone||'—';
@@ -1005,7 +1147,19 @@ async function loadPipeline(){
 
 async function movePipeline(id,newStage){
   const item=pipelineData.find(p=>p.id===id);
-  if(item){item.stage=newStage;loadPipeline();}
+  if(!item)return;
+  item.stage=newStage;
+  // Persist to Supabase - map stage to booking status and payment_status
+  try{
+    const updates={};
+    if(newStage==='confirmed'){updates.status='confirmed';updates.payment_status='paid';}
+    else if(newStage==='rejected'){updates.status='cancelled';}
+    else if(newStage==='review'){updates.payment_status='paid';updates.status='pending';}
+    else if(newStage==='awaiting'){updates.payment_status='awaiting';updates.status='pending';}
+    else{updates.status='pending';updates.payment_status='unpaid';}
+    await sb.from('bookings').update(updates).eq('id',id);
+  }catch(e){console.warn('Pipeline update error:',e);}
+  loadPipeline();
 }
 
 async function addNewCustomer(){
@@ -1021,22 +1175,32 @@ async function addNewCustomer(){
   const amount=document.getElementById('nc-amount').value;
   const notes=document.getElementById('nc-notes').value.trim();
   if(!name||!phone)return alert('Name and phone number are required.');
+
   try{
+    // Insert or update customer in Supabase
     const{data:custData,error:custErr}=await sb.from('customers').upsert({phone,name,segment,notes,email:email||null,last_contact:new Date().toISOString()},{onConflict:'phone'}).select();
     if(custErr)throw custErr;
     const customerId=custData&&custData[0]?custData[0].id:null;
+
+    // Create booking if date is provided
     if(customerId&&date){
       const{error:bookErr}=await sb.from('bookings').insert({customer_id:customerId,date,time:time||'19:00',party_size:parseInt(party)||2,occasion:occasion||null,dietary_notes:dietary||null,payment_amount:parseFloat(amount)||null,status:'pending',payment_status:'unpaid'});
       if(bookErr)console.warn('Booking insert error:',bookErr);
     }
+
+    // Update local UI
     recentlyAdded.unshift({name,phone,segment,date:date||new Date().toISOString().slice(0,10),time:time||'19:00',added:new Date().toISOString()});
     ['nc-name','nc-phone','nc-email','nc-party','nc-date','nc-time','nc-dietary','nc-amount','nc-notes'].forEach(id=>{document.getElementById(id).value='';});
     document.getElementById('nc-segment').value='new';
     document.getElementById('nc-occasion').value='';
     const st=document.getElementById('nc-status');st.style.display='inline';setTimeout(()=>st.style.display='none',3000);
-    loadRecentCustomers();loadPipeline();
+    loadRecentCustomers();
+    loadPipeline();
     document.getElementById('contactsCount').textContent=parseInt(document.getElementById('contactsCount').textContent||'0')+1;
-  }catch(e){alert('Error saving customer: '+e.message);console.error('addNewCustomer error:',e);}
+  }catch(e){
+    alert('Error saving customer: '+e.message);
+    console.error('addNewCustomer error:',e);
+  }
 }
 
 function loadRecentCustomers(){
@@ -1130,6 +1294,7 @@ function downloadReport(period){
 
 async function boot(){
   const connected=await checkConnection();
+  if(connected)setupRealtime();
   loadOverview();
   if(connected){
     try{const{data}=await sb.from('conversations').select('customer_id').order('timestamp',{ascending:false}).limit(300);if(data){const ids=new Set(data.map(c=>c.customer_id));document.getElementById('inboxCount').textContent=ids.size;}}catch(e){}
@@ -1332,7 +1497,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
       try {
         var resp = await fetch(API_BASE + '/api/send', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: dashHeaders(),
           body: JSON.stringify({
             to: _currentReplyPhone,
             message: message,
@@ -1374,7 +1539,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
       var btn = document.getElementById('modeToggleBtn');
       btn.style.opacity='0.5';
       try{
-        var resp = await fetch(API_BASE + '/api/toggle-mode',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({customer_id:_currentReplyCustomerId,mode:newMode})});
+        var resp = await fetch(API_BASE + '/api/toggle-mode',{method:'POST',headers:dashHeaders(),body:JSON.stringify({customer_id:_currentReplyCustomerId,mode:newMode})});
         var data = await resp.json();
         if(resp.ok){
           _currentCustomerMode = newMode;
@@ -1401,26 +1566,4 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
       var modal = document.createElement('div');
       modal.id='newMsgModal';
       modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
-      modal.innerHTML='<div style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:24px;width:400px;max-width:90vw"><h3 style="margin:0 0 16px;color:#e0e0e0;font-size:16px">Send New WhatsApp Message</h3><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Phone Number (with country code)</label><input id="newMsgPhone" placeholder="+94 71 886 4824" style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;margin-bottom:12px;box-sizing:border-box"><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Message</label><textarea id="newMsgText" rows="3" placeholder="Type your message..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;resize:vertical;margin-bottom:12px;box-sizing:border-box"></textarea><div id="newMsgStatus" style="font-size:12px;margin-bottom:8px;display:none"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button onclick="document.getElementById(\'newMsgModal\').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid #3a3a3a;background:transparent;color:#999;cursor:pointer">Cancel</button><button onclick="sendNewMessage()" style="padding:8px 16px;border-radius:8px;border:none;background:#84cc16;color:#0c0a09;font-weight:600;cursor:pointer">Send</button></div></div>';
-      document.body.appendChild(modal);
-      modal.addEventListener('click',function(e){if(e.target===modal)modal.remove();});
-      document.getElementById('newMsgPhone').focus();
-    }
-    async function sendNewMessage(){
-      var phone=document.getElementById('newMsgPhone').value.trim().replace(/\s/g,'');
-      var msg=document.getElementById('newMsgText').value.trim();
-      var status=document.getElementById('newMsgStatus');
-      if(!phone||!msg){status.style.display='block';status.style.color='#f44336';status.textContent='Please fill in both fields';return;}
-      if(!phone.startsWith('+'))phone='+94'+phone.replace(/^0/,'');
-      status.style.display='block';status.style.color='#888';status.textContent='Sending...';
-      try{
-        var resp=await fetch(API_BASE + '/api/send',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({to:phone,message:msg})});
-        var data=await resp.json();
-        if(resp.ok){status.style.color='#4caf50';status.textContent='Sent! Message delivered.';setTimeout(function(){document.getElementById('newMsgModal')?.remove();loadInbox();},1500);}
-        else{status.style.color='#f44336';status.textContent='Error: '+(data.error||JSON.stringify(data.details||''));}
-      }catch(e){status.style.color='#f44336';status.textContent='Network error: '+e.message;}
-    }
-
-</script>
-</body>
-</html>
+      modal.innerHTML='<div style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:24px;width:400px;max-width:90vw"><h3 st

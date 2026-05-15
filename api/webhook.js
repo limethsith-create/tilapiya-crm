@@ -340,6 +340,15 @@ module.exports = async function handler(req, res) {
             const intent = detectIntent(text);
             await saveMessage(customerId, text, 'inbound', intent);
 
+            // Check if customer is in manual mode (human replying)
+            const custData = await supabaseRequest('customers?id=eq.' + customerId + '&select=reply_mode', 'GET');
+            const replyMode = (custData && custData[0] && custData[0].reply_mode) || 'bot';
+
+            if (replyMode === 'manual') {
+              console.log('Customer ' + phone + ' is in manual mode, skipping bot reply');
+              continue;
+            }
+
             let reply = getQuickReply(intent);
             if (!reply) {
               const history = await getRecentMessages(customerId, 6);

@@ -1557,27 +1557,3 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
       var modal = document.createElement('div');
       modal.id='newMsgModal';
       modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
-modal.innerHTML='<div style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:24px;width:400px;max-width:90vw"><h3 style="margin:0 0 16px;color:#e0e0e0;font-size:16px">Send New WhatsApp Message</h3><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Phone Number (with country code)</label><input id="newMsgPhone" placeholder="+94 71 886 4824" style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;margin-bottom:12px;box-sizing:border-box"><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Message</label><textarea id="newMsgText" rows="3" placeholder="Type your message..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;resize:vertical;margin-bottom:12px;box-sizing:border-box"></textarea><div id="newMsgStatus" style="font-size:12px;margin-bottom:8px;display:none"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button onclick="document.getElementById(\'newMsgModal\').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid #3a3a3a;background:transparent;color:#999;cursor:pointer">Cancel</button><button onclick="sendNewMessage()" style="padding:8px 16px;border-radius:8px;border:none;background:#84cc16;color:#0c0a09;font-weight:600;cursor:pointer">Send</button></div></div>';
-      document.body.appendChild(modal);
-      modal.addEventListener('click',function(e){if(e.target===modal)modal.remove();});
-      document.getElementById('newMsgPhone').focus();
-    }
-    async function sendNewMessage(){
-      var phone=document.getElementById('newMsgPhone').value.trim().replace(/\s/g,'');
-      var msg=document.getElementById('newMsgText').value.trim();
-      var status=document.getElementById('newMsgStatus');
-      if(!phone||!msg){status.style.display='block';status.style.color='#f44336';status.textContent='Please fill in both fields';return;}
-      if(!phone.startsWith('+'))phone='+94'+phone.replace(/^0/,'');
-      status.style.display='block';status.style.color='#888';status.textContent='Sending...';
-      try{
-        var resp=await fetch(API_BASE + '/api/send',{method:'POST',headers:dashHeaders(),body:JSON.stringify({to:phone,message:msg})});
-        var data=await resp.json();
-        if(resp.ok){status.style.color='#4caf50';status.textContent='Sent! Message delivered.';setTimeout(function(){document.getElementById('newMsgModal')?.remove();loadInbox();},1500);}
-        else{status.style.color='#f44336';status.textContent='Error: '+(data.error||JSON.stringify(data.details||''));}
-      }catch(e){status.style.color='#f44336';status.textContent='Network error: '+e.message;}
-    }
-
-} // end initApp()
-</script>
-</body>
-</html>

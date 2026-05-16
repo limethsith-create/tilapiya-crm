@@ -89,7 +89,9 @@ module.exports = async function handler(req, res) {
       const { phone } = req.query;
       if (!phone) return res.status(400).json({ error: 'Required query param: phone' });
 
-      const cleanPhone = phone.replace(/\s/g, '');
+      let cleanPhone = phone.replace(/\s/g, '');
+            // Normalize: add +94 prefix if missing (same as POST)
+            if (!cleanPhone.startsWith('+')) cleanPhone = '+94' + cleanPhone.replace(/^0/, '');
       const customers = await supa(
         'customers?phone=eq.' + encodeURIComponent(cleanPhone) +
         '&select=id,phone,name,segment,visit_count,last_contact,notes,email,created_at',
@@ -301,3 +303,4 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Internal server error: ' + err.message });
   }
 };
+h

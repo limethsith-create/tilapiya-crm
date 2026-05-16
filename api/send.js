@@ -62,6 +62,15 @@ module.exports = async function handler(req, res) {
   if (!to || !message) return res.status(400).json({ error: 'Missing to or message' });
 
   try {
+
+      // Check WhatsApp config
+      if (!WA_TOKEN || !WA_PHONE_ID) {
+            console.error('META_WHATSAPP_TOKEN or META_PHONE_NUMBER_ID not set');
+            return res.status(500).json({ error: 'WhatsApp not configured. Contact admin.' });
+      }
+      if (!SUPABASE_URL || !SUPABASE_KEY) {
+            return res.status(500).json({ error: 'Database not configured. Contact admin.' });
+      }
     const waRes = await fetch('https://graph.facebook.com/v21.0/' + WA_PHONE_ID + '/messages', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + WA_TOKEN, 'Content-Type': 'application/json' },

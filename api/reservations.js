@@ -31,8 +31,10 @@ async function supabaseRequest(path, method, body) {
 }
 
 module.exports = async function handler(req, res) {
-  const origin = DASHBOARD_ORIGIN || 'https://tilapiya-crm.netlify.app';
-  res.setHeader('Access-Control-Allow-Origin', origin);
+    const allowed = [DASHBOARD_ORIGIN, 'https://tilapiya-crm.vercel.app', 'https://tilapiya-crm.netlify.app'].filter(Boolean);
+    const reqOrigin = req?.headers?.origin || '';
+    const origin = allowed.includes(reqOrigin) ? reqOrigin : allowed[0] || '*';
+    res.setHeader('Access-Control-Allow-Origin', origin);
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PATCH, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
   res.setHeader('Access-Control-Allow-Credentials', 'true');

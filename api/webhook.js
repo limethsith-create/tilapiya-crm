@@ -264,7 +264,7 @@ async function describeImageWithVision(imageBuffer, mimeType, caption) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'user', content: userContent }
         ],
@@ -421,7 +421,7 @@ async function generateAIReply(customerMessage, conversationHistory, customer, i
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o',
+        model: 'gpt-4o-mini',
         messages: messages,
         max_tokens: 300,
         temperature: 0.7

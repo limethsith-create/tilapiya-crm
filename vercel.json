@@ -11,6 +11,8 @@
     { "src": "/api/reservations", "dest": "/api/reservations.js" },
     { "src": "/api/auth", "dest": "/api/auth.js" },
     { "src": "/api/pos-checkin", "dest": "/api/pos-checkin.js" },
+    { "src": "/api/outbox", "dest": "/api/outbox.js" },
+    { "src": "/api/media", "dest": "/api/media.js" },
     { "src": "/(.*)", "dest": "/public/$1" }
   ],
   "headers": [
@@ -26,7 +28,9 @@
       "source": "/(.*)",
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" }
+        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://graph.facebook.com https://api.openai.com; frame-ancestors 'none'" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }
   ]

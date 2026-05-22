@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tilapiya — Restaurant CRM Dashboard</title>
-<link rel="manifest" href="manifest.json">h
+<link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0c0a09">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -361,6 +361,34 @@ if(typeof supabase==='undefined'){
     .pipeline-board { flex-direction: column; min-height: auto; }
     .pipeline-col { min-width: auto; }
   }
+  /* === OUTBOX STYLES === */
+  @keyframes sending-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(132,204,22,0.25)} 50%{box-shadow:0 0 12px 4px rgba(132,204,22,0.15)} }
+  @keyframes progress-stripe { 0%{background-position:0 0} 100%{background-position:24px 0} }
+  @keyframes ob-fade-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+  .outbox-grid { display:grid;grid-template-columns:1.6fr 1fr;gap:12px; }
+  .batch-card { padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;position:relative; }
+  .batch-card:last-child { border-bottom:0; }
+  .batch-card:hover { background:var(--hover); }
+  .batch-card.active { background:var(--surface-2); }
+  .batch-card.is-sending { animation:sending-pulse 2.4s ease-in-out infinite;border-left:2px solid var(--green); }
+  .progress-bar { flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden; }
+  .progress-fill { height:100%;background:var(--green);border-radius:3px;transition:width .4s ease; }
+  .progress-fill.active { background-image:linear-gradient(135deg,rgba(255,255,255,.12) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.12) 50%,rgba(255,255,255,.12) 75%,transparent 75%);background-size:24px 24px;animation:progress-stripe .8s linear infinite; }
+  .batch-status { display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap; }
+  .batch-status.draft { background:var(--blue-bg);color:var(--blue);border:1px solid rgba(96,165,250,0.2); }
+  .batch-status.sending { background:var(--green-bg);color:var(--green);border:1px solid rgba(132,204,22,0.2); }
+  .batch-status.paused { background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,0.2); }
+  .batch-status.failed { background:var(--red-bg);color:var(--red);border:1px solid rgba(239,68,68,0.2); }
+  .batch-status.completed { background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border); }
+  .batch-status.cancelled { background:var(--surface-2);color:var(--text-subtle);border:1px solid var(--border); }
+  .batch-actions { display:flex;align-items:center;gap:6px;padding-top:10px; }
+  .schedule-row { display:flex;align-items:center;gap:12px;padding:12px 0; }
+  .schedule-row input[type="datetime-local"] { padding:7px 12px;border:1px solid var(--border);background:var(--surface-2);border-radius:7px;font-size:13px;color:var(--text);outline:none;color-scheme:dark; }
+  .outbox-empty { display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;text-align:center; }
+  .outbox-empty-title { font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px; }
+  .outbox-empty-desc { font-size:12.5px;color:var(--text-muted);max-width:260px;line-height:1.5; }
+  @media(max-width:1100px){ .outbox-grid{grid-template-columns:1fr;} }
+  @media(max-width:640px){ .outbox-grid{grid-template-columns:1fr;gap:8px;} .batch-card{padding:12px 14px;} .batch-actions{flex-wrap:wrap;} }
 </style>
 </head>
 <body>
@@ -396,6 +424,7 @@ if(typeof supabase==='undefined'){
     <div class="nav-item" data-view="feedback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="lbl">Feedback</span><span class="count" id="feedbackCount">0</span></div>
     <div class="nav-section" style="margin-top:14px">Operations</div>
     <div class="nav-item" data-view="crm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 1 3.6 7.2L3 21l1.8-3.6A9 9 0 0 1 3 12z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg><span class="lbl">Automated CRM</span></div>
+    <div class="nav-item" data-view="outbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9"/></svg><span class="lbl">Outbox</span><span class="count" id="outboxCount">0</span></div>
     <div class="nav-item" data-view="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><span class="lbl">Reports</span></div>
     <div class="sidebar-footer">
       <div class="avatar">T</div>
@@ -469,12 +498,12 @@ if(typeof supabase==='undefined'){
         <div class="thread-list" id="threadList"><div class="empty-inline">Loading...</div></div>
       </div>
       <div class="inbox-col">
-        <div class="thread-header"><div class="who"><div class="avatar" style="width:36px;height:36px;font-size:13px;" id="chatAvatar">—</div><div><div class="who-name" id="chatName">Select a conversation</div><div class="who-sub" id="chatPhone">Choose from left</div></div></div><div style="display:flex;gap:8px;align-items:center"><div id="chatPipelineLink"></div></div></div>
+        <div class="thread-header"><div class="who"><div class="avatar" style="width:36px;height:36px;font-size:13px;" id="chatAvatar">—</div><div><div class="who-name" id="chatName">Select a conversation</div><div class="who-sub" id="chatPhone">Choose from left</div></div></div><div style="display:flex;gap:8px;align-items:center"><div id="botToggleWrap" style="display:none"><button id="botToggleBtn" onclick="toggleBotMode()" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--text-muted);font-size:11.5px;font-weight:600;cursor:pointer;transition:all .15s"><span id="botToggleDot" style="width:8px;height:8px;border-radius:50%;background:var(--text-subtle)"></span><span id="botToggleLabel">Bot: Off</span></button></div><div id="chatPipelineLink"></div></div></div>
         <div class="thread-body" id="chatMessages" style="flex:1;overflow-y:auto"><div class="empty-inline" style="margin:auto">Select a conversation</div></div>
         <div id="replyBox" style="display:none;padding:10px 16px;border-top:1px solid #2a2a2a;background:#1a1a1a;flex-shrink:0">
           <div style="display:flex;gap:8px;align-items:center">
             <input type="text" id="replyInput" placeholder="Type your reply..." style="flex:1;padding:10px 14px;border-radius:20px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;outline:none" onkeydown="if(event.key==='Enter')sendManualReply()">
-            <button onclick="sendManualReply()" style="padding:10px 20px;border-radius:20px;border:none;background:#0c0a09;color:#c8b88a;font-weight:600;cursor:pointer;font-size:14px;white-space:nowrap">Send</button>
+            <button onclick="sendManualReply()" style="padding:10px 20px;border-radius:20px;border:none;background:#e8e6e3;color:#111110;font-weight:600;cursor:pointer;font-size:14px;white-space:nowrap">Send</button>
           </div>
           <div id="replyStatus" style="font-size:12px;color:#888;margin-top:4px;display:none"></div>
         </div>
@@ -483,6 +512,7 @@ if(typeof supabase==='undefined'){
         <div class="contact-id"><div class="contact-avatar" id="detailAvatar">—</div><div class="contact-name" id="detailName">No contact</div><div class="contact-sub" id="detailPhone">—</div></div>
         <div class="contact-section"><h3>Activity</h3><div class="kv"><span class="k">Segment</span><span class="v" id="detailSegment">—</span></div><div class="kv"><span class="k">Visits</span><span class="v" id="detailVisits">0</span></div><div class="kv"><span class="k">First contact</span><span class="v" id="detailFirst">—</span></div><div class="kv"><span class="k">Last contact</span><span class="v" id="detailLast">—</span></div></div>
         <div class="contact-section"><h3>Loyalty</h3><div class="kv"><span class="k">Tier</span><span class="v" id="detailTier">—</span></div><div class="kv"><span class="k">Points</span><span class="v" id="detailPoints">0</span></div></div>
+        <div class="contact-section"><h3>Bot Reply Mode</h3><div class="kv"><span class="k">Auto-reply</span><span class="v" id="detailBotMode">—</span></div></div>
         <div class="contact-section"><h3>Pipeline Stage</h3><div class="kv"><span class="k">Status</span><span class="v" id="detailPipelineStage">—</span></div></div>
         <div class="contact-section"><h3>Notes</h3><div id="detailNotes" style="font-size:12.5px;color:var(--text-muted)">—</div></div>
       </div></div>
@@ -639,6 +669,59 @@ if(typeof supabase==='undefined'){
       </div>
     </div></section>
 
+    <!-- OUTBOX -->
+    <section class="view" data-view="outbox"><div class="page">
+      <div class="page-head"><div><h1>Outbox</h1><div class="subtitle">Send bulk WhatsApp messages to customer segments.</div></div><button class="btn secondary sm" onclick="loadOutbox()">Refresh</button></div>
+      <section class="stats">
+        <div class="card stat"><div class="stat-label">Total Batches</div><div class="stat-value" id="outbox-total">0</div></div>
+        <div class="card stat"><div class="stat-label">Messages Sent</div><div class="stat-value" id="outbox-sent">0</div></div>
+        <div class="card stat"><div class="stat-label">Delivered</div><div class="stat-value" id="outbox-delivered">0</div></div>
+        <div class="card stat"><div class="stat-label">Failed</div><div class="stat-value" id="outbox-failed">0</div></div>
+      </section>
+      <div class="outbox-grid">
+        <div class="card"><div class="panel-head"><div><div class="panel-title">Compose Bulk Message</div><div class="panel-sub">Use variables to personalise your template.</div></div></div><div class="panel-body">
+          <div class="variable-chips">
+            <div class="var-chip outbox-var-chip" data-var="{{name}}">{{name}}</div>
+            <div class="var-chip outbox-var-chip" data-var="{{phone}}">{{phone}}</div>
+            <div class="var-chip outbox-var-chip" data-var="{{date}}">{{date}}</div>
+            <div class="var-chip outbox-var-chip" data-var="{{offer}}">{{offer}}</div>
+            <div class="var-chip outbox-var-chip" data-var="{{points}}">{{points}}</div>
+            <div class="var-chip outbox-var-chip" data-var="{{tier}}">{{tier}}</div>
+          </div>
+          <textarea id="outboxCompose" class="compose-textarea" placeholder="Hi {{name}}, we have an exclusive offer for you..."></textarea>
+          <div class="compose-meta"><div></div><div><span id="outboxCharCount">0</span> / 1024</div></div>
+          <div class="preview-box"><div class="preview-label">Preview</div><div class="preview-bubble" id="outboxPreview">Start typing...</div></div>
+          <input class="field" id="outboxBatchName" placeholder="Batch name (e.g. Weekend Promo May)" style="margin-top:14px">
+          <select class="field" id="outboxSegment" style="margin-top:8px"><option value="all">All</option><option value="new">New</option><option value="returning">Returning</option><option value="vip">VIP</option><option value="lapsed">Lapsed</option><option value="gold">Gold+Platinum</option></select>
+          <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
+            <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);cursor:pointer">
+              <input type="checkbox" id="outboxScheduleToggle" onchange="document.getElementById('outboxSchedule').style.display=this.checked?'block':'none'"> Schedule for later
+            </label>
+          </div>
+          <input type="datetime-local" class="field" id="outboxSchedule" style="margin-top:8px;display:none;color-scheme:dark">
+          <div style="margin-top:14px;font-size:12.5px;color:var(--text-muted)" id="outboxRecipientCount">Estimated recipients: --</div>
+          <div style="display:flex;gap:8px;margin-top:16px">
+            <button class="btn secondary" onclick="previewOutboxRecipients()">Preview Recipients</button>
+            <button class="btn" onclick="createOutboxBatch()">Create Batch</button>
+          </div>
+        </div></div>
+        <div class="card"><div class="panel-head"><div><div class="panel-title">Batch Queue</div><div class="panel-sub">Manage outgoing message batches</div></div></div>
+          <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:6px;overflow-x:auto">
+            <span class="filter-pill outbox-filter-pill active" data-status="all">All</span>
+            <span class="filter-pill outbox-filter-pill" data-status="draft">Draft</span>
+            <span class="filter-pill outbox-filter-pill" data-status="sending">Sending</span>
+            <span class="filter-pill outbox-filter-pill" data-status="completed">Completed</span>
+            <span class="filter-pill outbox-filter-pill" data-status="failed">Failed</span>
+          </div>
+          <div id="outboxBatchList" style="max-height:520px;overflow-y:auto;padding:12px"><div class="empty-inline">No batches yet. Compose a message and create your first batch.</div></div>
+        </div>
+      </div>
+      <div class="card" id="outboxBatchDetail" style="display:none;margin-top:12px">
+        <div class="panel-head"><div><div class="panel-title" id="outboxDetailName">Batch Detail</div><div class="panel-sub" id="outboxDetailStatus">Select a batch above</div></div><button class="btn sm secondary" onclick="document.getElementById('outboxBatchDetail').style.display='none'">Close</button></div>
+        <div class="panel-body" id="outboxDetailBody"><div class="empty-inline">Select a batch to view details</div></div>
+      </div>
+    </div></section>
+
     <!-- REPORTS -->
     <section class="view" data-view="reports"><div class="page">
       <div class="page-head"><div><h1>Reports</h1><div class="subtitle">Download daily, weekly, and monthly reach-out reports.</div></div></div>
@@ -666,6 +749,11 @@ if(typeof supabase==='undefined'){
 </div>
 
 <script>
+// --- HTML ESCAPING (XSS prevention) ---
+function escapeHTML(str){
+  if(!str)return str;
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
 // --- AUTH GATE ---
 const API_BASE = window.location.origin; // Vercel API base
 let DASHBOARD_KEY = sessionStorage.getItem('tilapiya_dash_key') || '';
@@ -742,6 +830,7 @@ if (DASHBOARD_KEY && DASH_KEY_EXPIRY > Date.now()) {
 
 function initApp() {
 
+// ⚠️ UPDATE THESE: Go to Supabase → Settings → API → copy Project URL and anon/public key
 const SUPABASE_URL='https://awahengrenjpdfuyvllj.supabase.co';
 const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3YWhlbmdyZW5qcGRmdXl2bGxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwODk5NjUsImV4cCI6MjA5MjY2NTk2NX0.FfMX1g9YlBWHOcm1-eR8sOqZJkdkn6AMhCIlLFpm5h0';
 let sb;
@@ -764,8 +853,8 @@ function avg(arr,key){const v=arr.map(a=>a[key]).filter(x=>x!=null);if(!v.length
 
 const navItems=document.querySelectorAll('.nav-item');
 const views=document.querySelectorAll('.view');
-const loaders={overview:loadOverview,'add-customer':loadRecentCustomers,inbox:loadInbox,contacts:loadContacts,pipeline:loadPipeline,'daily-log':loadDailyLog,crm:loadCRM,loyalty:loadLoyalty,feedback:loadFeedback,reports:loadReports};
-function show(v){navItems.forEach(n=>n.classList.toggle('active',n.dataset.view===v));views.forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='inbox'){startInboxPolling();}else{stopInboxPolling();}if(loaders[v])loaders[v]();}
+const loaders={overview:loadOverview,'add-customer':loadRecentCustomers,inbox:loadInbox,contacts:loadContacts,pipeline:loadPipeline,'daily-log':loadDailyLog,crm:loadCRM,outbox:loadOutbox,loyalty:loadLoyalty,feedback:loadFeedback,reports:loadReports};
+function show(v){navItems.forEach(n=>n.classList.toggle('active',n.dataset.view===v));views.forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='inbox'){startInboxPolling();}else{stopInboxPolling();}if(v!=='outbox'&&typeof stopOutboxPolling==='function'){stopOutboxPolling();}if(loaders[v])loaders[v]();}
 navItems.forEach(n=>n.addEventListener('click',()=>show(n.dataset.view)));
 
 async function checkConnection(){try{const{error}=await sb.from('customers').select('id').limit(1);if(error)throw error;document.getElementById('statusDot').classList.add('live');document.getElementById('statusText').textContent='Connected';return true;}catch(e){document.getElementById('statusText').textContent='Not connected';return false;}}
@@ -816,7 +905,7 @@ async function loadOverview(){
     const el=document.getElementById('ov-feedback-list');
     document.getElementById('feedbackCount').textContent=data?.length??0;
     if(!data?.length){el.innerHTML='<div class="empty-inline">No feedback yet</div>';}
-    else{el.innerHTML=data.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${f.customers?.name||'Anon'}</span>${starsHTML(f.overall_rating||0)}</div>${f.comment?`<div class="feedback-comment">"${f.comment}"</div>`:''}<div style="font-size:11px;color:var(--text-subtle);margin-top:6px">${fmt(f.created_at)}</div></div>`).join('');}
+    else{el.innerHTML=data.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${escapeHTML(f.customers?.name||'Anon')}</span>${starsHTML(f.overall_rating||0)}</div>${f.comment?`<div class="feedback-comment">"${escapeHTML(f.comment)}"</div>`:''}<div style="font-size:11px;color:var(--text-subtle);margin-top:6px">${fmt(f.created_at)}</div></div>`).join('');}
   }catch(e){document.getElementById('ov-feedback-list').innerHTML='<div class="empty-inline">No feedback yet — connect Supabase first</div>';}
   document.getElementById('lastUpdated').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   // Bookings bar chart
@@ -851,11 +940,11 @@ async function loadInbox(){
     allConvos.forEach(c=>{const k=c.customer_id||'unknown';if(!groups[k])groups[k]={customer:c.customers,customer_id:c.customer_id,msgs:[]};groups[k].msgs.push(c);});
     convoGroups=Object.values(groups);document.getElementById('inboxCount').textContent=convoGroups.length;document.getElementById('inboxTotalLabel').textContent=convoGroups.length+' threads';
     // Update filter pill counts
-    const allIntents=allConvos.map(c=>(c.intent||'').toLowerCase());
-    const bookingCount=allIntents.filter(i=>i==='booking').length;
-    const inquiryCount=allIntents.filter(i=>['menu','location','hours','byob','general','greeting'].includes(i)).length;
-    const complaintCount=allIntents.filter(i=>i==='complaint').length;
-    const feedbackCount=allIntents.filter(i=>i==='thanks'||i==='feedback').length;
+    const allIntents=allConvos.map(c=>(c.intent||'').toUpperCase());
+    const bookingCount=allIntents.filter(i=>i==='BOOKING').length;
+    const inquiryCount=allIntents.filter(i=>['MENU','LOCATION','GENERAL','GREETING'].includes(i)).length;
+    const complaintCount=allIntents.filter(i=>i==='COMPLAINT').length;
+    const feedbackCount=allIntents.filter(i=>i==='THANKS'||i==='FEEDBACK').length;
     document.getElementById('fpAll').textContent='('+convoGroups.length+')';
     document.getElementById('fpBooking').textContent='('+bookingCount+')';
     document.getElementById('fpInquiry').textContent='('+inquiryCount+')';
@@ -916,7 +1005,8 @@ function appendBubble(m){
   if(!chatDiv)return;
   const el=document.createElement('div');
   el.className='bubble-row '+(m.direction==='inbound'?'in':'out');
-  el.innerHTML='<div class="bubble '+(m.direction==='inbound'?'in':'out')+'">'+(m.message||'—')+'</div><div class="bubble-meta">'+fmt(m.timestamp)+(m.intent?' · '+m.intent:'')+'</div>';
+  const intentBadge=m.intent?(m.intent.includes('bot_reply')?' · <span class="chip green">AI Bot</span>':m.intent.includes('manual_reply')?' · <span class="chip">Staff</span>':' · '+escapeHTML(m.intent)):'';
+  el.innerHTML='<div class="bubble '+(m.direction==='inbound'?'in':'out')+'">'+escapeHTML(m.message||'—')+'</div><div class="bubble-meta">'+escapeHTML(fmt(m.timestamp))+intentBadge+'</div>';
   el.style.animation='fadeSlideIn 0.25s ease-out';
   chatDiv.appendChild(el);
   chatDiv.scrollTop=chatDiv.scrollHeight;
@@ -955,7 +1045,7 @@ function setupRealtime(){
 function renderThreads(groups){
   const el=document.getElementById('threadList');
   if(!groups.length){el.innerHTML='<div class="empty-inline">No conversations</div>';return;}
-  el.innerHTML=groups.map((g,i)=>{const last=g.msgs[0];const name=g.customer?.name||g.customer?.phone||'Unknown';return`<div class="thread-item" onclick="openThread(${i})" id="thread-${i}"><div class="avatar">${initials(name)}</div><div><div class="thread-name">${name}</div><div class="thread-preview">${(last.message||'—').slice(0,60)}</div></div><div class="thread-meta"><div class="thread-time">${fmt(last.timestamp)}</div>${g.msgs.length>1?`<div class="thread-badge">${g.msgs.length}</div>`:''}</div></div>`;}).join('');
+  el.innerHTML=groups.map((g,i)=>{const last=g.msgs[0];const name=g.customer?.name||g.customer?.phone||'Unknown';return`<div class="thread-item" onclick="openThread(${i})" id="thread-${i}"><div class="avatar">${initials(name)}</div><div><div class="thread-name">${escapeHTML(name)}</div><div class="thread-preview">${escapeHTML((last.message||'—').slice(0,60))}</div></div><div class="thread-meta"><div class="thread-time">${fmt(last.timestamp)}</div>${g.msgs.length>1?`<div class="thread-badge">${g.msgs.length}</div>`:''}</div></div>`;}).join('');
 }
 async function openThread(i){
   startThreadPolling(i);
@@ -968,12 +1058,13 @@ async function openThread(i){
   document.getElementById('detailSegment').textContent=c?.segment||'new';document.getElementById('detailVisits').textContent=c?.visit_count||0;
   document.getElementById('detailFirst').textContent=fmtDate(c?.first_contact);document.getElementById('detailLast').textContent=fmtDate(c?.last_contact);
   document.getElementById('detailNotes').textContent=c?.notes||'No notes';
+  fetchBotMode(g.customer_id);
   try{const{data:ly}=await sb.from('loyalty').select('*').eq('customer_id',g.customer_id).single();document.getElementById('detailTier').innerHTML=ly?tierBadge(ly.tier):'—';document.getElementById('detailPoints').textContent=ly?ly.total_points:'0';}catch(e){document.getElementById('detailTier').textContent='—';document.getElementById('detailPoints').textContent='0';}
   const msgs=[...g.msgs].reverse();
-  document.getElementById('chatMessages').innerHTML=msgs.map(m=>`<div class="bubble-row ${m.direction==='inbound'?'in':'out'}"><div class="bubble ${m.direction==='inbound'?'in':'out'}">${m.message||'—'}</div><div class="bubble-meta">${fmt(m.timestamp)} ${m.intent?'· '+m.intent:''}</div></div>`).join('');
+  document.getElementById('chatMessages').innerHTML=msgs.map(m=>{const ib=m.intent?(m.intent.includes('bot_reply')?'· <span class="chip green">AI Bot</span>':m.intent.includes('manual_reply')?'· <span class="chip">Staff</span>':'· '+escapeHTML(m.intent)):'';return`<div class="bubble-row ${m.direction==='inbound'?'in':'out'}"><div class="bubble ${m.direction==='inbound'?'in':'out'}">${escapeHTML(m.message||'—')}</div><div class="bubble-meta">${escapeHTML(fmt(m.timestamp))} ${ib}</div></div>`;}).join('');
   document.getElementById('chatMessages').scrollTop=99999;
 }
-document.querySelectorAll('.inbox-filters .filter-pill').forEach(p=>{p.addEventListener('click',()=>{document.querySelectorAll('.inbox-filters .filter-pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');const f=p.dataset.filter;if(f==='all')renderThreads(convoGroups);else{const fl=f.toLowerCase();renderThreads(convoGroups.filter(g=>g.msgs.some(m=>(m.intent||'').toLowerCase()===fl||(f==='INQUIRY'&&['menu','location','hours','byob','general','greeting'].includes((m.intent||'').toLowerCase())))));};});});
+document.querySelectorAll('.inbox-filters .filter-pill').forEach(p=>{p.addEventListener('click',()=>{document.querySelectorAll('.inbox-filters .filter-pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');const f=p.dataset.filter;if(f==='all')renderThreads(convoGroups);else{renderThreads(convoGroups.filter(g=>g.msgs.some(m=>{const intent=(m.intent||'').toUpperCase();if(f==='BOOKING')return intent==='BOOKING';if(f==='INQUIRY')return['MENU','LOCATION','GENERAL','GREETING'].includes(intent);if(f==='COMPLAINT')return intent==='COMPLAINT';if(f==='FEEDBACK')return intent==='THANKS'||intent==='FEEDBACK';return false;})));};});});
 
 let allCustomers=[],customerLoyalty={};
 async function loadContacts(){
@@ -987,7 +1078,7 @@ async function loadContacts(){
 function renderContacts(rows){
   const tb=document.getElementById('contactsTable');
   if(!rows.length){tb.innerHTML='<tr><td colspan="7" class="empty-inline">No contacts</td></tr>';return;}
-  tb.innerHTML=rows.map(c=>{const ly=customerLoyalty[c.id];return`<tr><td style="font-weight:500">${c.name||'—'}</td><td class="muted">${c.phone||'—'}</td><td>${segChip(c.segment)}</td><td>${c.visit_count||0}</td><td>${ly?tierBadge(ly.tier):'<span class="muted">—</span>'}</td><td>${ly?ly.total_points:'—'}</td><td class="muted" style="font-size:12px">${fmtDate(c.last_contact)}</td></tr>`;}).join('');
+  tb.innerHTML=rows.map(c=>{const ly=customerLoyalty[c.id];return`<tr><td style="font-weight:500">${escapeHTML(c.name||'—')}</td><td class="muted">${escapeHTML(c.phone||'—')}</td><td>${segChip(c.segment)}</td><td>${c.visit_count||0}</td><td>${ly?tierBadge(ly.tier):'<span class="muted">—</span>'}</td><td>${ly?ly.total_points:'—'}</td><td class="muted" style="font-size:12px">${fmtDate(c.last_contact)}</td></tr>`;}).join('');
 }
 document.getElementById('contactSearch')?.addEventListener('input',e=>{const q=e.target.value.toLowerCase();renderContacts(allCustomers.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q)));});
 
@@ -1045,7 +1136,7 @@ async function loadFeedback(){
   document.getElementById('fb-recommend').textContent=recData.length?Math.round(recYes/recData.length*100)+'%':'—';
   const el=document.getElementById('feedbackList');
   if(!all.length){el.innerHTML='<div class="empty-inline">No feedback yet. Requested automatically after visits.</div>';}
-  else{el.innerHTML=all.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${f.customers?.name||'Anon'}</span>${starsHTML(f.overall_rating||0)}</div>${f.comment?`<div class="feedback-comment">"${f.comment}"</div>`:''}<div class="feedback-scores"><div class="feedback-score"><div class="feedback-score-label">Food</div><div class="feedback-score-val">${f.food_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Service</div><div class="feedback-score-val">${f.service_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Ambience</div><div class="feedback-score-val">${f.ambience_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Recommend</div><div class="feedback-score-val">${f.would_recommend==null?'—':f.would_recommend?'Yes':'No'}</div></div></div><div style="font-size:11px;color:var(--text-subtle);margin-top:8px">${fmt(f.created_at)} · via ${f.collected_via||'whatsapp'}</div></div>`).join('');}
+  else{el.innerHTML=all.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${escapeHTML(f.customers?.name||'Anon')}</span>${starsHTML(f.overall_rating||0)}</div>${f.comment?`<div class="feedback-comment">"${escapeHTML(f.comment)}"</div>`:''}<div class="feedback-scores"><div class="feedback-score"><div class="feedback-score-label">Food</div><div class="feedback-score-val">${f.food_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Service</div><div class="feedback-score-val">${f.service_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Ambience</div><div class="feedback-score-val">${f.ambience_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Recommend</div><div class="feedback-score-val">${f.would_recommend==null?'—':f.would_recommend?'Yes':'No'}</div></div></div><div style="font-size:11px;color:var(--text-subtle);margin-top:8px">${fmt(f.created_at)} · via ${f.collected_via||'whatsapp'}</div></div>`).join('');}
   }catch(e){
     document.getElementById('feedbackList').innerHTML='<div class="empty-inline">No feedback yet. Run the v2 schema SQL in Supabase first.</div>';
   }
@@ -1064,6 +1155,118 @@ if(crmTA){crmTA.addEventListener('input',()=>{crmCount.textContent=crmTA.value.l
 document.querySelectorAll('.var-chip').forEach(chip=>{chip.addEventListener('click',()=>{if(!crmTA)return;const v=chip.dataset.var,s=crmTA.selectionStart;crmTA.value=crmTA.value.slice(0,s)+v+crmTA.value.slice(crmTA.selectionEnd);crmTA.focus();crmTA.selectionStart=crmTA.selectionEnd=s+v.length;crmTA.dispatchEvent(new Event('input'));});});
 async function saveCrmCampaign(){const name=document.getElementById('crmCampaignName').value.trim(),template=crmTA.value.trim(),segment=document.getElementById('crmSegment').value;if(!name||!template)return alert('Name and message required');try{await sb.from('crm_campaigns').insert({name,segment,message_template:template});document.getElementById('crmCampaignName').value='';crmTA.value='';crmTA.dispatchEvent(new Event('input'));loadCRM();}catch(e){alert('Error: '+e.message);}}
 
+/* ══════════════════════════════════════════════════════════════════
+   OUTBOX MODULE — Bulk message batches
+   ══════════════════════════════════════════════════════════════════ */
+let _outboxPollTimer=null,_outboxActiveBatchId=null;
+function outboxStatusChip(s){const m={draft:'blue',sending:'amber',completed:'green',failed:'red',paused:'purple',cancelled:''};return`<span class="chip ${m[s]||''}">${escapeHTML(s||'draft')}</span>`;}
+async function outboxAPI(payload){const res=await fetch(API_BASE+'/api/outbox',{method:'POST',headers:{'Content-Type':'application/json','X-Dashboard-Key':DASHBOARD_KEY},body:JSON.stringify(payload)});if(!res.ok){const err=await res.json().catch(()=>({error:res.statusText}));throw new Error(err.error||'Request failed');}return res.json();}
+
+async function loadOutbox(){
+  try{const{data:batches,error}=await sb.from('outbox_batches').select('id,status,sent_count,delivered_count,failed_count,total_recipients');
+  if(error)throw error;const rows=batches||[];
+  document.getElementById('outbox-total').textContent=rows.length;
+  document.getElementById('outbox-sent').textContent=rows.reduce((s,b)=>s+(b.sent_count||0),0);
+  document.getElementById('outbox-delivered').textContent=rows.reduce((s,b)=>s+(b.delivered_count||0),0);
+  document.getElementById('outbox-failed').textContent=rows.reduce((s,b)=>s+(b.failed_count||0),0);
+  document.getElementById('outboxCount').textContent=rows.filter(b=>b.status==='sending'||b.status==='draft').length||'';
+  }catch(e){console.warn('Outbox stats error',e);}
+  await loadOutboxBatches();
+}
+
+async function loadOutboxBatches(statusFilter){
+  try{let q=sb.from('outbox_batches').select('*').order('created_at',{ascending:false});
+  if(statusFilter&&statusFilter!=='all')q=q.eq('status',statusFilter);
+  const{data:batches,error}=await q;if(error)throw error;
+  const el=document.getElementById('outboxBatchList');
+  if(!batches||!batches.length){el.innerHTML='<div class="empty-inline">No batches yet. Compose a message and create your first batch.</div>';return;}
+  el.innerHTML=batches.map(b=>{const total=b.total_recipients||0,sent=b.sent_count||0,pct=total>0?Math.round(sent/total*100):0,st=(b.status||'draft').toLowerCase();
+  let actions='';
+  if(st==='draft')actions=`<button class="btn sm green" onclick="event.stopPropagation();sendOutboxBatch('${b.id}')">Send Now</button><button class="btn sm secondary" onclick="event.stopPropagation();deleteOutboxBatch('${b.id}')">Delete</button>`;
+  else if(st==='sending')actions=`<button class="btn sm secondary" onclick="event.stopPropagation();pauseOutboxBatch('${b.id}')">Pause</button><button class="btn sm secondary" onclick="event.stopPropagation();cancelOutboxBatch('${b.id}')">Cancel</button>`;
+  else if(st==='paused')actions=`<button class="btn sm green" onclick="event.stopPropagation();sendOutboxBatch('${b.id}')">Resume</button><button class="btn sm secondary" onclick="event.stopPropagation();cancelOutboxBatch('${b.id}')">Cancel</button>`;
+  else actions=`<button class="btn sm secondary" onclick="event.stopPropagation();deleteOutboxBatch('${b.id}')">Delete</button>`;
+  return`<div class="batch-card ${st==='sending'?'is-sending':''}" onclick="showBatchDetail('${b.id}')">
+    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:13px">${escapeHTML(b.name||'Untitled')}</span>${outboxStatusChip(st)}</div>
+    <div style="margin-top:8px"><div style="background:var(--surface-2);border-radius:4px;height:6px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--green);border-radius:4px;transition:width .3s" class="${st==='sending'?'progress-fill active':''}"></div></div>
+    <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${sent} of ${total} sent (${pct}%)</div></div>
+    ${b.segment?`<div style="margin-top:6px">${segChip(b.segment)}</div>`:''}
+    <div class="batch-actions">${actions}</div>
+    <div style="font-size:11px;color:var(--text-subtle);margin-top:6px">${fmt(b.created_at)}</div>
+  </div>`;}).join('');}catch(e){console.error('Outbox batches error',e);document.getElementById('outboxBatchList').innerHTML='<div class="empty-inline">Failed to load batches.</div>';}
+}
+
+function filterOutboxBatches(status){document.querySelectorAll('.outbox-filter-pill').forEach(p=>p.classList.toggle('active',p.dataset.status===status));loadOutboxBatches(status);}
+
+async function previewOutboxRecipients(){
+  const seg=document.getElementById('outboxSegment').value;
+  try{let q=sb.from('customers').select('id,name,phone,segment').eq('opted_out',false);
+  if(seg&&seg!=='all'){if(seg==='gold'){/* handled differently */}else q=q.eq('segment',seg);}
+  const{data,error}=await q;if(error)throw error;
+  document.getElementById('outboxRecipientCount').textContent='Estimated recipients: '+(data?data.length:0);
+  }catch(e){document.getElementById('outboxRecipientCount').textContent='Estimated recipients: (error)';}
+}
+
+async function createOutboxBatch(){
+  const name=document.getElementById('outboxBatchName').value.trim(),
+    template=document.getElementById('outboxCompose').value.trim(),
+    segment=document.getElementById('outboxSegment').value,
+    schedule=document.getElementById('outboxSchedule').value;
+  if(!name)return alert('Batch name is required.');
+  if(!template)return alert('Message template is required.');
+  try{const data=await outboxAPI({action:'create_batch',name,message_template:template,segment,scheduled_at:schedule||null});
+  if(data.error)throw new Error(data.error);
+  document.getElementById('outboxBatchName').value='';document.getElementById('outboxCompose').value='';
+  document.getElementById('outboxCompose').dispatchEvent(new Event('input'));
+  alert('Batch created with '+(data.total_recipients||data.batch?.total_recipients||0)+' recipients.');
+  await loadOutbox();}catch(e){alert('Failed: '+e.message);}
+}
+
+async function sendOutboxBatch(id){if(!confirm('Send this batch now?'))return;try{await outboxAPI({action:'send_batch',batch_id:id});pollBatchProgress(id);await loadOutboxBatches();}catch(e){alert('Failed: '+e.message);}}
+async function pauseOutboxBatch(id){try{await outboxAPI({action:'pause_batch',batch_id:id});stopOutboxPolling();await loadOutboxBatches();}catch(e){alert('Failed: '+e.message);}}
+async function cancelOutboxBatch(id){if(!confirm('Cancel this batch?'))return;try{await outboxAPI({action:'cancel_batch',batch_id:id});stopOutboxPolling();await loadOutboxBatches();}catch(e){alert('Failed: '+e.message);}}
+async function deleteOutboxBatch(id){if(!confirm('Delete this batch permanently?'))return;try{await outboxAPI({action:'delete_batch',batch_id:id});if(_outboxActiveBatchId===id){document.getElementById('outboxBatchDetail').style.display='none';_outboxActiveBatchId=null;}await loadOutbox();}catch(e){alert('Failed: '+e.message);}}
+
+async function showBatchDetail(id){
+  _outboxActiveBatchId=id;const panel=document.getElementById('outboxBatchDetail');panel.style.display='block';
+  try{const data=await outboxAPI({action:'get_batch',batch_id:id});if(data.error)throw new Error(data.error);
+  const b=data.batch||{},msgs=data.messages||[],total=b.total_recipients||0,sent=b.sent_count||0,pct=total>0?Math.round(sent/total*100):0;
+  document.getElementById('outboxDetailName').textContent=b.name||'Untitled';
+  document.getElementById('outboxDetailStatus').innerHTML='Status: '+outboxStatusChip(b.status||'draft');
+  function mChip(s){const m={sent:'green',delivered:'green',read:'purple',failed:'red',queued:'blue',sending:'amber'};return`<span class="chip ${m[s]||''}">${escapeHTML(s||'queued')}</span>`;}
+  document.getElementById('outboxDetailBody').innerHTML=`
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px"><span>${pct}%</span><span>${sent} / ${total}</span></div>
+    <div style="height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin-bottom:16px"><div style="height:100%;width:${pct}%;background:var(--green);border-radius:3px;transition:width .4s"></div></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px">
+      <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:18px;font-weight:600">${total}</div><div style="font-size:11px;color:var(--text-muted)">Total</div></div>
+      <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:18px;font-weight:600">${sent}</div><div style="font-size:11px;color:var(--text-muted)">Sent</div></div>
+      <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:18px;font-weight:600;color:var(--green)">${b.delivered_count||0}</div><div style="font-size:11px;color:var(--text-muted)">Delivered</div></div>
+      <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:18px;font-weight:600;color:var(--red)">${b.failed_count||0}</div><div style="font-size:11px;color:var(--text-muted)">Failed</div></div>
+    </div>
+    ${b.message_template?`<div class="card" style="margin-bottom:14px"><div class="panel-head"><span class="panel-title">Template</span></div><div class="panel-body" style="font-size:13px;white-space:pre-wrap;color:var(--text-muted)">${escapeHTML(b.message_template)}</div></div>`:''}
+    <div class="card"><div class="panel-head"><span class="panel-title">Messages (${msgs.length})</span></div>
+    <div style="max-height:340px;overflow-y:auto"><table><thead><tr><th>Name</th><th>Phone</th><th>Status</th><th>Sent</th></tr></thead><tbody>
+    ${msgs.length?msgs.map(m=>`<tr><td style="font-weight:500">${escapeHTML(m.customer_name||m.phone||'—')}</td><td class="muted">${escapeHTML(m.phone||'—')}</td><td>${mChip(m.status)}</td><td class="muted" style="font-size:12px">${m.sent_at?fmt(m.sent_at):'—'}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-inline">No messages</td></tr>'}
+    </tbody></table></div></div>`;
+  }catch(e){document.getElementById('outboxDetailBody').innerHTML='<div class="empty-inline">Failed to load: '+escapeHTML(e.message)+'</div>';}
+}
+
+function pollBatchProgress(id){stopOutboxPolling();_outboxPollTimer=setInterval(async()=>{try{const{data:b}=await sb.from('outbox_batches').select('*').eq('id',id).single();if(!b){stopOutboxPolling();return;}
+if(['completed','failed','paused','cancelled'].includes(b.status)){stopOutboxPolling();loadOutbox();if(_outboxActiveBatchId===id)showBatchDetail(id);return;}
+loadOutboxBatches();if(_outboxActiveBatchId===id)showBatchDetail(id);}catch(e){console.warn('Poll error',e);}},2500);}
+function stopOutboxPolling(){if(_outboxPollTimer){clearInterval(_outboxPollTimer);_outboxPollTimer=null;}}
+
+// Outbox compose wiring
+(function(){const ta=document.getElementById('outboxCompose'),pv=document.getElementById('outboxPreview'),cc=document.getElementById('outboxCharCount'),seg=document.getElementById('outboxSegment');
+if(!ta)return;
+ta.addEventListener('input',()=>{if(cc)cc.textContent=ta.value.length;if(pv){pv.textContent=(ta.value||'Start typing...').replace(/\{\{name\}\}/g,'Friend').replace(/\{\{phone\}\}/g,'+94 ****').replace(/\{\{date\}\}/g,'Sat, 24 May').replace(/\{\{offer\}\}/g,'10% off').replace(/\{\{points\}\}/g,'120').replace(/\{\{tier\}\}/g,'Silver');}});
+document.querySelectorAll('.outbox-var-chip').forEach(c=>c.addEventListener('click',()=>{const v=c.dataset.var;if(!v)return;const s=ta.selectionStart;ta.value=ta.value.slice(0,s)+v+ta.value.slice(ta.selectionEnd);ta.focus();ta.selectionStart=ta.selectionEnd=s+v.length;ta.dispatchEvent(new Event('input'));}));
+if(seg)seg.addEventListener('change',()=>previewOutboxRecipients());
+})();
+// Outbox filter pills
+(function(){document.querySelectorAll('.outbox-filter-pill').forEach(p=>p.addEventListener('click',()=>{document.querySelectorAll('.outbox-filter-pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');loadOutboxBatches(p.dataset.status||'all');}));})();
+/* ══ END OUTBOX MODULE ══ */
+
 document.getElementById('globalSearch')?.addEventListener('input',async e=>{const q=e.target.value.trim();if(q.length<2)return;show('contacts');const s=document.getElementById('contactSearch');if(s){s.value=q;s.dispatchEvent(new Event('input'));}});
 
 /* ── PIPELINE & ADD CUSTOMER ── */
@@ -1071,35 +1274,6 @@ let pipelineData=[];
 let recentlyAdded=[];
 let addedContacts=[];
 
-function generateDemoPipeline(){
-  const occasions=['Birthday','Anniversary','Business','Date Night','Family','Casual'];
-  const categories=['BOOKING','BOOKING','BOOKING','INQUIRY','INQUIRY','COMPLAINT','FEEDBACK','BOOKING','BOOKING','INQUIRY','BOOKING','BOOKING','COMPLAINT','FEEDBACK','BOOKING','BOOKING','INQUIRY','BOOKING'];
-  const entries=[];
-  for(let i=0;i<18;i++){
-    const idx=Math.floor(Math.random()*DEMO_NAMES.length);
-    let stage;
-    if(i<4) stage='inquiry';
-    else if(i<8) stage='awaiting';
-    else if(i<12) stage='review';
-    else if(i<16) stage='confirmed';
-    else stage='rejected';
-    entries.push({
-      id:'pp-'+i,
-      name:DEMO_NAMES[idx],
-      phone:DEMO_PHONES[idx],
-      party:Math.floor(Math.random()*8)+2,
-      occasion:occasions[Math.floor(Math.random()*occasions.length)],
-      category:categories[i]||'BOOKING',
-      date:new Date(Date.now()+Math.floor(Math.random()*14)*864e5).toISOString().slice(0,10),
-      time:['11:30','12:00','13:00','18:00','19:00','19:30','20:00'][Math.floor(Math.random()*7)],
-      amount:Math.floor(Math.random()*30+5)*1000,
-      stage:stage,
-      created:new Date(Date.now()-Math.floor(Math.random()*5)*864e5).toISOString(),
-      notes:''
-    });
-  }
-  return entries;
-}
 
 function catChip(cat){
   const m={BOOKING:'green',INQUIRY:'blue',COMPLAINT:'red',FEEDBACK:'amber'};
@@ -1118,7 +1292,7 @@ function renderPipelineCard(item){
   } else if(showApprove){
     actions=`<div class="pc-actions"><button class="btn sm approve" onclick="movePipeline('${item.id}','confirmed')">Approve</button><button class="btn sm reject" onclick="movePipeline('${item.id}','rejected')">Reject</button></div>`;
   }
-  return`<div class="pipeline-card"><div style="display:flex;justify-content:space-between;align-items:center"><div class="pc-name">${item.name}</div>${catChip(item.category)}</div><div class="pc-phone">${item.phone}</div><div class="pc-details"><span class="chip">${item.party} pax</span><span class="chip">${item.occasion||'—'}</span><span class="chip">${fmtDate(item.date)}</span><span class="chip">${item.time}</span></div><div class="pc-details" style="margin-top:4px"><span style="font-size:12px;font-weight:600">LKR ${(item.amount||0).toLocaleString()}</span></div>${actions}</div>`;
+  return`<div class="pipeline-card"><div style="display:flex;justify-content:space-between;align-items:center"><div class="pc-name">${escapeHTML(item.name)}</div>${catChip(item.category)}</div><div class="pc-phone">${escapeHTML(item.phone)}</div><div class="pc-details"><span class="chip">${item.party} pax</span><span class="chip">${escapeHTML(item.occasion||'—')}</span><span class="chip">${fmtDate(item.date)}</span><span class="chip">${escapeHTML(item.time)}</span></div><div class="pc-details" style="margin-top:4px"><span style="font-size:12px;font-weight:600">LKR ${(item.amount||0).toLocaleString()}</span></div>${actions}</div>`;
 }
 
 async function loadPipeline(){
@@ -1142,13 +1316,6 @@ async function loadPipeline(){
   document.getElementById('pp-cat-inquiry').textContent=cats.INQUIRY;
   document.getElementById('pp-cat-complaint').textContent=cats.COMPLAINT;
   document.getElementById('pp-cat-feedback').textContent=cats.FEEDBACK;
-  // Also update inbox category counts
-  try{
-    document.getElementById('inboxBookingCount').textContent='Bookings: '+cats.BOOKING;
-    document.getElementById('inboxInquiryCount').textContent='Inquiries: '+cats.INQUIRY;
-    document.getElementById('inboxComplaintCount').textContent='Complaints: '+cats.COMPLAINT;
-    document.getElementById('inboxFeedbackCount').textContent='Feedback: '+cats.FEEDBACK;
-  }catch(e){}
   document.getElementById('pp-col-inquiry').textContent=stages.inquiry.length;
   document.getElementById('pp-col-awaiting').textContent=stages.awaiting.length;
   document.getElementById('pp-col-review').textContent=stages.review.length;
@@ -1195,8 +1362,22 @@ async function addNewCustomer(){
   if(!name||!phone)return alert('Name and phone number are required.');
 
   try{
-    // Insert or update customer in Supabase
-    const{data:custData,error:custErr}=await sb.from('customers').upsert({phone,name,segment,notes,email:email||null,last_contact:new Date().toISOString()},{onConflict:'phone'}).select();
+    // Check if customer already exists by phone
+    const{data:existing}=await sb.from('customers').select('id').eq('phone',phone);
+    let custData,custErr;
+    if(existing&&existing.length>0){
+      // Update only provided fields, don't overwrite segment or visit_count
+      const updates={last_contact:new Date().toISOString()};
+      if(name)updates.name=name;
+      if(email)updates.email=email;
+      if(notes)updates.notes=notes;
+      const res=await sb.from('customers').update(updates).eq('phone',phone).select();
+      custData=res.data;custErr=res.error;
+    }else{
+      // Insert new customer
+      const res=await sb.from('customers').insert({phone,name,segment,notes,email:email||null,last_contact:new Date().toISOString()}).select();
+      custData=res.data;custErr=res.error;
+    }
     if(custErr)throw custErr;
     const customerId=custData&&custData[0]?custData[0].id:null;
 
@@ -1227,87 +1408,84 @@ function loadRecentCustomers(){
   tb.innerHTML=recentlyAdded.slice(0,10).map(c=>`<tr><td style="font-weight:500">${c.name}</td><td class="muted">${c.phone}</td><td>${segChip(c.segment)}</td><td class="muted" style="font-size:12px">${c.date?fmtDate(c.date)+' '+c.time:'—'}</td><td class="muted" style="font-size:12px">${fmt(c.added)}</td></tr>`).join('');
 }
 
-/* ── DEMO DATA ── */
-const DEMO_NAMES=['Kasun Perera','Nimali Fernando','Ruwan Silva','Tharushi Jayawardena','Dinesh Rathnayake','Sachini De Silva','Amara Wickramasinghe','Pradeep Bandara','Hashini Gunawardena','Lakshan Mendis','Dulani Samarasinghe','Isuru Pathirana','Kavindya Rajapaksa','Nimal Herath','Sanduni Ekanayake','Chamara Dissanayake','Rashmi Abeysekara','Janith Kumara','Iresha Weerasinghe','Tharindu Gunasekara'];
-const DEMO_PHONES=['+94 77 234 5678','+94 71 890 1234','+94 76 456 7890','+94 75 123 4567','+94 77 567 8901','+94 71 345 6789','+94 76 789 0123','+94 75 901 2345','+94 77 012 3456','+94 71 678 9012','+94 76 234 5678','+94 75 456 7890','+94 77 890 1234','+94 71 012 3456','+94 76 567 8901','+94 75 789 0123','+94 77 345 6789','+94 71 901 2345','+94 76 012 3456','+94 75 234 5678'];
-const DEMO_INTENTS=['BOOKING','INQUIRY','COMPLAINT','FEEDBACK','CANCEL','OTHER'];
-const DEMO_CHANNELS=['WhatsApp','Phone Call','Phone Call','WhatsApp','WhatsApp','Phone Call'];
-const DEMO_MESSAGES=['Hi, I want to book a table for 4 this Saturday','What are your opening hours?','The food was cold last time we visited','Amazing service, thank you so much!','Need to cancel my reservation for tomorrow','Do you have parking available?','Can I book the private dining room?','Is there a kids menu?','We had a wonderful anniversary dinner','Table for 2 tonight please','Do you cater for events?','I called earlier about my booking','Is the chef\'s special still available?','We want to celebrate a birthday','Can I change my reservation time?','What vegetarian options do you have?','We loved the ambience last visit','Booking for a corporate lunch, 12 people','Any gluten-free desserts?','Quick question about the menu'];
 
-function generateDemoReachOuts(days){
-  const data=[];
-  for(let d=0;d<days;d++){
-    const date=new Date(Date.now()-d*864e5);
-    const count=Math.floor(Math.random()*8)+4;
-    for(let i=0;i<count;i++){
-      const idx=Math.floor(Math.random()*DEMO_NAMES.length);
-      const hr=Math.floor(Math.random()*12)+8;
-      const mn=Math.floor(Math.random()*60);
-      const ts=new Date(date);ts.setHours(hr,mn,0,0);
-      data.push({
-        timestamp:ts.toISOString(),
-        name:DEMO_NAMES[idx],
-        phone:DEMO_PHONES[idx],
-        channel:DEMO_CHANNELS[Math.floor(Math.random()*DEMO_CHANNELS.length)],
-        intent:DEMO_INTENTS[Math.floor(Math.random()*DEMO_INTENTS.length)],
-        message:DEMO_MESSAGES[Math.floor(Math.random()*DEMO_MESSAGES.length)],
-        direction:Math.random()>0.4?'inbound':'outbound'
-      });
-    }
-  }
-  return data.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
-}
 
-const demoReachOuts=generateDemoReachOuts(30);
 
-function loadReports(){
-  const now=new Date(),todayStr=now.toISOString().slice(0,10);
-  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
-  const monthAgo=new Date(Date.now()-30*864e5).toISOString();
-  const todayItems=demoReachOuts.filter(r=>r.timestamp.slice(0,10)===todayStr);
-  const weekItems=demoReachOuts.filter(r=>r.timestamp>=weekAgo);
-  const monthItems=demoReachOuts.filter(r=>r.timestamp>=monthAgo);
-  document.getElementById('rp-today').textContent=todayItems.length;
-  document.getElementById('rp-week').textContent=weekItems.length;
-  document.getElementById('rp-month').textContent=monthItems.length;
-  document.getElementById('rp-avgday').textContent=monthItems.length>0?Math.round(monthItems.length/30):'0';
+async function loadReports(){
   const tb=document.getElementById('reportsTable');
-  const show20=demoReachOuts.slice(0,20);
-  if(!show20.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No reach outs today</td></tr>';return;}
-  tb.innerHTML=show20.map(r=>{
-    const chChip=r.channel==='Phone Call'?'amber':'green';
-    return`<tr><td class="muted" style="font-size:12px">${fmt(r.timestamp)}</td><td style="font-weight:500">${r.name}</td><td><span class="chip ${r.direction==='inbound'?'':'solid'}">${r.direction}</span></td><td><span class="chip ${chChip}">${r.channel}</span></td><td><span class="chip">${r.intent}</span></td></tr>`;
-  }).join('');
+  try{
+    const{data,error}=await sb.from('conversations').select('*,customers(name)').order('timestamp',{ascending:false}).limit(100);
+    if(error)throw error;
+    if(!data||!data.length){
+      document.getElementById('rp-today').textContent='0';
+      document.getElementById('rp-week').textContent='0';
+      document.getElementById('rp-month').textContent='0';
+      document.getElementById('rp-avgday').textContent='0';
+      tb.innerHTML='<tr><td colspan="5" class="empty-inline">No data — connect Supabase</td></tr>';
+      return;
+    }
+    const now=new Date(),todayStr=now.toISOString().slice(0,10);
+    const weekAgo=new Date(Date.now()-7*864e5).toISOString();
+    const monthAgo=new Date(Date.now()-30*864e5).toISOString();
+    const todayItems=data.filter(r=>(r.timestamp||'').slice(0,10)===todayStr);
+    const weekItems=data.filter(r=>(r.timestamp||'')>=weekAgo);
+    const monthItems=data.filter(r=>(r.timestamp||'')>=monthAgo);
+    document.getElementById('rp-today').textContent=todayItems.length;
+    document.getElementById('rp-week').textContent=weekItems.length;
+    document.getElementById('rp-month').textContent=monthItems.length;
+    document.getElementById('rp-avgday').textContent=monthItems.length>0?Math.round(monthItems.length/30):'0';
+    const show20=data.slice(0,20);
+    tb.innerHTML=show20.map(r=>{
+      const chChip=r.channel==='Phone Call'?'amber':'green';
+      return`<tr><td class="muted" style="font-size:12px">${fmt(r.timestamp)}</td><td style="font-weight:500">${escapeHTML(r.customers?.name||r.customer_id||'Unknown')}</td><td><span class="chip ${r.direction==='inbound'?'':'solid'}">${escapeHTML(r.direction||'—')}</span></td><td><span class="chip ${chChip}">${escapeHTML(r.channel||'WhatsApp')}</span></td><td><span class="chip">${escapeHTML(r.intent||'—')}</span></td></tr>`;
+    }).join('');
+  }catch(e){
+    document.getElementById('rp-today').textContent='0';
+    document.getElementById('rp-week').textContent='0';
+    document.getElementById('rp-month').textContent='0';
+    document.getElementById('rp-avgday').textContent='0';
+    tb.innerHTML='<tr><td colspan="5" class="empty-inline">No data — connect Supabase</td></tr>';
+  }
 }
 
-function downloadReport(period){
-  let items,filename;
+async function downloadReport(period){
   const now=new Date(),todayStr=now.toISOString().slice(0,10);
+  let filename;
+  let dateFilter;
   if(period==='daily'){
-    items=demoReachOuts.filter(r=>r.timestamp.slice(0,10)===todayStr);
+    dateFilter=todayStr;
     filename=`tilapiya_daily_report_${todayStr}.csv`;
   }else if(period==='weekly'){
-    const weekAgo=new Date(Date.now()-7*864e5).toISOString();
-    items=demoReachOuts.filter(r=>r.timestamp>=weekAgo);
+    dateFilter=new Date(Date.now()-7*864e5).toISOString();
     filename=`tilapiya_weekly_report_${todayStr}.csv`;
   }else{
-    const monthAgo=new Date(Date.now()-30*864e5).toISOString();
-    items=demoReachOuts.filter(r=>r.timestamp>=monthAgo);
+    dateFilter=new Date(Date.now()-30*864e5).toISOString();
     filename=`tilapiya_monthly_report_${todayStr}.csv`;
   }
-  let csv='Date,Time,Name,Phone,Channel,Direction,Intent,Message\n';
-  items.forEach(r=>{
-    const d=new Date(r.timestamp);
-    const date=d.toLocaleDateString('en-GB');
-    const time=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-    csv+=`"${date}","${time}","${r.name}","${r.phone}","${r.channel}","${r.direction}","${r.intent}","${(r.message||'').replace(/"/g,'""')}"\n`;
-  });
-  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-  const link=document.createElement('a');
-  link.href=URL.createObjectURL(blob);
-  link.download=filename;
-  link.click();
-  URL.revokeObjectURL(link.href);
+  try{
+    let query=sb.from('conversations').select('*,customers(name,phone)').order('timestamp',{ascending:false});
+    if(period==='daily'){
+      query=query.gte('timestamp',todayStr+'T00:00:00').lt('timestamp',todayStr+'T23:59:59');
+    }else{
+      query=query.gte('timestamp',dateFilter);
+    }
+    const{data:items,error}=await query;
+    if(error)throw error;
+    if(!items||!items.length){alert('No data to export for this period.');return;}
+    let csv='Date,Time,Name,Phone,Channel,Direction,Intent,Message\n';
+    items.forEach(r=>{
+      const d=new Date(r.timestamp);
+      const date=d.toLocaleDateString('en-GB');
+      const time=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+      csv+=`"${date}","${time}","${(r.customers?.name||'').replace(/"/g,'""')}","${(r.customers?.phone||'').replace(/"/g,'""')}","${(r.channel||'WhatsApp').replace(/"/g,'""')}","${(r.direction||'').replace(/"/g,'""')}","${(r.intent||'').replace(/"/g,'""')}","${(r.message||'').replace(/"/g,'""')}"\n`;
+    });
+    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+    const link=document.createElement('a');
+    link.href=URL.createObjectURL(blob);
+    link.download=filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }catch(e){alert('Failed to export: '+(e.message||'Connect Supabase first'));}
 }
 
 async function boot(){
@@ -1318,136 +1496,62 @@ async function boot(){
     try{const{data}=await sb.from('conversations').select('customer_id').order('timestamp',{ascending:false}).limit(300);if(data){const ids=new Set(data.map(c=>c.customer_id));document.getElementById('inboxCount').textContent=ids.size;}}catch(e){}
   }
   if(!connected){
-    // Populate demo data so dashboard isn't empty
-    document.getElementById('ov-bookings').textContent='7';
-    document.getElementById('ov-revenue').textContent='184,500';
-    document.getElementById('ov-contacts').textContent='14';
-    document.getElementById('ov-pending').textContent='3';
-    document.getElementById('ov-msgin').textContent='68';
-    document.getElementById('ov-msgout').textContent='42';
-    document.getElementById('ov-avgrating').textContent='4.3';
-    document.getElementById('ov-loyalty').textContent='26';
-    document.getElementById('ov-complaints').textContent='2';
-    document.getElementById('ov-total').textContent='143';
-    document.getElementById('ov-goldplus').textContent='8';
-    document.getElementById('ov-lapsed').textContent='11';
-    document.getElementById('contactsCount').textContent='143';
-    document.getElementById('loyaltyCount').textContent='26';
-    document.getElementById('inboxCount').textContent='12';
-    // Init pipeline demo
-    pipelineData=generateDemoPipeline();
+    // Show clean empty states when Supabase is not connected
+    document.getElementById('ov-bookings').textContent='0';
+    document.getElementById('ov-revenue').textContent='0';
+    document.getElementById('ov-contacts').textContent='0';
+    document.getElementById('ov-pending').textContent='0';
+    document.getElementById('ov-msgin').textContent='0';
+    document.getElementById('ov-msgout').textContent='0';
+    document.getElementById('ov-avgrating').textContent='—';
+    document.getElementById('ov-loyalty').textContent='0';
+    document.getElementById('ov-complaints').textContent='0';
+    document.getElementById('ov-total').textContent='0';
+    document.getElementById('ov-goldplus').textContent='0';
+    document.getElementById('ov-lapsed').textContent='0';
+    document.getElementById('contactsCount').textContent='0';
+    document.getElementById('loyaltyCount').textContent='0';
+    document.getElementById('inboxCount').textContent='0';
+    document.getElementById('feedbackCount').textContent='0';
+    document.getElementById('ov-feed').innerHTML='<tr><td colspan="4" class="empty-inline">No conversations yet — connect Supabase to see data</td></tr>';
+    document.getElementById('ov-feedback-list').innerHTML='<div class="empty-inline">No feedback yet — connect Supabase to see data</div>';
+    document.getElementById('contactsTable').innerHTML='<tr><td colspan="7" class="empty-inline">No contacts yet — connect Supabase to see data</td></tr>';
+    document.getElementById('threadList').innerHTML='<div class="empty-inline">No conversations yet — connect Supabase to see data</div>';
+    document.getElementById('dailyTable').innerHTML='<tr><td colspan="8" class="empty-inline">No bookings today — connect Supabase to see data</td></tr>';
+    document.getElementById('loyaltyList').innerHTML='<div class="empty-inline">No loyalty members yet — connect Supabase to see data</div>';
+    document.getElementById('rewardsList').innerHTML='<div class="empty-inline">No rewards yet</div>';
+    document.getElementById('pointsActivity').innerHTML='<div class="empty-inline">No activity yet</div>';
+    document.getElementById('feedbackList').innerHTML='<div class="empty-inline">No feedback yet — connect Supabase to see data</div>';
+    document.getElementById('crmCampaigns').innerHTML='<div class="empty-inline">No campaigns yet — connect Supabase to see data</div>';
+    document.getElementById('outboxBatchList').innerHTML='<div class="empty-inline">No batches yet — connect Supabase to see data</div>';
+    document.getElementById('outbox-total').textContent='0';document.getElementById('outbox-sent').textContent='0';
+    document.getElementById('outbox-delivered').textContent='0';document.getElementById('outbox-failed').textContent='0';
+    document.getElementById('reportsTable').innerHTML='<tr><td colspan="5" class="empty-inline">No data — connect Supabase</td></tr>';
+    // Empty pipeline
+    pipelineData=[];
     loadPipeline();
-    // Demo recent conversations
-    const demoConvos=demoReachOuts.slice(0,8);
-    document.getElementById('ov-feed').innerHTML=demoConvos.map(c=>`<tr><td><span class="chip ${c.direction==='inbound'?'':'solid'}">${c.direction}</span></td><td>${c.name}</td><td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.message}</td><td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td></tr>`).join('');
-    // Demo feedback
-    const demoFeedback=[
-      {name:'Sachini De Silva',rating:5,comment:'Best fish we\'ve had in Colombo! The ambience was perfect for our date night.'},
-      {name:'Kasun Perera',rating:4,comment:'Good food, friendly staff. A bit noisy during peak hours.'},
-      {name:'Tharushi Jayawardena',rating:5,comment:'The seafood platter was incredible. Will be back!'},
-      {name:'Dinesh Rathnayake',rating:3,comment:'Food was decent but the wait time was too long.'},
-      {name:'Amara Wickramasinghe',rating:4,comment:'Lovely place. The chef\'s special was amazing.'}
-    ];
-    document.getElementById('ov-feedback-list').innerHTML=demoFeedback.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${f.name}</span>${starsHTML(f.rating)}</div><div class="feedback-comment">"${f.comment}"</div><div style="font-size:11px;color:var(--text-subtle);margin-top:6px">Today</div></div>`).join('');
-    document.getElementById('feedbackCount').textContent='5';
-    // Demo bookings chart
-    try{
-      const labels=[],counts=[];
-      for(let i=6;i>=0;i--){const d=new Date(Date.now()-i*864e5);labels.push(d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric'}));counts.push(Math.floor(Math.random()*6)+3);}
-      const ctx=document.getElementById('bookingsChart');
-      if(window._bookingsChart)window._bookingsChart.destroy();
-      window._bookingsChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Bookings',data:counts,backgroundColor:'rgba(132,204,22,0.5)',borderColor:'#84cc16',borderWidth:1,borderRadius:4,barPercentage:0.6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#78716c',font:{size:11}}},y:{beginAtZero:true,grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#78716c',font:{size:11},stepSize:1}}}}});
-    }catch(e){}
-    // Demo contacts table
-    document.getElementById('contactsTable').innerHTML=DEMO_NAMES.slice(0,15).map((n,i)=>{
-      const segs=['vip','returning','new','first-timer','lapsed'];
-      const tiers=['Bronze','Silver','Gold','Platinum'];
-      const seg=segs[i%segs.length];const tier=tiers[Math.min(i%4,3)];const pts=Math.floor(Math.random()*500)+10;
-      return`<tr><td style="font-weight:500">${n}</td><td class="muted">${DEMO_PHONES[i]}</td><td>${segChip(seg)}</td><td>${Math.floor(Math.random()*20)+1}</td><td>${tierBadge(tier)}</td><td>${pts}</td><td class="muted" style="font-size:12px">${fmtDate(new Date(Date.now()-Math.floor(Math.random()*30)*864e5))}</td></tr>`;
-    }).join('');
-    // Demo inbox threads — connected to pipeline
-    const intentMap={0:'BOOKING',1:'INQUIRY',2:'COMPLAINT',3:'FEEDBACK',4:'BOOKING',5:'INQUIRY',6:'BOOKING',7:'INQUIRY',8:'FEEDBACK',9:'BOOKING',10:'INQUIRY',11:'BOOKING'};
-    window.demoInboxThreads=DEMO_NAMES.slice(0,12).map((n,i)=>{
-      const intent=intentMap[i]||'BOOKING';
-      const replies=[
-        {direction:'inbound',message:DEMO_MESSAGES[i],timestamp:new Date(Date.now()-i*3600000).toISOString(),intent},
-        {direction:'outbound',message:['Thank you for reaching out! Let me check availability.','Sure, I can help with that.','We appreciate your feedback!','I\'ll look into this right away.','Your table is being prepared.','Let me get back to you shortly.'][i%6],timestamp:new Date(Date.now()-i*3600000+300000).toISOString(),intent}
-      ];
-      if(Math.random()>0.5) replies.push({direction:'inbound',message:['Great, thank you!','Perfect, see you then.','Sounds good.','Alright, we\'ll wait.','Thanks for the quick response!'][Math.floor(Math.random()*5)],timestamp:new Date(Date.now()-i*3600000+600000).toISOString(),intent});
-      return{name:n,phone:DEMO_PHONES[i],intent,msgs:replies};
-    });
-    // Count categories for filter pills
-    const inboxCats={BOOKING:0,INQUIRY:0,COMPLAINT:0,FEEDBACK:0};
-    demoInboxThreads.forEach(t=>{if(inboxCats[t.intent]!==undefined)inboxCats[t.intent]++;});
-    document.getElementById('fpAll').textContent='('+demoInboxThreads.length+')';
-    document.getElementById('fpBooking').textContent='('+inboxCats.BOOKING+')';
-    document.getElementById('fpInquiry').textContent='('+inboxCats.INQUIRY+')';
-    document.getElementById('fpComplaint').textContent='('+inboxCats.COMPLAINT+')';
-    document.getElementById('fpFeedback').textContent='('+inboxCats.FEEDBACK+')';
-    document.getElementById('inboxTotalLabel').textContent=demoInboxThreads.length+' threads';
-    function renderDemoThreads(threads){
-      document.getElementById('threadList').innerHTML=threads.map((t,i)=>{
-        const lastMsg=t.msgs[t.msgs.length-1];
-        const catColors={BOOKING:'green',INQUIRY:'blue',COMPLAINT:'red',FEEDBACK:'amber'};
-        return`<div class="thread-item" onclick="openDemoThread(${i})" id="thread-${i}"><div class="avatar">${initials(t.name)}</div><div><div class="thread-name">${t.name} <span class="chip ${catColors[t.intent]||''}" style="font-size:9px;vertical-align:middle;margin-left:4px">${t.intent}</span></div><div class="thread-preview">${(lastMsg.message||'—').slice(0,55)}</div></div><div class="thread-meta"><div class="thread-time">${fmt(lastMsg.timestamp)}</div>${t.msgs.length>1?`<div class="thread-badge">${t.msgs.length}</div>`:''}</div></div>`;
-      }).join('');
-    }
-    renderDemoThreads(demoInboxThreads);
-    window.openDemoThread=function(i){
-      const threads=demoInboxThreads;
-      document.querySelectorAll('.thread-item').forEach(el=>el.classList.remove('active'));
-      document.getElementById('thread-'+i)?.classList.add('active');
-      const t=threads[i];
-      document.getElementById('chatAvatar').textContent=initials(t.name);
-      document.getElementById('chatName').textContent=t.name;
-      document.getElementById('chatPhone').textContent=t.phone+' · via WhatsApp';
-      document.getElementById('detailAvatar').textContent=initials(t.name);
-      document.getElementById('detailName').textContent=t.name;
-      document.getElementById('detailPhone').textContent=t.phone;
-      document.getElementById('detailSegment').textContent='returning';
-      document.getElementById('detailVisits').textContent=Math.floor(Math.random()*10)+1;
-      document.getElementById('detailFirst').textContent=fmtDate(new Date(Date.now()-90*864e5));
-      document.getElementById('detailLast').textContent=fmtDate(new Date());
-      document.getElementById('detailNotes').textContent='Connected via WhatsApp';
-      // Show pipeline stage for this contact
-      const pMatch=pipelineData.find(p=>p.name===t.name);
-      const stageLabel=pMatch?{inquiry:'New Inquiry',awaiting:'Awaiting Payment',review:'Payment Review',confirmed:'Confirmed',rejected:'Rejected'}[pMatch.stage]||'—':'Not in pipeline';
-      document.getElementById('detailPipelineStage').innerHTML=pMatch?`<span class="chip ${pMatch.stage==='confirmed'?'green':pMatch.stage==='rejected'?'red':pMatch.stage==='review'?'purple':'amber'}">${stageLabel}</span>`:stageLabel;
-      // Pipeline link
-      document.getElementById('chatPipelineLink').innerHTML=pMatch?`<button class="btn sm secondary" onclick="show('pipeline')">View in Pipeline</button>`:'';
-      // Render messages
-      document.getElementById('chatMessages').innerHTML=t.msgs.map(m=>`<div class="bubble-row ${m.direction==='inbound'?'in':'out'}"><div class="bubble ${m.direction==='inbound'?'in':'out'}">${m.message}</div><div class="bubble-meta">${fmt(m.timestamp)} · ${m.intent||''} · WhatsApp</div></div>`).join('');
-      document.getElementById('chatMessages').scrollTop=99999;
-    };
-    // Inbox filter pills for demo
-    document.querySelectorAll('.inbox-filters .filter-pill').forEach(p=>{p.addEventListener('click',()=>{
-      document.querySelectorAll('.inbox-filters .filter-pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');
-      const f=p.dataset.filter;
-      if(f==='all') renderDemoThreads(demoInboxThreads);
-      else renderDemoThreads(demoInboxThreads.filter(t=>t.intent===f));
-    });});
-    // Demo daily log
-    document.getElementById('dl-bookings').textContent='7';document.getElementById('dl-confirmed').textContent='5';document.getElementById('dl-pending').textContent='2';document.getElementById('dl-guests').textContent='28';
-    const times=['11:30','12:00','12:30','13:00','18:00','19:00','20:00'];
-    document.getElementById('dailyTable').innerHTML=times.map((t,i)=>`<tr><td style="font-weight:600">${t}</td><td>${DEMO_NAMES[i]}<br><span class="muted" style="font-size:11px">${DEMO_PHONES[i]}</span></td><td>${Math.floor(Math.random()*6)+2}</td><td class="muted">${['Birthday','Anniversary','Business','Casual','Date Night','Family','Casual'][i]}</td><td class="muted" style="font-size:12px">${['None','Vegetarian','Gluten-free','None','Nut allergy','None','Halal'][i]}</td><td>${i<5?payChip('paid'):payChip('unpaid')}</td><td>${i<5?statusChip('confirmed'):statusChip('pending')}</td><td>${i<5?'<span class="muted" style="font-size:12px">Done</span>':'<button class="btn green sm">Confirm</button>'}</td></tr>`).join('');
-    // Demo loyalty
-    document.getElementById('ly-bronze').textContent='10';document.getElementById('ly-silver').textContent='8';document.getElementById('ly-gold').textContent='5';document.getElementById('ly-plat').textContent='3';
-    document.getElementById('loyaltyList').innerHTML=DEMO_NAMES.slice(0,10).map((n,i)=>{const tiers=['Platinum','Gold','Gold','Silver','Silver','Silver','Bronze','Bronze','Bronze','Bronze'];const pts=[620,480,310,240,180,150,90,75,50,30];return`<div class="loyalty-card"><div class="avatar" style="width:36px;height:36px;font-size:13px">${initials(n)}</div><div class="loyalty-info"><div class="loyalty-name">${n}</div><div class="loyalty-detail">${DEMO_PHONES[i]} · ${Math.floor(Math.random()*15)+3} visits · ${tierBadge(tiers[i])}</div></div><div class="loyalty-points"><div class="loyalty-pts">${pts[i]}</div><div class="loyalty-pts-label">points</div></div></div>`;}).join('');
-    document.getElementById('rewardsList').innerHTML=[{name:'Free Dessert',desc:'Any dessert on the house',tier:'Bronze',pts:50},{name:'10% Off Dinner',desc:'10% discount on total bill',tier:'Silver',pts:150},{name:'Free Bottle of Wine',desc:'House wine complimentary',tier:'Gold',pts:300},{name:'Private Dining Experience',desc:'2-hour private room booking',tier:'Platinum',pts:500}].map(r=>`<div class="reward-card"><div class="reward-name">${r.name}</div><div class="reward-desc">${r.desc}</div><div class="reward-meta">${tierBadge(r.tier)}<span class="reward-pts">${r.pts} pts</span></div></div>`).join('');
-    document.getElementById('pointsActivity').innerHTML=DEMO_NAMES.slice(0,8).map((n,i)=>{const types=['earned','earned','redeemed','earned','earned','earned','redeemed','earned'];const pts=[25,15,50,10,30,20,150,25];const reasons=['Visit bonus','Referral','Free Dessert','Visit bonus','Birthday bonus','Visit bonus','Wine reward','Visit bonus'];const sign=types[i]==='redeemed'?'-':'+';const color=types[i]==='redeemed'?'var(--red)':'var(--green)';return`<div style="padding:10px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;font-weight:500">${n}</div><div style="font-size:11px;color:var(--text-muted)">${reasons[i]} · ${fmt(new Date(Date.now()-i*7200000))}</div></div><div style="font-weight:700;color:${color};font-size:14px">${sign}${pts[i]}</div></div>`;}).join('');
-    // Demo feedback page
-    document.getElementById('fb-avg').textContent='4.3';document.getElementById('fb-food').textContent='4.5';document.getElementById('fb-service').textContent='4.2';document.getElementById('fb-ambience').textContent='4.1';
-    document.getElementById('fb-avg-stars').innerHTML=starsHTML(4);document.getElementById('fb-total-label').textContent='47 responses';
-    document.getElementById('fb-recommend').textContent='89%';
-    document.getElementById('cnt-5').textContent='21';document.getElementById('bar-5').style.width='45%';
-    document.getElementById('cnt-4').textContent='14';document.getElementById('bar-4').style.width='30%';
-    document.getElementById('cnt-3').textContent='8';document.getElementById('bar-3').style.width='17%';
-    document.getElementById('cnt-2').textContent='3';document.getElementById('bar-2').style.width='6%';
-    document.getElementById('cnt-1').textContent='1';document.getElementById('bar-1').style.width='2%';
-    document.getElementById('feedbackList').innerHTML=demoFeedback.concat([{name:'Lakshan Mendis',rating:5,comment:'Outstanding sushi! The presentation was beautiful.'},{name:'Pradeep Bandara',rating:4,comment:'Great value for money. Loved the seafood curry.'},{name:'Hashini Gunawardena',rating:3,comment:'Good food but service was a bit slow on Saturday night.'}]).map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${f.name}</span>${starsHTML(f.rating)}</div><div class="feedback-comment">"${f.comment}"</div><div class="feedback-scores"><div class="feedback-score"><div class="feedback-score-label">Food</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+4}</div></div><div class="feedback-score"><div class="feedback-score-label">Service</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+3}</div></div><div class="feedback-score"><div class="feedback-score-label">Ambience</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+3}</div></div><div class="feedback-score"><div class="feedback-score-label">Recommend</div><div class="feedback-score-val">${Math.random()>0.15?'Yes':'No'}</div></div></div><div style="font-size:11px;color:var(--text-subtle);margin-top:8px">${fmt(new Date(Date.now()-Math.floor(Math.random()*7)*864e5))} · via whatsapp</div></div>`).join('');
-    // Demo CRM
-    document.getElementById('crm-total').textContent='3';document.getElementById('crm-sent').textContent='86';document.getElementById('crm-vip').textContent='12';document.getElementById('crm-lapsed').textContent='11';
-    document.getElementById('crmCampaigns').innerHTML=[{name:'Weekend Special Promo',seg:'all',sent:42,msg:'Hi {{name}}! This weekend enjoy 15% off our Chef\'s Special menu...'},{name:'VIP Loyalty Thank You',seg:'vip',sent:12,msg:'Dear {{name}}, as a valued {{tier}} member with {{points}} points...'},{name:'Win-Back Campaign',seg:'lapsed',sent:32,msg:'Hey {{name}}, we miss you! It\'s been a while since your last visit...'}].map(c=>`<div style="padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:13px">${c.name}</div><div class="muted" style="font-size:12px;margin-top:4px">${segChip(c.seg)} · Sent: ${c.sent} · ${fmtDate(new Date(Date.now()-Math.floor(Math.random()*14)*864e5))}</div><div class="muted" style="font-size:12px;margin-top:6px">${c.msg.slice(0,100)}...</div></div>`).join('');
+    // Inbox filter counts
+    document.getElementById('fpAll').textContent='(0)';
+    document.getElementById('fpBooking').textContent='(0)';
+    document.getElementById('fpInquiry').textContent='(0)';
+    document.getElementById('fpComplaint').textContent='(0)';
+    document.getElementById('fpFeedback').textContent='(0)';
+    document.getElementById('inboxTotalLabel').textContent='0 threads';
+    // Daily log stats
+    document.getElementById('dl-bookings').textContent='0';document.getElementById('dl-confirmed').textContent='0';document.getElementById('dl-pending').textContent='0';document.getElementById('dl-guests').textContent='0';
+    // Loyalty stats
+    document.getElementById('ly-bronze').textContent='0';document.getElementById('ly-silver').textContent='0';document.getElementById('ly-gold').textContent='0';document.getElementById('ly-plat').textContent='0';
+    // Feedback stats
+    document.getElementById('fb-avg').textContent='—';document.getElementById('fb-food').textContent='—';document.getElementById('fb-service').textContent='—';document.getElementById('fb-ambience').textContent='—';
+    document.getElementById('fb-avg-stars').innerHTML='';document.getElementById('fb-total-label').textContent='0 responses';
+    document.getElementById('fb-recommend').textContent='—';
+    document.getElementById('cnt-5').textContent='0';document.getElementById('bar-5').style.width='0%';
+    document.getElementById('cnt-4').textContent='0';document.getElementById('bar-4').style.width='0%';
+    document.getElementById('cnt-3').textContent='0';document.getElementById('bar-3').style.width='0%';
+    document.getElementById('cnt-2').textContent='0';document.getElementById('bar-2').style.width='0%';
+    document.getElementById('cnt-1').textContent='0';document.getElementById('bar-1').style.width='0%';
+    // CRM stats
+    document.getElementById('crm-total').textContent='0';document.getElementById('crm-sent').textContent='0';document.getElementById('crm-vip').textContent='0';document.getElementById('crm-lapsed').textContent='0';
     document.getElementById('lastUpdated').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   }
 }
@@ -1461,7 +1565,7 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
         var phoneEl = document.getElementById('detailPhone');
         var box = document.getElementById('replyBox');
         if(phoneEl && phoneEl.textContent && phoneEl.textContent.trim().length > 3){
-          _currentReplyPhone = phoneEl.textContent.trim();
+          _currentReplyPhone = (phoneEl.textContent.trim().match(/^[\d\s+()-]+/) || [''])[0].trim();
           // Try to find customer ID from current data
           if(allCustomers && allCustomers.length){
             var found = allCustomers.find(function(c){ return c.phone === _currentReplyPhone; });
@@ -1533,10 +1637,12 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
           msgEl.className = 'bubble-row out';
           var now = new Date();
           var timeStr = now.getDate() + ' ' + now.toLocaleString('default',{month:'short'}) + ', ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-          msgEl.innerHTML = '<div class="bubble out">' + message.replace(/</g,'&lt;') + '</div><div class="bubble-meta">' + timeStr + ' · manual_reply</div>';
+          msgEl.innerHTML = '<div class="bubble out">' + escapeHTML(message) + '</div><div class="bubble-meta">' + timeStr + ' · manual_reply</div>';
           chatDiv.appendChild(msgEl);
           chatDiv.scrollTop = chatDiv.scrollHeight;
-          setTimeout(function(){ status.style.display = 'none'; }, 2000);
+          status.style.transition = 'opacity 0.5s ease';
+          setTimeout(function(){ status.style.opacity = '0'; }, 1500);
+          setTimeout(function(){ status.style.display = 'none'; status.style.opacity = '1'; }, 2000);
         } else {
           status.style.color = '#f44336';
           status.textContent = 'Error: ' + (data.error || 'Failed to send');
@@ -1557,27 +1663,11 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
       var modal = document.createElement('div');
       modal.id='newMsgModal';
       modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
-modal.innerHTML='<div style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:24px;width:400px;max-width:90vw"><h3 style="margin:0 0 16px;color:#e0e0e0;font-size:16px">Send New WhatsApp Message</h3><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Phone Number (with country code)</label><input id="newMsgPhone" placeholder="+94 71 886 4824" style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;margin-bottom:12px;box-sizing:border-box"><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Message</label><textarea id="newMsgText" rows="3" placeholder="Type your message..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;resize:vertical;margin-bottom:12px;box-sizing:border-box"></textarea><div id="newMsgStatus" style="font-size:12px;margin-bottom:8px;display:none"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button onclick="document.getElementById(\'newMsgModal\').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid #3a3a3a;background:transparent;color:#999;cursor:pointer">Cancel</button><button onclick="sendNewMessage()" style="padding:8px 16px;border-radius:8px;border:none;background:#84cc16;color:#0c0a09;font-weight:600;cursor:pointer">Send</button></div></div>';
+      modal.innerHTML='<div style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:24px;width:400px;max-width:90vw"><h3 style="margin:0 0 16px;color:#e0e0e0;font-size:16px">Send New WhatsApp Message</h3><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Phone Number (with country code)</label><input id="newMsgPhone" placeholder="+94 71 886 4824" style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;margin-bottom:12px;box-sizing:border-box"><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Message</label><textarea id="newMsgText" rows="3" placeholder="Type your message..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;resize:vertical;margin-bottom:12px;box-sizing:border-box"></textarea><div id="newMsgStatus" style="font-size:12px;margin-bottom:8px;display:none"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button onclick="document.getElementById(\'newMsgModal\').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid #3a3a3a;background:transparent;color:#999;cursor:pointer">Cancel</button><button onclick="sendNewMessage()" style="padding:8px 16px;border-radius:8px;border:none;background:#84cc16;color:#0c0a09;font-weight:600;cursor:pointer">Send</button></div></div>';
       document.body.appendChild(modal);
       modal.addEventListener('click',function(e){if(e.target===modal)modal.remove();});
       document.getElementById('newMsgPhone').focus();
     }
     async function sendNewMessage(){
       var phone=document.getElementById('newMsgPhone').value.trim().replace(/\s/g,'');
-      var msg=document.getElementById('newMsgText').value.trim();
-      var status=document.getElementById('newMsgStatus');
-      if(!phone||!msg){status.style.display='block';status.style.color='#f44336';status.textContent='Please fill in both fields';return;}
-      if(!phone.startsWith('+'))phone='+94'+phone.replace(/^0/,'');
-      status.style.display='block';status.style.color='#888';status.textContent='Sending...';
-      try{
-        var resp=await fetch(API_BASE + '/api/send',{method:'POST',headers:dashHeaders(),body:JSON.stringify({to:phone,message:msg})});
-        var data=await resp.json();
-        if(resp.ok){status.style.color='#4caf50';status.textContent='Sent! Message delivered.';setTimeout(function(){document.getElementById('newMsgModal')?.remove();loadInbox();},1500);}
-        else{status.style.color='#f44336';status.textContent='Error: '+(data.error||JSON.stringify(data.details||''));}
-      }catch(e){status.style.color='#f44336';status.textContent='Network error: '+e.message;}
-    }
-
-} // end initApp()
-</script>
-</body>
-</html>
+  

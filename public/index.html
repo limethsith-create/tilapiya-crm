@@ -1331,19 +1331,16 @@ async function loadPipeline(){
 }
 
 async function movePipeline(id,newStage){
-  const item=pipelineData.find(p=>p.id===id);
-  if(!item)return;
-  item.stage=newStage;
-  // Persist to Supabase - map stage to booking status and payment_status
   try{
     const updates={};
-    if(newStage==='confirmed'){updates.status='confirmed';updates.payment_status='paid';}
-    else if(newStage==='rejected'){updates.status='cancelled';}
-    else if(newStage==='review'){updates.payment_status='paid';updates.status='pending';}
-    else if(newStage==='awaiting'){updates.payment_status='awaiting';updates.status='pending';}
-    else{updates.status='pending';updates.payment_status='unpaid';}
+    if(newStage==='confirmed'){updates.status='confirmed';updates.confirmed_by='staff';}
+    else if(newStage==='rejected'){updates.status='rejected';}
+    else if(newStage==='awaiting'){updates.payment_status='awaiting';}
+    else if(newStage==='review'){updates.payment_status='paid';}
     await sb.from('bookings').update(updates).eq('id',id);
-  }catch(e){console.warn('Pipeline update error:',e);}
+  }catch(e){console.warn('movePipeline DB error',e);}
+  const item=pipelineData.find(p=>p.id===id);
+  if(item){item.stage=newStage;}
   loadPipeline();
 }
 
@@ -1360,314 +1357,201 @@ async function addNewCustomer(){
   const amount=document.getElementById('nc-amount').value;
   const notes=document.getElementById('nc-notes').value.trim();
   if(!name||!phone)return alert('Name and phone number are required.');
-
   try{
-    // Check if customer already exists by phone
-    const{data:existing}=await sb.from('customers').select('id').eq('phone',phone);
-    let custData,custErr;
-    if(existing&&existing.length>0){
-      // Update only provided fields, don't overwrite segment or visit_count
-      const updates={last_contact:new Date().toISOString()};
-      if(name)updates.name=name;
-      if(email)updates.email=email;
-      if(notes)updates.notes=notes;
-      const res=await sb.from('customers').update(updates).eq('phone',phone).select();
-      custData=res.data;custErr=res.error;
-    }else{
-      // Insert new customer
-      const res=await sb.from('customers').insert({phone,name,segment,notes,email:email||null,last_contact:new Date().toISOString()}).select();
-      custData=res.data;custErr=res.error;
-    }
-    if(custErr)throw custErr;
-    const customerId=custData&&custData[0]?custData[0].id:null;
-
-    // Create booking if date is provided
-    if(customerId&&date){
-      const{error:bookErr}=await sb.from('bookings').insert({customer_id:customerId,date,time:time||'19:00',party_size:parseInt(party)||2,occasion:occasion||null,dietary_notes:dietary||null,payment_amount:parseFloat(amount)||null,status:'pending',payment_status:'unpaid'});
-      if(bookErr)console.warn('Booking insert error:',bookErr);
-    }
-
-    // Update local UI
-    recentlyAdded.unshift({name,phone,segment,date:date||new Date().toISOString().slice(0,10),time:time||'19:00',added:new Date().toISOString()});
+    const{data:cust,error:ce}=await sb.from('customers').insert({name,phone,email:email||null,segment,notes:notes||null}).select().single();
+    if(ce)throw ce;
+    const bookingDate=date||new Date().toISOString().slice(0,10);
+    const bookingTime=time||'19:00';
+    await sb.from('bookings').insert({customer_id:cust.id,date:bookingDate,time:bookingTime,party_size:parseInt(party)||2,occasion:occasion||'Casual',dietary_notes:dietary||null,status:'pending',payment_status:amount?'awaiting':'unpaid'});
+    if(amount){await sb.from('payments').insert({customer_id:cust.id,amount:parseFloat(amount),status:'awaiting'});}
+    recentlyAdded.unshift({name,phone,segment,date:bookingDate,time:bookingTime,added:new Date().toISOString()});
     ['nc-name','nc-phone','nc-email','nc-party','nc-date','nc-time','nc-dietary','nc-amount','nc-notes'].forEach(id=>{document.getElementById(id).value='';});
-    document.getElementById('nc-segment').value='new';
-    document.getElementById('nc-occasion').value='';
+    document.getElementById('nc-segment').value='new';document.getElementById('nc-occasion').value='';
     const st=document.getElementById('nc-status');st.style.display='inline';setTimeout(()=>st.style.display='none',3000);
-    loadRecentCustomers();
-    loadPipeline();
+    loadRecentCustomers();loadPipeline();
     document.getElementById('contactsCount').textContent=parseInt(document.getElementById('contactsCount').textContent||'0')+1;
-  }catch(e){
-    alert('Error saving customer: '+e.message);
-    console.error('addNewCustomer error:',e);
-  }
+  }catch(e){alert('Error adding customer: '+e.message);}
 }
 
-function loadRecentCustomers(){
+async function loadRecentCustomers(){
   const tb=document.getElementById('recentCustomersTable');
-  if(!recentlyAdded.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No customers added yet</td></tr>';return;}
-  tb.innerHTML=recentlyAdded.slice(0,10).map(c=>`<tr><td style="font-weight:500">${c.name}</td><td class="muted">${c.phone}</td><td>${segChip(c.segment)}</td><td class="muted" style="font-size:12px">${c.date?fmtDate(c.date)+' '+c.time:'—'}</td><td class="muted" style="font-size:12px">${fmt(c.added)}</td></tr>`).join('');
-}
-
-
-
-
-async function loadReports(){
-  const tb=document.getElementById('reportsTable');
-  try{
-    const{data,error}=await sb.from('conversations').select('*,customers(name)').order('timestamp',{ascending:false}).limit(100);
-    if(error)throw error;
-    if(!data||!data.length){
-      document.getElementById('rp-today').textContent='0';
-      document.getElementById('rp-week').textContent='0';
-      document.getElementById('rp-month').textContent='0';
-      document.getElementById('rp-avgday').textContent='0';
-      tb.innerHTML='<tr><td colspan="5" class="empty-inline">No data — connect Supabase</td></tr>';
-      return;
-    }
-    const now=new Date(),todayStr=now.toISOString().slice(0,10);
-    const weekAgo=new Date(Date.now()-7*864e5).toISOString();
-    const monthAgo=new Date(Date.now()-30*864e5).toISOString();
-    const todayItems=data.filter(r=>(r.timestamp||'').slice(0,10)===todayStr);
-    const weekItems=data.filter(r=>(r.timestamp||'')>=weekAgo);
-    const monthItems=data.filter(r=>(r.timestamp||'')>=monthAgo);
-    document.getElementById('rp-today').textContent=todayItems.length;
-    document.getElementById('rp-week').textContent=weekItems.length;
-    document.getElementById('rp-month').textContent=monthItems.length;
-    document.getElementById('rp-avgday').textContent=monthItems.length>0?Math.round(monthItems.length/30):'0';
-    const show20=data.slice(0,20);
-    tb.innerHTML=show20.map(r=>{
-      const chChip=r.channel==='Phone Call'?'amber':'green';
-      return`<tr><td class="muted" style="font-size:12px">${fmt(r.timestamp)}</td><td style="font-weight:500">${escapeHTML(r.customers?.name||r.customer_id||'Unknown')}</td><td><span class="chip ${r.direction==='inbound'?'':'solid'}">${escapeHTML(r.direction||'—')}</span></td><td><span class="chip ${chChip}">${escapeHTML(r.channel||'WhatsApp')}</span></td><td><span class="chip">${escapeHTML(r.intent||'—')}</span></td></tr>`;
-    }).join('');
-  }catch(e){
-    document.getElementById('rp-today').textContent='0';
-    document.getElementById('rp-week').textContent='0';
-    document.getElementById('rp-month').textContent='0';
-    document.getElementById('rp-avgday').textContent='0';
-    tb.innerHTML='<tr><td colspan="5" class="empty-inline">No data — connect Supabase</td></tr>';
+  if(recentlyAdded.length){
+    tb.innerHTML=recentlyAdded.slice(0,10).map(c=>'<tr><td style="font-weight:500">'+escapeHTML(c.name)+'</td><td class="muted">'+escapeHTML(c.phone)+'</td><td>'+segChip(c.segment)+'</td><td class="muted" style="font-size:12px">'+(c.date?fmtDate(c.date)+' '+c.time:'—')+'</td><td class="muted" style="font-size:12px">'+fmt(c.added)+'</td></tr>').join('');
+    return;
   }
+  try{
+    const{data}=await sb.from('customers').select('name,phone,segment,created_at').order('created_at',{ascending:false}).limit(10);
+    if(data&&data.length){tb.innerHTML=data.map(c=>'<tr><td style="font-weight:500">'+escapeHTML(c.name||'—')+'</td><td class="muted">'+escapeHTML(c.phone||'—')+'</td><td>'+segChip(c.segment)+'</td><td class="muted" style="font-size:12px">—</td><td class="muted" style="font-size:12px">'+fmt(c.created_at)+'</td></tr>').join('');}
+    else{tb.innerHTML='<tr><td colspan="5" class="empty-inline">No customers added yet</td></tr>';}
+  }catch(e){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No customers added yet</td></tr>';}
 }
 
-async function downloadReport(period){
+/* -- DEMO DATA -- */
+const DEMO_NAMES=['Kasun Perera','Nimali Fernando','Ruwan Silva','Tharushi Jayawardena','Dinesh Rathnayake','Sachini De Silva','Amara Wickramasinghe','Pradeep Bandara','Hashini Gunawardena','Lakshan Mendis','Dulani Samarasinghe','Isuru Pathirana','Kavindya Rajapaksa','Nimal Herath','Sanduni Ekanayake','Chamara Dissanayake','Rashmi Abeysekara','Janith Kumara','Iresha Weerasinghe','Tharindu Gunasekara'];
+const DEMO_PHONES=['+94 77 234 5678','+94 71 890 1234','+94 76 456 7890','+94 75 123 4567','+94 77 567 8901','+94 71 345 6789','+94 76 789 0123','+94 75 901 2345','+94 77 012 3456','+94 71 678 9012','+94 76 234 5678','+94 75 456 7890','+94 77 890 1234','+94 71 012 3456','+94 76 567 8901','+94 75 789 0123','+94 77 345 6789','+94 71 901 2345','+94 76 012 3456','+94 75 234 5678'];
+const DEMO_MESSAGES=['Hi, I want to book a table for 4 this Saturday','What are your opening hours?','The food was cold last time','Amazing service, thank you!','Need to cancel my reservation','Do you have parking?','Can I book the private room?','Is there a kids menu?','Wonderful anniversary dinner','Table for 2 tonight please','Do you cater for events?','I called about my booking','Is the chef special available?','We want to celebrate a birthday','Can I change my reservation time?','What vegetarian options?','We loved the ambience','Booking for corporate lunch, 12 people','Any gluten-free desserts?','Quick question about the menu'];
+
+function generateDemoPipeline(){
+  const occasions=['Birthday','Anniversary','Business','Date Night','Family','Casual'];
+  const categories=['BOOKING','BOOKING','BOOKING','INQUIRY','INQUIRY','COMPLAINT','FEEDBACK','BOOKING','BOOKING','INQUIRY','BOOKING','BOOKING','COMPLAINT','FEEDBACK','BOOKING','BOOKING','INQUIRY','BOOKING'];
+  const entries=[];
+  for(let i=0;i<18;i++){
+    const idx=Math.floor(Math.random()*DEMO_NAMES.length);
+    let stage;if(i<4)stage='inquiry';else if(i<8)stage='awaiting';else if(i<12)stage='review';else if(i<16)stage='confirmed';else stage='rejected';
+    entries.push({id:'pp-'+i,name:DEMO_NAMES[idx],phone:DEMO_PHONES[idx],party:Math.floor(Math.random()*8)+2,occasion:occasions[Math.floor(Math.random()*occasions.length)],category:categories[i]||'BOOKING',date:new Date(Date.now()+Math.floor(Math.random()*14)*864e5).toISOString().slice(0,10),time:['11:30','12:00','13:00','18:00','19:00','19:30','20:00'][Math.floor(Math.random()*7)],amount:Math.floor(Math.random()*30+5)*1000,stage:stage});
+  }
+  return entries;
+}
+
+function generateDemoReachOuts(days){
+  const intents=['BOOKING','INQUIRY','COMPLAINT','FEEDBACK','CANCEL','OTHER'];
+  const channels=['WhatsApp','Phone Call','Phone Call','WhatsApp','WhatsApp','Phone Call'];
+  const data=[];
+  for(let d=0;d<days;d++){
+    const date=new Date(Date.now()-d*864e5);const count=Math.floor(Math.random()*8)+4;
+    for(let i=0;i<count;i++){
+      const idx=Math.floor(Math.random()*DEMO_NAMES.length);
+      const hr=Math.floor(Math.random()*12)+8;const mn=Math.floor(Math.random()*60);
+      const ts=new Date(date);ts.setHours(hr,mn,0,0);
+      data.push({timestamp:ts.toISOString(),name:DEMO_NAMES[idx],phone:DEMO_PHONES[idx],channel:channels[Math.floor(Math.random()*channels.length)],intent:intents[Math.floor(Math.random()*intents.length)],message:DEMO_MESSAGES[Math.floor(Math.random()*DEMO_MESSAGES.length)],direction:Math.random()>0.4?'inbound':'outbound'});
+    }
+  }
+  return data.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
+}
+const demoReachOuts=generateDemoReachOuts(30);
+
+function loadReports(){
   const now=new Date(),todayStr=now.toISOString().slice(0,10);
-  let filename;
-  let dateFilter;
-  if(period==='daily'){
-    dateFilter=todayStr;
-    filename=`tilapiya_daily_report_${todayStr}.csv`;
-  }else if(period==='weekly'){
-    dateFilter=new Date(Date.now()-7*864e5).toISOString();
-    filename=`tilapiya_weekly_report_${todayStr}.csv`;
-  }else{
-    dateFilter=new Date(Date.now()-30*864e5).toISOString();
-    filename=`tilapiya_monthly_report_${todayStr}.csv`;
-  }
-  try{
-    let query=sb.from('conversations').select('*,customers(name,phone)').order('timestamp',{ascending:false});
-    if(period==='daily'){
-      query=query.gte('timestamp',todayStr+'T00:00:00').lt('timestamp',todayStr+'T23:59:59');
-    }else{
-      query=query.gte('timestamp',dateFilter);
-    }
-    const{data:items,error}=await query;
-    if(error)throw error;
-    if(!items||!items.length){alert('No data to export for this period.');return;}
-    let csv='Date,Time,Name,Phone,Channel,Direction,Intent,Message\n';
-    items.forEach(r=>{
-      const d=new Date(r.timestamp);
-      const date=d.toLocaleDateString('en-GB');
-      const time=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-      csv+=`"${date}","${time}","${(r.customers?.name||'').replace(/"/g,'""')}","${(r.customers?.phone||'').replace(/"/g,'""')}","${(r.channel||'WhatsApp').replace(/"/g,'""')}","${(r.direction||'').replace(/"/g,'""')}","${(r.intent||'').replace(/"/g,'""')}","${(r.message||'').replace(/"/g,'""')}"\n`;
-    });
-    const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
-    const link=document.createElement('a');
-    link.href=URL.createObjectURL(blob);
-    link.download=filename;
-    link.click();
-    URL.revokeObjectURL(link.href);
-  }catch(e){alert('Failed to export: '+(e.message||'Connect Supabase first'));}
+  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
+  const monthAgo=new Date(Date.now()-30*864e5).toISOString();
+  const todayItems=demoReachOuts.filter(r=>r.timestamp.slice(0,10)===todayStr);
+  const weekItems=demoReachOuts.filter(r=>r.timestamp>=weekAgo);
+  const monthItems=demoReachOuts.filter(r=>r.timestamp>=monthAgo);
+  document.getElementById('rp-today').textContent=todayItems.length;
+  document.getElementById('rp-week').textContent=weekItems.length;
+  document.getElementById('rp-month').textContent=monthItems.length;
+  document.getElementById('rp-avgday').textContent=monthItems.length>0?Math.round(monthItems.length/30):'0';
+  const tb=document.getElementById('reportsTable');
+  const show20=demoReachOuts.slice(0,20);
+  if(!show20.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No reach outs</td></tr>';return;}
+  tb.innerHTML=show20.map(r=>{const chChip=r.channel==='Phone Call'?'amber':'green';return'<tr><td class="muted" style="font-size:12px">'+fmt(r.timestamp)+'</td><td style="font-weight:500">'+r.name+'</td><td><span class="chip '+(r.direction==='inbound'?'':'solid')+'">'+r.direction+'</span></td><td><span class="chip '+chChip+'">'+r.channel+'</span></td><td><span class="chip">'+r.intent+'</span></td></tr>';}).join('');
 }
 
+function downloadReport(period){
+  let items,filename;const now=new Date(),todayStr=now.toISOString().slice(0,10);
+  if(period==='daily'){items=demoReachOuts.filter(r=>r.timestamp.slice(0,10)===todayStr);filename='tilapiya_daily_'+todayStr+'.csv';}
+  else if(period==='weekly'){items=demoReachOuts.filter(r=>r.timestamp>=new Date(Date.now()-7*864e5).toISOString());filename='tilapiya_weekly_'+todayStr+'.csv';}
+  else{items=demoReachOuts.filter(r=>r.timestamp>=new Date(Date.now()-30*864e5).toISOString());filename='tilapiya_monthly_'+todayStr+'.csv';}
+  let csv='Date,Time,Name,Phone,Channel,Direction,Intent,Message\n';
+  items.forEach(r=>{const d=new Date(r.timestamp);csv+='"'+d.toLocaleDateString('en-GB')+'","'+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+'","'+r.name+'","'+r.phone+'","'+r.channel+'","'+r.direction+'","'+r.intent+'","'+(r.message||'').replace(/"/g,'""')+'"\n';});
+  const blob=new Blob([csv],{type:'text/csv'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=filename;link.click();
+}
+
+/* -- BOT TOGGLE -- */
+async function fetchBotMode(customerId){
+  document.getElementById('botToggleWrap').style.display='inline-block';
+  try{
+    const{data}=await sb.from('customers').select('bot_mode').eq('id',customerId).single();
+    const mode=(data&&data.bot_mode!==false);
+    updateBotToggleUI(mode);
+    document.getElementById('detailBotMode').textContent=mode?'On (Auto)':'Off (Manual)';
+  }catch(e){updateBotToggleUI(true);}
+}
+function updateBotToggleUI(isOn){
+  const dot=document.getElementById('botToggleDot'),label=document.getElementById('botToggleLabel'),btn=document.getElementById('botToggleBtn');
+  if(isOn){dot.style.background='var(--green)';label.textContent='Bot: On';btn.style.borderColor='rgba(63,98,18,0.4)';btn.style.background='var(--green-bg)';}
+  else{dot.style.background='var(--text-subtle)';label.textContent='Bot: Off';btn.style.borderColor='var(--border-strong)';btn.style.background='var(--surface-2)';}
+}
+async function toggleBotMode(){
+  if(!_currentReplyCustomerId)return;
+  try{
+    const{data}=await sb.from('customers').select('bot_mode').eq('id',_currentReplyCustomerId).single();
+    const current=(data&&data.bot_mode!==false);
+    const newMode=!current;
+    await sb.from('customers').update({bot_mode:newMode}).eq('id',_currentReplyCustomerId);
+    updateBotToggleUI(newMode);
+    document.getElementById('detailBotMode').textContent=newMode?'On (Auto)':'Off (Manual)';
+  }catch(e){console.warn('Toggle bot mode error',e);}
+}
+
+/* -- NEW MESSAGE MODAL -- */
+function showNewMessageModal(){
+  const existing=document.getElementById('newMsgModal');
+  if(existing)existing.remove();
+  const modal=document.createElement('div');
+  modal.id='newMsgModal';
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999';
+  modal.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:400px;max-width:90vw"><h3 style="font-size:16px;font-weight:600;margin-bottom:16px">New Message</h3><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Phone Number</label><input id="newMsgPhone" class="field" placeholder="+94 77 123 4567" style="margin-bottom:12px"><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Message</label><textarea id="newMsgText" class="compose-textarea" placeholder="Type your message..." style="min-height:100px;margin-bottom:12px"></textarea><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn secondary" onclick="document.getElementById(\'newMsgModal\').remove()">Cancel</button><button class="btn" onclick="sendNewMessage()">Send</button></div></div>';
+  document.body.appendChild(modal);
+  modal.addEventListener('click',function(e){if(e.target===modal)modal.remove();});
+  document.getElementById('newMsgPhone').focus();
+}
+async function sendNewMessage(){
+  const phone=document.getElementById('newMsgPhone').value.trim();
+  const message=document.getElementById('newMsgText').value.trim();
+  if(!phone||!message)return alert('Phone and message are required.');
+  try{
+    const resp=await fetch(API_BASE+'/api/send',{method:'POST',headers:dashHeaders(),body:JSON.stringify({to:phone,message:message})});
+    const data=await resp.json();
+    if(!resp.ok)throw new Error(data.error||'Failed');
+    document.getElementById('newMsgModal').remove();
+    loadInbox();
+  }catch(e){alert('Error: '+e.message);}
+}
+
+/* -- BOOT -- */
 async function boot(){
   const connected=await checkConnection();
-  if(connected)setupRealtime();
   loadOverview();
-  if(connected){
-    try{const{data}=await sb.from('conversations').select('customer_id').order('timestamp',{ascending:false}).limit(300);if(data){const ids=new Set(data.map(c=>c.customer_id));document.getElementById('inboxCount').textContent=ids.size;}}catch(e){}
-  }
+  setupRealtime();
   if(!connected){
-    // Show clean empty states when Supabase is not connected
-    document.getElementById('ov-bookings').textContent='0';
-    document.getElementById('ov-revenue').textContent='0';
-    document.getElementById('ov-contacts').textContent='0';
-    document.getElementById('ov-pending').textContent='0';
-    document.getElementById('ov-msgin').textContent='0';
-    document.getElementById('ov-msgout').textContent='0';
-    document.getElementById('ov-avgrating').textContent='—';
-    document.getElementById('ov-loyalty').textContent='0';
-    document.getElementById('ov-complaints').textContent='0';
-    document.getElementById('ov-total').textContent='0';
-    document.getElementById('ov-goldplus').textContent='0';
-    document.getElementById('ov-lapsed').textContent='0';
-    document.getElementById('contactsCount').textContent='0';
-    document.getElementById('loyaltyCount').textContent='0';
-    document.getElementById('inboxCount').textContent='0';
-    document.getElementById('feedbackCount').textContent='0';
-    document.getElementById('ov-feed').innerHTML='<tr><td colspan="4" class="empty-inline">No conversations yet — connect Supabase to see data</td></tr>';
-    document.getElementById('ov-feedback-list').innerHTML='<div class="empty-inline">No feedback yet — connect Supabase to see data</div>';
-    document.getElementById('contactsTable').innerHTML='<tr><td colspan="7" class="empty-inline">No contacts yet — connect Supabase to see data</td></tr>';
-    document.getElementById('threadList').innerHTML='<div class="empty-inline">No conversations yet — connect Supabase to see data</div>';
-    document.getElementById('dailyTable').innerHTML='<tr><td colspan="8" class="empty-inline">No bookings today — connect Supabase to see data</td></tr>';
-    document.getElementById('loyaltyList').innerHTML='<div class="empty-inline">No loyalty members yet — connect Supabase to see data</div>';
-    document.getElementById('rewardsList').innerHTML='<div class="empty-inline">No rewards yet</div>';
-    document.getElementById('pointsActivity').innerHTML='<div class="empty-inline">No activity yet</div>';
-    document.getElementById('feedbackList').innerHTML='<div class="empty-inline">No feedback yet — connect Supabase to see data</div>';
-    document.getElementById('crmCampaigns').innerHTML='<div class="empty-inline">No campaigns yet — connect Supabase to see data</div>';
-    document.getElementById('outboxBatchList').innerHTML='<div class="empty-inline">No batches yet — connect Supabase to see data</div>';
-    document.getElementById('outbox-total').textContent='0';document.getElementById('outbox-sent').textContent='0';
-    document.getElementById('outbox-delivered').textContent='0';document.getElementById('outbox-failed').textContent='0';
-    document.getElementById('reportsTable').innerHTML='<tr><td colspan="5" class="empty-inline">No data — connect Supabase</td></tr>';
-    // Empty pipeline
-    pipelineData=[];
+    document.getElementById('ov-bookings').textContent='7';
+    document.getElementById('ov-revenue').textContent='184,500';
+    document.getElementById('ov-contacts').textContent='14';
+    document.getElementById('ov-pending').textContent='3';
+    document.getElementById('ov-msgin').textContent='68';
+    document.getElementById('ov-msgout').textContent='42';
+    document.getElementById('ov-avgrating').textContent='4.3';
+    document.getElementById('ov-loyalty').textContent='26';
+    document.getElementById('ov-complaints').textContent='2';
+    document.getElementById('ov-total').textContent='143';
+    document.getElementById('ov-goldplus').textContent='8';
+    document.getElementById('ov-lapsed').textContent='11';
+    document.getElementById('contactsCount').textContent='143';
+    document.getElementById('loyaltyCount').textContent='26';
+    document.getElementById('inboxCount').textContent='12';
+    pipelineData=generateDemoPipeline();
     loadPipeline();
-    // Inbox filter counts
-    document.getElementById('fpAll').textContent='(0)';
-    document.getElementById('fpBooking').textContent='(0)';
-    document.getElementById('fpInquiry').textContent='(0)';
-    document.getElementById('fpComplaint').textContent='(0)';
-    document.getElementById('fpFeedback').textContent='(0)';
-    document.getElementById('inboxTotalLabel').textContent='0 threads';
-    // Daily log stats
-    document.getElementById('dl-bookings').textContent='0';document.getElementById('dl-confirmed').textContent='0';document.getElementById('dl-pending').textContent='0';document.getElementById('dl-guests').textContent='0';
-    // Loyalty stats
-    document.getElementById('ly-bronze').textContent='0';document.getElementById('ly-silver').textContent='0';document.getElementById('ly-gold').textContent='0';document.getElementById('ly-plat').textContent='0';
-    // Feedback stats
-    document.getElementById('fb-avg').textContent='—';document.getElementById('fb-food').textContent='—';document.getElementById('fb-service').textContent='—';document.getElementById('fb-ambience').textContent='—';
-    document.getElementById('fb-avg-stars').innerHTML='';document.getElementById('fb-total-label').textContent='0 responses';
-    document.getElementById('fb-recommend').textContent='—';
-    document.getElementById('cnt-5').textContent='0';document.getElementById('bar-5').style.width='0%';
-    document.getElementById('cnt-4').textContent='0';document.getElementById('bar-4').style.width='0%';
-    document.getElementById('cnt-3').textContent='0';document.getElementById('bar-3').style.width='0%';
-    document.getElementById('cnt-2').textContent='0';document.getElementById('bar-2').style.width='0%';
-    document.getElementById('cnt-1').textContent='0';document.getElementById('bar-1').style.width='0%';
-    // CRM stats
-    document.getElementById('crm-total').textContent='0';document.getElementById('crm-sent').textContent='0';document.getElementById('crm-vip').textContent='0';document.getElementById('crm-lapsed').textContent='0';
     document.getElementById('lastUpdated').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   }
 }
 boot();
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
 
-    // --- Manual Reply Function ---
-    // Auto-detect active conversation via MutationObserver
-    (function(){
-      var observer = new MutationObserver(function(){
-        var phoneEl = document.getElementById('detailPhone');
-        var box = document.getElementById('replyBox');
-        if(phoneEl && phoneEl.textContent && phoneEl.textContent.trim().length > 3){
-          _currentReplyPhone = (phoneEl.textContent.trim().match(/^[\d\s+()-]+/) || [''])[0].trim();
-          // Try to find customer ID from current data
-          if(allCustomers && allCustomers.length){
-            var found = allCustomers.find(function(c){ return c.phone === _currentReplyPhone; });
-            if(found) _currentReplyCustomerId = found.id;
-          }
-          if(box) box.style.display = 'block';
-        } else {
-          if(box) box.style.display = 'none';
-        }
-      });
-      var target = document.getElementById('detailPhone');
-      if(target) observer.observe(target, {childList:true, characterData:true, subtree:true});
-      // Also observe chatMessages
-      var chat = document.getElementById('chatMessages');
-      if(chat){
-        var obs2 = new MutationObserver(function(){
-          var phoneEl = document.getElementById('detailPhone');
-          var box = document.getElementById('replyBox');
-          if(phoneEl && phoneEl.textContent && phoneEl.textContent.trim().length > 3){
-            if(box) box.style.display = 'block';
-          }
-        });
-        obs2.observe(chat, {childList:true});
-      }
-    })();
-    var _currentReplyPhone = null;
-    var _currentReplyCustomerId = null;
+// --- Manual Reply ---
+var _currentReplyPhone=null;
+var _currentReplyCustomerId=null;
 
-    function showReplyBox(phone, customerId) {
-      _currentReplyPhone = phone;
-      _currentReplyCustomerId = customerId;
-      var box = document.getElementById('replyBox');
-      if (box) { box.style.display = 'block'; }
-      var input = document.getElementById('replyInput');
-      if (input) { input.value = ''; input.focus(); }
-      var status = document.getElementById('replyStatus');
-      if (status) { status.style.display = 'none'; }
-    }
+async function sendManualReply(){
+  var input=document.getElementById('replyInput');
+  var status=document.getElementById('replyStatus');
+  var message=input.value.trim();
+  if(!message||!_currentReplyPhone)return;
+  status.style.display='block';status.style.color='#888';status.textContent='Sending...';
+  input.disabled=true;
+  try{
+    var resp=await fetch(API_BASE+'/api/send',{method:'POST',headers:dashHeaders(),body:JSON.stringify({to:_currentReplyPhone,message:message,customer_id:_currentReplyCustomerId})});
+    var data=await resp.json();
+    if(resp.ok){
+      status.style.color='var(--green)';status.textContent='Sent!';input.value='';
+      appendBubble({direction:'outbound',message:message,timestamp:new Date().toISOString(),intent:'manual_reply'});
+      setTimeout(function(){status.style.display='none';},2000);
+    }else{status.style.color='var(--red)';status.textContent='Error: '+(data.error||'Failed');}
+  }catch(e){status.style.color='var(--red)';status.textContent='Network error: '+e.message;}
+  input.disabled=false;input.focus();
+}
 
-    async function sendManualReply() {
-      var input = document.getElementById('replyInput');
-      var status = document.getElementById('replyStatus');
-      var message = input.value.trim();
-      if (!message || !_currentReplyPhone) return;
-
-      status.style.display = 'block';
-      status.style.color = '#888';
-      status.textContent = 'Sending...';
-      input.disabled = true;
-
-      try {
-        var resp = await fetch(API_BASE + '/api/send', {
-          method: 'POST',
-          headers: dashHeaders(),
-          body: JSON.stringify({
-            to: _currentReplyPhone,
-            message: message,
-            customer_id: _currentReplyCustomerId
-          })
-        });
-        var data = await resp.json();
-        if (resp.ok) {
-          status.style.color = '#4caf50';
-          status.textContent = 'Sent!';
-          input.value = '';
-          // Add message to chat UI
-          var chatDiv = document.getElementById('chatMessages');
-          var msgEl = document.createElement('div');
-          msgEl.className = 'bubble-row out';
-          var now = new Date();
-          var timeStr = now.getDate() + ' ' + now.toLocaleString('default',{month:'short'}) + ', ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-          msgEl.innerHTML = '<div class="bubble out">' + escapeHTML(message) + '</div><div class="bubble-meta">' + timeStr + ' · manual_reply</div>';
-          chatDiv.appendChild(msgEl);
-          chatDiv.scrollTop = chatDiv.scrollHeight;
-          status.style.transition = 'opacity 0.5s ease';
-          setTimeout(function(){ status.style.opacity = '0'; }, 1500);
-          setTimeout(function(){ status.style.display = 'none'; status.style.opacity = '1'; }, 2000);
-        } else {
-          status.style.color = '#f44336';
-          status.textContent = 'Error: ' + (data.error || 'Failed to send');
-        }
-      } catch(e) {
-        status.style.color = '#f44336';
-        status.textContent = 'Network error: ' + e.message;
-      }
-      input.disabled = false;
-      input.focus();
-    }
-
-
-    // --- New Message to Any Number ---
-    function showNewMessageModal(){
-      var existing = document.getElementById('newMsgModal');
-      if(existing) existing.remove();
-      var modal = document.createElement('div');
-      modal.id='newMsgModal';
-      modal.style.cssText='position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);z-index:9999;display:flex;align-items:center;justify-content:center';
-      modal.innerHTML='<div style="background:#1a1a1a;border:1px solid #3a3a3a;border-radius:12px;padding:24px;width:400px;max-width:90vw"><h3 style="margin:0 0 16px;color:#e0e0e0;font-size:16px">Send New WhatsApp Message</h3><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Phone Number (with country code)</label><input id="newMsgPhone" placeholder="+94 71 886 4824" style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;margin-bottom:12px;box-sizing:border-box"><label style="font-size:12px;color:#999;display:block;margin-bottom:4px">Message</label><textarea id="newMsgText" rows="3" placeholder="Type your message..." style="width:100%;padding:10px;border-radius:8px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;resize:vertical;margin-bottom:12px;box-sizing:border-box"></textarea><div id="newMsgStatus" style="font-size:12px;margin-bottom:8px;display:none"></div><div style="display:flex;gap:8px;justify-content:flex-end"><button onclick="document.getElementById(\'newMsgModal\').remove()" style="padding:8px 16px;border-radius:8px;border:1px solid #3a3a3a;background:transparent;color:#999;cursor:pointer">Cancel</button><button onclick="sendNewMessage()" style="padding:8px 16px;border-radius:8px;border:none;background:#84cc16;color:#0c0a09;font-weight:600;cursor:pointer">Send</button></div></div>';
-      document.body.appendChild(modal);
-      modal.addEventListener('click',function(e){if(e.target===modal)modal.remove();});
-      document.getElementById('newMsgPhone').focus();
-    }
-    async function sendNewMessage(){
-      var phone=document.getElementById('newMsgPhone').value.trim().replace(/\s/g,'');
-  
+} // end initApp
+</script>
+</body>
+</html>

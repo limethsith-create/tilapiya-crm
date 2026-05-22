@@ -387,28 +387,28 @@ async function generateAIReply(customerMessage, conversationHistory, customer, i
 
   var customerInfo = 'Customer: ' + (customer.name || 'Unknown');
   customerInfo += ' | Visits: ' + (customer.visit_count || 0);
-  customerInfo += ' | Segment: ' + (customer.segment || 'new');
-  customerInfo += ' | Detected intent: ' + intent;
+  customerInfo += ' | Segment: ' + (customer.segment || 'unknown');
 
+  var systemMsg = RESTAURANT_CONTEXT + '\n\n' + customerInfo;
+
+  // Add booking context if available
   if (bookings && bookings.length > 0) {
-    customerInfo += '\nRecent bookings: ' + bookings.map(function(b) {
-      return b.date + ' ' + (b.time || '') + ' (' + b.status + ', party of ' + (b.party_size || '?') + ')';
-    }).join('; ');
+    systemMsg += '\n\nCustomer bookings:\n';
+    bookings.forEach(function(b) {
+      systemMsg += '- ' + b.date + ' ' + b.time + ' | Party: ' + b.party_size + ' | Status: ' + b.status + '\n';
+    });
   }
 
-  // Add media context if present (image description, voice transcription, etc.)
+  // Add media context if available (image description, voice transcription, etc.)
   if (mediaContext) {
-    customerInfo += '\n\nMEDIA CONTEXT: ' + mediaContext;
+    systemMsg += '\n\nMedia context from customer:\n' + mediaContext;
   }
 
-  var messages = [
-    { role: 'system', content: RESTAURANT_CONTEXT + '\n\n' + customerInfo }
-  ];
+  var messages = [{ role: 'system', content: systemMsg }];
 
+  // Add conversation history
   if (conversationHistory && conversationHistory.length > 0) {
-    for (var i = 0; i < conversationHistory.length; i++) {
-      messages.push(conversationHistory[i]);
-    }
+    messages = messages.concat(conversationHistory);
   }
 
   messages.push({ role: 'user', content: customerMessage });
@@ -429,182 +429,41 @@ async function generateAIReply(customerMessage, conversationHistory, customer, i
     });
 
     if (!response.ok) {
-      var errText = await response.text();
-      console.error('OpenAI API error:', response.status, errText);
+      console.error('OpenAI API error:', response.status, await response.text());
       return null;
     }
 
     var data = await response.json();
     if (data.choices && data.choices[0] && data.choices[0].message) {
-      return data.choices[0].message.content.trim();
+      return data.choices[0].message.content;
     }
+    console.error('OpenAI unexpected response:', JSON.stringify(data));
     return null;
   } catch (err) {
-    console.error('OpenAI request failed:', err.message);
+    console.error('OpenAI error:', err);
     return null;
   }
 }
 
-// --- SEND WHATSAPP REPLY ---
-async function sendWhatsAppMessage(to, message) {
-  if (!WA_TOKEN || !WA_PHONE_ID) {
-    console.error('WhatsApp credentials not configured');
-    return null;
-  }
-
+// --- SEND WHATSAPP MESSAGE ---
+async function sendWhatsAppReply(to, text) {
+  if (!WA_TOKEN || !WA_PHONE_ID) return;
   try {
-    var response = await fetch('https://graph.facebook.com/v22.0/' + WA_PHONE_ID + '/messages', {
+    await fetch('https://graph.facebook.com/v22.0/' + WA_PHONE_ID + '/messages', {
       method: 'POST',
-      headers: {
-        'Authorization': 'Bearer ' + WA_TOKEN,
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Authorization': 'Bearer ' + WA_TOKEN, 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: to,
-        type: 'text',
-        text: { body: message }
+        messaging_product: 'whatsapp', to: to, type: 'text',
+        text: { body: text }
       })
     });
-
-    var data = await response.json();
-    if (!response.ok) {
-      console.error('WhatsApp send error:', data);
-      return null;
-    }
-    return data.messages && data.messages[0] ? data.messages[0].id : null;
-  } catch (err) {
-    console.error('WhatsApp send failed:', err.message);
-    return null;
-  }
-}
-
-// --- HANDLE READ RECEIPTS & DELIVERY STATUS ---
-async function handleStatusUpdate(status) {
-  var waMessageId = status.id;
-  var statusType = status.status;
-  if (!waMessageId || !statusType) return;
-  if (statusType === 'delivered' || statusType === 'read') {
-    await supabaseRequest(
-      'conversations?wa_message_id=eq.' + encodeURIComponent(waMessageId),
-      'PATCH',
-      { delivery_status: statusType }
-    );
-  }
-}
-
-// ============================================================
-// PROCESS MEDIA MESSAGE
-// Downloads media, processes it (vision/whisper), stores metadata
-// Returns: { text, mediaContext, detectedLanguage }
-// ============================================================
-async function processMediaMessage(msg, messageType, customerId, waMessageId) {
-  var result = { text: null, mediaContext: null, detectedLanguage: null };
-
-  // --- IMAGE PROCESSING ---
-  if (messageType === 'image' && msg.image) {
-    var imageId = msg.image.id;
-    var caption = msg.image.caption || '';
-    result.text = '[Image received]' + (caption ? ': ' + caption : '');
-
-    var mediaData = await downloadWhatsAppMedia(imageId);
-    if (mediaData) {
-      var description = await describeImageWithVision(mediaData.buffer, mediaData.mimeType, caption);
-      if (description) {
-        result.mediaContext = 'Customer sent an image. AI description: ' + description;
-        result.text = '[Image: ' + description + ']' + (caption ? ' Caption: ' + caption : '');
-      }
-
-      // Store in media_messages table
-      await saveMediaMessage(customerId, waMessageId, 'image', imageId, {
-        mimeType: mediaData.mimeType,
-        description: description || 'Image could not be analyzed',
-        filename: msg.image.filename || null
-      });
-    } else {
-      result.mediaContext = 'Customer sent an image but it could not be downloaded.';
-      await saveMediaMessage(customerId, waMessageId, 'image', imageId, {
-        mimeType: msg.image.mime_type || null,
-        description: 'Download failed'
-      });
-    }
-
-    return result;
-  }
-
-  // --- VOICE/AUDIO PROCESSING ---
-  if (messageType === 'audio' && (msg.audio || msg.voice)) {
-    var audioObj = msg.voice || msg.audio;
-    var audioId = audioObj.id;
-    result.text = '[Voice message received]';
-
-    var audioData = await downloadWhatsAppMedia(audioId);
-    if (audioData) {
-      var transcription = await transcribeAudioWithWhisper(audioData.buffer, audioData.mimeType);
-      if (transcription) {
-        // Use the transcription as the actual message content
-        result.text = transcription;
-        result.mediaContext = 'Customer sent a voice message. Transcription: ' + transcription;
-      } else {
-        result.mediaContext = 'Customer sent a voice message but transcription failed.';
-      }
-
-      // Store in media_messages table
-      await saveMediaMessage(customerId, waMessageId, 'audio', audioId, {
-        mimeType: audioData.mimeType,
-        transcription: transcription || 'Transcription failed'
-      });
-    } else {
-      result.mediaContext = 'Customer sent a voice message but it could not be downloaded.';
-      await saveMediaMessage(customerId, waMessageId, 'audio', audioId, {
-        mimeType: audioObj.mime_type || null,
-        transcription: 'Download failed'
-      });
-    }
-
-    return result;
-  }
-
-  // --- DOCUMENT HANDLING ---
-  if (messageType === 'document' && msg.document) {
-    var docFilename = msg.document.filename || 'unknown';
-    var docMimeType = msg.document.mime_type || 'application/octet-stream';
-    result.text = '[Document received: ' + docFilename + ']';
-    result.mediaContext = 'Customer sent a document: ' + docFilename + ' (type: ' + docMimeType + ')';
-
-    await saveMediaMessage(customerId, waMessageId, 'document', msg.document.id, {
-      filename: docFilename,
-      mimeType: docMimeType,
-      description: 'Document: ' + docFilename
-    });
-
-    return result;
-  }
-
-  // --- VIDEO HANDLING ---
-  if (messageType === 'video' && msg.video) {
-    var videoCaption = msg.video.caption || '';
-    result.text = '[Video received]' + (videoCaption ? ': ' + videoCaption : '');
-    result.mediaContext = 'Customer sent a video.' + (videoCaption ? ' Caption: ' + videoCaption : '');
-
-    await saveMediaMessage(customerId, waMessageId, 'video', msg.video.id, {
-      mimeType: msg.video.mime_type || null,
-      description: 'Video' + (videoCaption ? ': ' + videoCaption : '')
-    });
-
-    return result;
-  }
-
-  return null; // Not a media message we handle
+  } catch (e) { console.error('WhatsApp reply error:', e); }
 }
 
 // --- MAIN HANDLER ---
 module.exports = async function handler(req, res) {
+  // --- GET: Webhook verification ---
   if (req.method === 'GET') {
-    if (!VERIFY_TOKEN) {
-      console.error('WEBHOOK_VERIFY_TOKEN not set');
-      return res.status(500).send('Server misconfigured');
-    }
     var mode = req.query['hub.mode'];
     var token = req.query['hub.verify_token'];
     var challenge = req.query['hub.challenge'];
@@ -615,10 +474,12 @@ module.exports = async function handler(req, res) {
     return res.status(403).send('Forbidden');
   }
 
+  // --- POST: Incoming WhatsApp messages ---
   if (req.method === 'POST') {
+    // Verify webhook signature
     if (!verifyWebhookSignature(req)) {
       console.error('Invalid webhook signature');
-      return res.status(401).json({ status: 'invalid signature' });
+      return res.status(401).json({ error: 'Invalid signature' });
     }
 
     try {
@@ -628,134 +489,143 @@ module.exports = async function handler(req, res) {
       for (var e = 0; e < body.entry.length; e++) {
         var entry = body.entry[e];
         var changes = entry.changes || [];
+
         for (var c = 0; c < changes.length; c++) {
           var change = changes[c];
           if (change.field !== 'messages') continue;
           var value = change.value || {};
-
-          var statuses = value.statuses || [];
-          for (var s = 0; s < statuses.length; s++) {
-            await handleStatusUpdate(statuses[s]);
-          }
-
-          var messages = value.messages || [];
+          var waMessages = value.messages || [];
           var contacts = value.contacts || [];
 
-          for (var i = 0; i < messages.length; i++) {
-            var msg = messages[i];
+          for (var i = 0; i < waMessages.length; i++) {
+            var msg = waMessages[i];
             var contact = contacts[i] || {};
             var phone = msg.from;
+            var waMessageId = msg.id;
             var name = contact.profile ? contact.profile.name : null;
-            var waMessageId = msg.id || null;
 
-            if (waMessageId && await isMessageProcessed(waMessageId)) {
+            // Deduplication check
+            if (await isMessageProcessed(waMessageId)) {
               console.log('Duplicate message skipped:', waMessageId);
               continue;
             }
 
-            var text;
-            var messageType = msg.type || 'text';
-            var mediaContext = null;
-            var detectedLanguage = null;
-
-            // Upsert customer early so we have customerId for media storage
+            // Upsert customer
             var customer = await upsertCustomer(phone, name);
             if (!customer) continue;
-            var customerId = customer.id || customer;
+            var customerId = customer.id;
 
-            // --- PROCESS MEDIA TYPES ---
-            if (messageType === 'image' || messageType === 'audio' ||
-                messageType === 'document' || messageType === 'video' ||
-                (messageType === 'voice') || (msg.voice)) {
-              // Normalize voice type
-              if (msg.voice) messageType = 'audio';
+            // --- Process message by type ---
+            var messageText = '';
+            var mediaContext = null;
 
-              var mediaResult = await processMediaMessage(msg, messageType, customerId, waMessageId);
-              if (mediaResult) {
-                text = mediaResult.text;
-                mediaContext = mediaResult.mediaContext;
-                detectedLanguage = mediaResult.detectedLanguage;
-              } else {
-                // Fallback text for unhandled media
-                text = '[' + messageType + ' message received]';
-              }
-            }
-            // --- TEXT MESSAGES ---
-            else if (msg.text) {
-              text = msg.text.body;
-              messageType = 'text';
-            }
-            // --- OTHER TYPES (location, contacts, stickers, etc.) ---
-            else if (msg.location) {
-              text = '[Location shared: ' + (msg.location.name || msg.location.latitude + ',' + msg.location.longitude) + ']';
-              messageType = 'location';
-            } else if (msg.contacts) {
-              text = '[Contact card shared]';
-              messageType = 'contact';
-            } else if (msg.sticker) {
-              text = '[Sticker]';
-              messageType = 'sticker';
-            } else {
-              text = '[Unsupported message type: ' + messageType + ']';
-            }
+            if (msg.type === 'text') {
+              messageText = msg.text ? msg.text.body : '';
 
-            var intent = detectIntent(text);
-            await saveMessage(customerId, text, 'inbound', intent, waMessageId, detectedLanguage);
-            console.log('Message saved:', phone, intent, messageType, text.slice(0, 80));
+            } else if (msg.type === 'image') {
+              var imgMediaId = msg.image ? msg.image.id : null;
+              var imgCaption = msg.image ? msg.image.caption : null;
+              messageText = imgCaption || '[Image received]';
 
-            // --- AI CHATBOT REPLY ---
-            // Bot replies to text, image, audio/voice, and document messages
-            var replyableTypes = ['text', 'image', 'audio', 'document', 'video'];
-            var shouldReply = (
-              customer.reply_mode === 'bot' &&
-              !customer.opted_out &&
-              replyableTypes.indexOf(messageType) !== -1 &&
-              OPENAI_API_KEY &&
-              WA_TOKEN &&
-              WA_PHONE_ID
-            );
-
-            if (shouldReply) {
-              try {
-                var historyAndBookings = await Promise.all([
-                  getConversationHistory(customerId, 10),
-                  getCustomerBookings(customerId)
-                ]);
-                var history = historyAndBookings[0];
-                var bookings = historyAndBookings[1];
-
-                var aiReply = await generateAIReply(text, history, customer, intent, bookings, mediaContext);
-
-                if (aiReply) {
-                  // Extract language tag from AI reply
-                  var parsed = extractLanguageFromReply(aiReply);
-                  var cleanReply = parsed.text;
-                  var replyLanguage = parsed.language || detectedLanguage;
-
-                  // Update the inbound message with detected language if we got it from the reply
-                  if (replyLanguage && waMessageId) {
-                    await supabaseRequest(
-                      'conversations?wa_message_id=eq.' + encodeURIComponent(waMessageId),
-                      'PATCH',
-                      { detected_language: replyLanguage }
-                    );
+              if (imgMediaId) {
+                var imgData = await downloadWhatsAppMedia(imgMediaId);
+                if (imgData) {
+                  var description = await describeImageWithVision(imgData.buffer, imgData.mimeType, imgCaption);
+                  if (description) {
+                    mediaContext = 'Customer sent an image. Description: ' + description;
+                    await saveMediaMessage(customerId, waMessageId, 'image', imgMediaId, {
+                      mimeType: imgData.mimeType, description: description
+                    });
                   }
-
-                  var replyWaId = await sendWhatsAppMessage(phone, cleanReply);
-                  await saveMessage(customerId, cleanReply, 'outbound', 'bot_reply', replyWaId, replyLanguage);
-                  console.log('Bot replied to:', phone, '(lang:' + (replyLanguage || '?') + ')', cleanReply.slice(0, 60));
-                } else {
-                  console.log('No AI reply generated for:', phone);
                 }
-              } catch (botErr) {
-                console.error('Bot reply error (non-fatal):', botErr.message);
               }
+
+            } else if (msg.type === 'audio') {
+              var audioMediaId = msg.audio ? msg.audio.id : null;
+              var audioMime = msg.audio ? msg.audio.mime_type : null;
+              messageText = '[Voice message]';
+
+              if (audioMediaId) {
+                var audioData = await downloadWhatsAppMedia(audioMediaId);
+                if (audioData) {
+                  var transcription = await transcribeAudioWithWhisper(audioData.buffer, audioMime || audioData.mimeType);
+                  if (transcription) {
+                    messageText = transcription;
+                    mediaContext = 'Customer sent a voice message. Transcription: ' + transcription;
+                    await saveMediaMessage(customerId, waMessageId, 'audio', audioMediaId, {
+                      mimeType: audioMime, transcription: transcription
+                    });
+                  }
+                }
+              }
+
+            } else if (msg.type === 'document') {
+              var docName = msg.document ? msg.document.filename : 'document';
+              messageText = '[Document: ' + docName + ']';
+              mediaContext = 'Customer sent a document named: ' + docName;
+              if (msg.document && msg.document.id) {
+                await saveMediaMessage(customerId, waMessageId, 'document', msg.document.id, {
+                  filename: docName, mimeType: msg.document.mime_type
+                });
+              }
+
+            } else if (msg.type === 'video') {
+              messageText = msg.video && msg.video.caption ? msg.video.caption : '[Video received]';
+              mediaContext = 'Customer sent a video.';
+              if (msg.video && msg.video.id) {
+                await saveMediaMessage(customerId, waMessageId, 'video', msg.video.id, {
+                  mimeType: msg.video.mime_type
+                });
+              }
+
+            } else if (msg.type === 'sticker') {
+              messageText = '[Sticker]';
+
+            } else if (msg.type === 'location') {
+              var lat = msg.location ? msg.location.latitude : '';
+              var lon = msg.location ? msg.location.longitude : '';
+              messageText = '[Location: ' + lat + ', ' + lon + ']';
+
+            } else if (msg.type === 'contacts') {
+              messageText = '[Contact shared]';
+
             } else {
-              console.log('Bot reply skipped:', phone,
-                'reply_mode=' + (customer.reply_mode || 'unknown'),
-                'opted_out=' + !!customer.opted_out,
-                'type=' + messageType
-              );
+              messageText = '[' + (msg.type || 'unknown') + ' message]';
+            }
+
+            // Detect intent
+            var intent = detectIntent(messageText);
+
+            // Save inbound message
+            await saveMessage(customerId, messageText, 'inbound', intent, waMessageId);
+
+            // Check reply mode
+            var replyMode = customer.reply_mode || 'bot';
+            if (customer.opted_out) {
+              console.log('Customer ' + phone + ' opted out, skipping bot reply');
+              continue;
+            }
+            if (replyMode === 'manual') {
+              console.log('Customer ' + phone + ' is in manual mode, skipping bot reply');
+              continue;
+            }
+
+            // Generate AI reply
+            var history = await getConversationHistory(customerId, 10);
+            var bookings = await getCustomerBookings(customerId);
+            var aiReply = await generateAIReply(messageText, history, customer, intent, bookings, mediaContext);
+
+            if (aiReply) {
+              var parsed = extractLanguageFromReply(aiReply);
+              var cleanReply = parsed.text;
+              var detectedLang = parsed.language;
+
+              await sendWhatsAppReply(phone, cleanReply);
+              await saveMessage(customerId, cleanReply, 'outbound', intent, null, detectedLang);
+            } else {
+              var fallback = 'Thank you for your message! Our team will get back to you shortly.\n\nCall us: +94 77 949 4394';
+              await sendWhatsAppReply(phone, fallback);
+              await saveMessage(customerId, fallback, 'outbound', intent);
             }
           }
         }
@@ -763,7 +633,7 @@ module.exports = async function handler(req, res) {
       return res.status(200).json({ status: 'ok' });
     } catch (err) {
       console.error('Webhook error:', err);
-      return res.status(200).json({ status: 'error' });
+      return res.status(200).json({ status: 'error', message: err.message });
     }
   }
 

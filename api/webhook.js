@@ -447,9 +447,13 @@ async function generateAIReply(customerMessage, conversationHistory, customer, i
 
 // --- SEND WHATSAPP MESSAGE ---
 async function sendWhatsAppReply(to, text) {
-  if (!WA_TOKEN || !WA_PHONE_ID) return;
+  if (!WA_TOKEN || !WA_PHONE_ID) {
+    console.error('WhatsApp send skipped: missing WA_TOKEN or WA_PHONE_ID');
+    return;
+  }
   try {
-    await fetch('https://graph.facebook.com/v22.0/' + WA_PHONE_ID + '/messages', {
+    console.log('Sending WhatsApp reply to:', to, '| Phone ID:', WA_PHONE_ID);
+    var response = await fetch('https://graph.facebook.com/v22.0/' + WA_PHONE_ID + '/messages', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + WA_TOKEN, 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -457,6 +461,12 @@ async function sendWhatsAppReply(to, text) {
         text: { body: text }
       })
     });
+    var responseBody = await response.text();
+    if (!response.ok) {
+      console.error('WhatsApp API error:', response.status, responseBody);
+    } else {
+      console.log('WhatsApp reply sent successfully:', responseBody);
+    }
   } catch (e) { console.error('WhatsApp reply error:', e); }
 }
 

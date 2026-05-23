@@ -1,6 +1,6 @@
 // Vercel Serverless Function - WhatsApp Webhook for Tilapiya CRM
-// AI CHATBOT: Saves inbound messages + auto-replies using OpenAI GPT-4o
-// Supports: Text, Image (GPT-4o Vision), Voice (Whisper), Documents, Video
+// AI CHATBOT: Saves inbound messages + auto-replies using Groq (Llama 3.3 70B)
+// Supports: Text, Image (Llama Vision), Voice (Whisper via Groq), Documents, Video
 // Multi-language: Detects and responds in Sinhala, Tamil, or English
 // Respects per-customer reply_mode ('bot' = auto-reply, 'manual' = no bot)
 // SECURITY: Verifies Meta webhook signature when META_APP_SECRET is set.
@@ -13,7 +13,7 @@ const VERIFY_TOKEN = process.env.WEBHOOK_VERIFY_TOKEN;
 const META_APP_SECRET = process.env.META_APP_SECRET;
 const WA_TOKEN = process.env.META_WHATSAPP_TOKEN;
 const WA_PHONE_ID = process.env.META_PHONE_NUMBER_ID;
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 // --- RESTAURANT KNOWLEDGE BASE ---
 const RESTAURANT_CONTEXT = [
@@ -236,7 +236,7 @@ async function downloadWhatsAppMedia(mediaId) {
 // Sends image to OpenAI for description / OCR
 // ============================================================
 async function describeImageWithVision(imageBuffer, mimeType, caption) {
-  if (!OPENAI_API_KEY || !imageBuffer) return null;
+  if (!GROQ_API_KEY || !imageBuffer) return null;
 
   try {
     var base64Image = imageBuffer.toString('base64');
@@ -253,18 +253,18 @@ async function describeImageWithVision(imageBuffer, mimeType, caption) {
       },
       {
         type: 'image_url',
-        image_url: { url: dataUri, detail: 'low' }
+        image_url: { url: dataUri }
       }
     ];
 
-    var response = await fetch('https://api.openai.com/v1/chat/completions', {
+    var response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + OPENAI_API_KEY,
+        'Authorization': 'Bearer ' + GROQ_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'llama-3.2-11b-vision-preview',
         messages: [
           { role: 'user', content: userContent }
         ],
@@ -294,7 +294,7 @@ async function describeImageWithVision(imageBuffer, mimeType, caption) {
 // Manually constructs multipart/form-data (no npm packages needed)
 // ============================================================
 async function transcribeAudioWithWhisper(audioBuffer, mimeType) {
-  if (!OPENAI_API_KEY || !audioBuffer) return null;
+  if (!GROQ_API_KEY || !audioBuffer) return null;
 
   try {
     // Determine file extension from mime type
@@ -326,7 +326,7 @@ async function transcribeAudioWithWhisper(audioBuffer, mimeType) {
     var modelPart = CRLF + '--' + boundary + CRLF
       + 'Content-Disposition: form-data; name="model"' + CRLF
       + CRLF
-      + 'whisper-1' + CRLF;
+      + 'whisper-large-v3' + CRLF;
 
     // Closing boundary
     var closingBoundary = '--' + boundary + '--' + CRLF;
@@ -339,10 +339,10 @@ async function transcribeAudioWithWhisper(audioBuffer, mimeType) {
       Buffer.from(closingBoundary, 'utf-8')
     ]);
 
-    var response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    var response = await fetch('https://api.groq.com/openai/v1/audio/transcriptions', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + OPENAI_API_KEY,
+        'Authorization': 'Bearer ' + GROQ_API_KEY,
         'Content-Type': 'multipart/form-data; boundary=' + boundary
       },
       body: bodyBuffer
@@ -380,8 +380,8 @@ function extractLanguageFromReply(reply) {
 
 // --- GENERATE AI REPLY (enhanced with language & media context) ---
 async function generateAIReply(customerMessage, conversationHistory, customer, intent, bookings, mediaContext) {
-  if (!OPENAI_API_KEY) {
-    console.error('OPENAI_API_KEY not set, skipping bot reply');
+  if (!GROQ_API_KEY) {
+    console.error('GROQ_API_KEY not set, skipping bot reply');
     return null;
   }
 
@@ -414,14 +414,14 @@ async function generateAIReply(customerMessage, conversationHistory, customer, i
   messages.push({ role: 'user', content: customerMessage });
 
   try {
-    var response = await fetch('https://api.openai.com/v1/chat/completions', {
+    var response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + OPENAI_API_KEY,
+        'Authorization': 'Bearer ' + GROQ_API_KEY,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'llama-3.3-70b-versatile',
         messages: messages,
         max_tokens: 300,
         temperature: 0.7
@@ -429,7 +429,7 @@ async function generateAIReply(customerMessage, conversationHistory, customer, i
     });
 
     if (!response.ok) {
-      console.error('OpenAI API error:', response.status, await response.text());
+      console.error('Groq API error:', response.status, await response.text());
       return null;
     }
 
@@ -437,10 +437,10 @@ async function generateAIReply(customerMessage, conversationHistory, customer, i
     if (data.choices && data.choices[0] && data.choices[0].message) {
       return data.choices[0].message.content;
     }
-    console.error('OpenAI unexpected response:', JSON.stringify(data));
+    console.error('Groq unexpected response:', JSON.stringify(data));
     return null;
   } catch (err) {
-    console.error('OpenAI error:', err);
+    console.error('Groq error:', err);
     return null;
   }
 }

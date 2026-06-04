@@ -934,7 +934,7 @@ async function loadOverview(){
 let allConvos=[],convoGroups=[];
 async function loadInbox(){
   try{
-    const{data,error}=await sb.from('conversations').select('*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes)').order('timestamp',{ascending:false}).limit(300);
+    const{data,error}=await sb.from('conversations').select('*,customers(name,phone,platform,platform_user_id,segment,visit_count,first_contact,last_contact,notes)').order('timestamp',{ascending:false}).limit(300);
     if(error)throw error;
     allConvos=data||[];const groups={};
     allConvos.forEach(c=>{const k=c.customer_id||'unknown';if(!groups[k])groups[k]={customer:c.customers,customer_id:c.customer_id,msgs:[]};groups[k].msgs.push(c);});
@@ -979,7 +979,7 @@ function startThreadPolling(idx){
       const g=convoGroups[_activeThreadIdx];
       if(!g)return;
       const lastTs=g.msgs[0]?.timestamp;
-      const{data}=await sb.from('conversations').select('*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes)').eq('customer_id',g.customer_id).gt('timestamp',lastTs||'2000-01-01').order('timestamp',{ascending:true});
+      const{data}=await sb.from('conversations').select('*,customers(name,phone,platform,platform_user_id,segment,visit_count,first_contact,last_contact,notes)').eq('customer_id',g.customer_id).gt('timestamp',lastTs||'2000-01-01').order('timestamp',{ascending:true});
       if(data&&data.length>0){
         let added=false;
         data.forEach(m=>{
@@ -1042,17 +1042,21 @@ function setupRealtime(){
   }catch(e){console.warn('Realtime setup failed, polling only:',e);}
 }
 
+function threadPlatform(g){return (g&&g.customer&&g.customer.platform)||(g&&g.msgs&&g.msgs[0]&&g.msgs[0].platform)||'whatsapp';}
+function channelBadge(p){var m={whatsapp:['WhatsApp','#25D366','#0b3d23'],facebook:['Messenger','#ffffff','#0084ff'],instagram:['Instagram','#ffffff','#d6249f']};var x=m[p]||m.whatsapp;return '<span style="font-size:9px;font-weight:600;vertical-align:middle;margin-left:5px;padding:1px 6px;border-radius:8px;color:'+x[1]+';background:'+x[2]+'">'+x[0]+'</span>';}
+function channelLabel(p){return p==='instagram'?'via Instagram':p==='facebook'?'via Messenger':'via WhatsApp';}
+function replyTargetId(c){if(!c)return null;return (c.platform&&c.platform!=='whatsapp')?(c.platform_user_id||c.phone||null):(c.phone||c.platform_user_id||null);}
 function renderThreads(groups){
   const el=document.getElementById('threadList');
   if(!groups.length){el.innerHTML='<div class="empty-inline">No conversations</div>';return;}
-  el.innerHTML=groups.map((g,i)=>{const last=g.msgs[0];const name=g.customer?.name||g.customer?.phone||'Unknown';return`<div class="thread-item" onclick="openThread(${i})" id="thread-${i}"><div class="avatar">${initials(name)}</div><div><div class="thread-name">${escapeHTML(name)}</div><div class="thread-preview">${escapeHTML((last.message||'—').slice(0,60))}</div></div><div class="thread-meta"><div class="thread-time">${fmt(last.timestamp)}</div>${g.msgs.length>1?`<div class="thread-badge">${g.msgs.length}</div>`:''}</div></div>`;}).join('');
+  el.innerHTML=groups.map((g,i)=>{const last=g.msgs[0];const name=g.customer?.name||g.customer?.phone||'Unknown';return`<div class="thread-item" onclick="openThread(${i})" id="thread-${i}"><div class="avatar">${initials(name)}</div><div><div class="thread-name">${escapeHTML(name)}${channelBadge(threadPlatform(g))}</div><div class="thread-preview">${escapeHTML((last.message||'—').slice(0,60))}</div></div><div class="thread-meta"><div class="thread-time">${fmt(last.timestamp)}</div>${g.msgs.length>1?`<div class="thread-badge">${g.msgs.length}</div>`:''}</div></div>`;}).join('');
 }
 async function openThread(i){
   startThreadPolling(i);
   document.querySelectorAll('.thread-item').forEach(el=>el.classList.remove('active'));document.getElementById('thread-'+i)?.classList.add('active');
   const g=convoGroups[i],c=g.customer,name=c?.name||c?.phone||'Unknown';
-  document.getElementById('chatAvatar').textContent=initials(name);document.getElementById('chatName').textContent=name;document.getElementById('chatPhone').textContent=c?.phone||'—';
-  _currentReplyCustomerId=g.customer_id;_currentReplyPhone=c?.phone||'';
+  document.getElementById('chatAvatar').textContent=initials(name);document.getElementById('chatName').textContent=name;document.getElementById('chatPhone').textContent=((c&&(c.phone||c.platform_user_id))||'—')+' · '+channelLabel((c&&c.platform)||'whatsapp');
+  _currentReplyCustomerId=g.customer_id;_currentReplyPhone=c?.phone||'';_currentReplyPlatform=(c&&c.platform)||'whatsapp';_currentReplyTo=replyTargetId(c)||(c?.phone||'');
   document.getElementById('replyBox').style.display='block';
   document.getElementById('detailAvatar').textContent=initials(name);document.getElementById('detailName').textContent=name;document.getElementById('detailPhone').textContent=c?.phone||'—';
   document.getElementById('detailSegment').textContent=c?.segment||'new';document.getElementById('detailVisits').textContent=c?.visit_count||0;
@@ -1531,16 +1535,18 @@ if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch
 // --- Manual Reply ---
 var _currentReplyPhone=null;
 var _currentReplyCustomerId=null;
+var _currentReplyPlatform='whatsapp';
+var _currentReplyTo=null;
 
 async function sendManualReply(){
   var input=document.getElementById('replyInput');
   var status=document.getElementById('replyStatus');
   var message=input.value.trim();
-  if(!message||!_currentReplyPhone)return;
+  if(!message||!_currentReplyTo)return;
   status.style.display='block';status.style.color='#888';status.textContent='Sending...';
   input.disabled=true;
   try{
-    var resp=await fetch(API_BASE+'/api/send',{method:'POST',headers:dashHeaders(),body:JSON.stringify({to:_currentReplyPhone,message:message,customer_id:_currentReplyCustomerId})});
+    var resp=await fetch(API_BASE+'/api/send',{method:'POST',headers:dashHeaders(),body:JSON.stringify({to:_currentReplyTo,message:message,customer_id:_currentReplyCustomerId,platform:_currentReplyPlatform})});
     var data=await resp.json();
     if(resp.ok){
       status.style.color='var(--green)';status.textContent='Sent!';input.value='';

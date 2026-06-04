@@ -14,6 +14,10 @@ const META_APP_SECRET = process.env.META_APP_SECRET;
 const WA_TOKEN = process.env.META_WHATSAPP_TOKEN;
 const WA_PHONE_ID = process.env.META_PHONE_NUMBER_ID;
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
+// Page access token(s) for Messenger / Instagram replies (free; no per-msg fee)
+const FB_PAGE_TOKEN = process.env.FB_PAGE_TOKEN;
+const IG_PAGE_TOKEN = process.env.IG_PAGE_TOKEN || process.env.FB_PAGE_TOKEN;
+const SOCIAL_GRAPH_VERSION = 'v22.0';
 
 // --- RESTAURANT KNOWLEDGE BASE ---
 const RESTAURANT_CONTEXT = [
@@ -116,19 +120,21 @@ async function upsertCustomer(phone, name) {
     return existing[0];
   }
   var created = await supabaseRequest('customers', 'POST', {
-    phone: phone, name: name || phone, segment: 'new', reply_mode: 'bot'
+    phone: phone, name: name || phone, segment: 'new', reply_mode: 'bot',
+    platform: 'whatsapp', platform_user_id: phone
   });
   return created && created[0] ? created[0] : null;
 }
 
 // --- MESSAGE STORAGE (with language detection support) ---
-async function saveMessage(customerId, message, direction, intent, waMessageId, detectedLanguage) {
+async function saveMessage(customerId, message, direction, intent, waMessageId, detectedLanguage, platform) {
   var record = {
     customer_id: customerId, direction: direction, message: message,
     intent: intent || 'general', timestamp: new Date().toISOString()
   };
   if (waMessageId) record.wa_message_id = waMessageId;
   if (detectedLanguage) record.detected_language = detectedLanguage;
+  if (platform) record.platform = platform;
   return supabaseRequest('conversations', 'POST', record);
 }
 
@@ -470,6 +476,97 @@ async function sendWhatsAppReply(to, text) {
   } catch (e) { console.error('WhatsApp reply error:', e); }
 }
 
+// ============================================================
+// SOCIAL CHANNELS: Instagram + Facebook Messenger
+// Same Groq brain + knowledge base as WhatsApp; one shared webhook.
+// ============================================================
+async function upsertCustomerByPlatform(platform, userId) {
+  var existing = await supabaseRequest(
+    'customers?platform=eq.' + encodeURIComponent(platform) +
+    '&platform_user_id=eq.' + encodeURIComponent(userId) +
+    '&select=id,name,segment,visit_count,reply_mode,opted_out', 'GET'
+  );
+  if (existing && existing.length > 0) {
+    await supabaseRequest('customers?id=eq.' + existing[0].id, 'PATCH',
+      { last_contact: new Date().toISOString() });
+    return existing[0];
+  }
+  var name = await fetchSocialProfileName(platform, userId);
+  if (!name) name = platform === 'instagram' ? 'Instagram User' : 'Messenger User';
+  var created = await supabaseRequest('customers', 'POST', {
+    platform: platform, platform_user_id: userId, name: name,
+    segment: 'new', reply_mode: 'bot'
+  });
+  return created && created[0] ? created[0] : null;
+}
+
+async function fetchSocialProfileName(platform, userId) {
+  var token = platform === 'instagram' ? IG_PAGE_TOKEN : FB_PAGE_TOKEN;
+  if (!token) return null;
+  try {
+    var r = await fetch('https://graph.facebook.com/' + SOCIAL_GRAPH_VERSION + '/' +
+      encodeURIComponent(userId) + '?fields=name&access_token=' + encodeURIComponent(token));
+    if (!r.ok) return null;
+    var d = await r.json();
+    return d.name || (d.first_name ? (d.first_name + (d.last_name ? ' ' + d.last_name : '')) : null);
+  } catch (e) { return null; }
+}
+
+async function sendMessengerReply(platform, recipientId, text) {
+  var token = platform === 'instagram' ? IG_PAGE_TOKEN : FB_PAGE_TOKEN;
+  if (!token) { console.error('No page token configured for ' + platform); return; }
+  try {
+    var r = await fetch('https://graph.facebook.com/' + SOCIAL_GRAPH_VERSION +
+      '/me/messages?access_token=' + encodeURIComponent(token), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient: { id: recipientId },
+        messaging_type: 'RESPONSE',
+        message: { text: text }
+      })
+    });
+    if (!r.ok) console.error(platform + ' send error:', r.status, await r.text());
+  } catch (e) { console.error(platform + ' reply error:', e); }
+}
+
+async function handleMessagingEvent(event, platform) {
+  if (!event || !event.message) return;     // ignore delivery/read receipts
+  if (event.message.is_echo) return;        // ignore our own echoes (prevents loops)
+  var userId = event.sender && event.sender.id;
+  if (!userId) return;
+  var mid = event.message.mid;
+  if (await isMessageProcessed(mid)) return; // dedup via wa_message_id column
+
+  var text = event.message.text || '[media]';
+  var customer = await upsertCustomerByPlatform(platform, userId);
+  if (!customer) return;
+  var customerId = customer.id;
+
+  var intent = detectIntent(text);
+  await saveMessage(customerId, text, 'inbound', intent, mid, null, platform);
+
+  if (customer.opted_out) return;
+  if ((customer.reply_mode || 'bot') === 'manual') {
+    console.log(platform + ' customer ' + userId + ' in manual mode, skipping bot reply');
+    return;
+  }
+
+  var history = await getConversationHistory(customerId, 10);
+  var bookings = await getCustomerBookings(customerId);
+  var aiReply = await generateAIReply(text, history, customer, intent, bookings, null);
+
+  if (aiReply) {
+    var parsed = extractLanguageFromReply(aiReply);
+    await sendMessengerReply(platform, userId, parsed.text);
+    await saveMessage(customerId, parsed.text, 'outbound', intent, null, parsed.language, platform);
+  } else {
+    var fb = 'Thank you for your message! Our team will get back to you shortly.\n\nCall us: +94 77 949 4394';
+    await sendMessengerReply(platform, userId, fb);
+    await saveMessage(customerId, fb, 'outbound', intent, null, null, platform);
+  }
+}
+
 // --- MAIN HANDLER ---
 module.exports = async function handler(req, res) {
   // --- GET: Webhook verification ---
@@ -495,6 +592,18 @@ module.exports = async function handler(req, res) {
     try {
       var body = req.body;
       if (!body || !body.entry) return res.status(200).json({ status: 'no entry' });
+
+      // --- Instagram / Facebook Messenger (entry[].messaging[]) ---
+      if (body.object === 'instagram' || body.object === 'page') {
+        var socialPlatform = body.object === 'instagram' ? 'instagram' : 'facebook';
+        for (var si = 0; si < body.entry.length; si++) {
+          var sEvents = body.entry[si].messaging || [];
+          for (var sj = 0; sj < sEvents.length; sj++) {
+            await handleMessagingEvent(sEvents[sj], socialPlatform);
+          }
+        }
+        return res.status(200).json({ status: 'ok' });
+      }
 
       for (var e = 0; e < body.entry.length; e++) {
         var entry = body.entry[e];

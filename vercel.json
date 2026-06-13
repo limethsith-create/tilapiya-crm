@@ -1,20 +1,10 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "api/**/*.js", "use": "@vercel/node" },
-    { "src": "public/**", "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/api/webhook", "dest": "/api/webhook.js" },
-    { "src": "/api/send", "dest": "/api/send.js" },
-    { "src": "/api/toggle-mode", "dest": "/api/toggle-mode.js" },
-    { "src": "/api/reservations", "dest": "/api/reservations.js" },
-    { "src": "/api/auth", "dest": "/api/auth.js" },
-    { "src": "/api/pos-checkin", "dest": "/api/pos-checkin.js" },
-    { "src": "/api/outbox", "dest": "/api/outbox.js" },
-    { "src": "/api/media", "dest": "/api/media.js" },
-    { "src": "/(.*)", "dest": "/public/$1" }
-  ],
+  "functions": {
+    "api/webhook.js": { "maxDuration": 60 },
+    "api/outbox.js": { "maxDuration": 60 },
+    "api/media.js": { "maxDuration": 60 }
+  },
   "headers": [
     {
       "source": "/api/(.*)",
@@ -29,7 +19,7 @@
       "headers": [
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://graph.facebook.com https://api.openai.com; frame-ancestors 'none'" },
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net; img-src 'self' data: blob: https:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://graph.facebook.com https://api.openai.com; frame-ancestors 'none'" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
       ]
     }

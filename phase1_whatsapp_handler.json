@@ -1,5 +1,5 @@
 {
-  "name": "Phase 1 â WhatsApp Incoming Handler",
+  "name": "Phase 1 — WhatsApp Incoming Handler",
   "nodes": [
     {
       "id": "node-webhook",
@@ -84,9 +84,15 @@
             { "name": "Prefer", "value": "resolution=merge-duplicates,return=representation" }
           ]
         },
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            { "name": "on_conflict", "value": "phone" }
+          ]
+        },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"phone\": \"{{ $('Extract Message Data').item.json.phone }}\",\n  \"name\": \"{{ $('Extract Message Data').item.json.name }}\",\n  \"last_contact\": \"{{ $('Extract Message Data').item.json.timestamp }}\"\n}",
+        "jsonBody": "={\n  \"phone\": {{ JSON.stringify($('Extract Message Data').item.json.phone) }},\n  \"name\": {{ JSON.stringify($('Extract Message Data').item.json.name) }},\n  \"last_contact\": \"{{ $('Extract Message Data').item.json.timestamp }}\"\n}",
         "options": {
           "response": {
             "response": {
@@ -116,7 +122,7 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "customer_id", "value": "=eq.{{ $json[0].id }}" },
+            { "name": "customer_id", "value": "=eq.{{ $json.id }}" },
             { "name": "order", "value": "timestamp.desc" },
             { "name": "limit", "value": "5" },
             { "name": "select", "value": "direction,message,intent,timestamp" }
@@ -144,7 +150,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"temperature\": 0.4,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a friendly, warm restaurant assistant for Tilapiya Restaurant in Sri Lanka. Currency is LKR.\\n\\nRestaurant info:\\n- Open: Tuesday-Sunday, 11:30 AM - 10:30 PM. Closed Mondays.\\n- Location: Colombo 7, Sri Lanka\\n- Cuisine: Modern Sri Lankan, seafood specialties\\n- Parking: Free valet parking available\\n- Special diets: Vegetarian, vegan, gluten-free options available\\n\\nYour job:\\n1. Detect the customer intent from their message.\\n2. For BOOKING: extract date, time, party_size, occasion, dietary_notes if mentioned.\\n3. For INQUIRY: answer from the restaurant info above.\\n4. For COMPLAINT: be empathetic, apologize, assure follow-up.\\n5. For CANCEL: confirm which booking to cancel.\\n6. For OTHER: be helpful and friendly.\\n\\nAlways reply in a warm, professional tone. Keep replies concise (under 200 words). Use emoji sparingly.\\n\\nReturn ONLY valid JSON:\\n{\\n  \\\"intent\\\": \\\"BOOKING\\\" | \\\"INQUIRY\\\" | \\\"COMPLAINT\\\" | \\\"CANCEL\\\" | \\\"OTHER\\\",\\n  \\\"reply\\\": \\\"your natural language reply to the customer\\\",\\n  \\\"booking_details\\\": {\\n    \\\"date\\\": \\\"YYYY-MM-DD or null\\\",\\n    \\\"time\\\": \\\"HH:MM or null\\\",\\n    \\\"party_size\\\": number or null,\\n    \\\"occasion\\\": \\\"string or null\\\",\\n    \\\"dietary_notes\\\": \\\"string or null\\\"\\n  },\\n  \\\"is_booking_complete\\\": true/false\\n}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"Customer name: {{ $('Extract Message Data').item.json.name }}\\nCustomer message: {{ $('Extract Message Data').item.json.text }}\\n\\nRecent conversation history:\\n{{ JSON.stringify($('Get Conversation History').first().json) }}\"\n    }\n  ]\n}",
+        "jsonBody": "={\n  \"model\": \"llama-3.1-8b-instant\",\n  \"temperature\": 0.4,\n  \"response_format\": { \"type\": \"json_object\" },\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a friendly, warm restaurant assistant for Tilapiya Restaurant in Sri Lanka. Currency is LKR.\\n\\nRestaurant info:\\n- Open: Daily, lunch from 11:30 AM, dinner until 11:00 PM.\\n- Location: 11B, MS 4 Mini Stand, Phillip Gunewardana Mawatha, Race Course Arcade, Colombo 07\\n- Cuisine: Modern Sri Lankan, seafood specialties. BYOB with FREE corkage.\\n- Parking: Available\\n- Special diets: Vegetarian, vegan, gluten-free options available\\n- Live band music every day. Private dining rooms with karaoke available.\\n\\nYour job:\\n1. Detect the customer intent from their message.\\n2. For BOOKING: extract date, time, party_size, occasion, dietary_notes if mentioned.\\n3. For INQUIRY: answer from the restaurant info above.\\n4. For COMPLAINT: be empathetic, apologize, assure follow-up.\\n5. For CANCEL: confirm which booking to cancel.\\n6. For OTHER: be helpful and friendly.\\n\\nAlways reply in a warm, professional tone. Keep replies concise (under 200 words). Use emoji sparingly.\\n\\nReturn ONLY valid JSON:\\n{\\n  \\\"intent\\\": \\\"BOOKING\\\" | \\\"INQUIRY\\\" | \\\"COMPLAINT\\\" | \\\"CANCEL\\\" | \\\"OTHER\\\",\\n  \\\"reply\\\": \\\"your natural language reply to the customer\\\",\\n  \\\"booking_details\\\": {\\n    \\\"date\\\": \\\"YYYY-MM-DD or null\\\",\\n    \\\"time\\\": \\\"HH:MM or null\\\",\\n    \\\"party_size\\\": number or null,\\n    \\\"occasion\\\": \\\"string or null\\\",\\n    \\\"dietary_notes\\\": \\\"string or null\\\"\\n  },\\n  \\\"is_booking_complete\\\": true/false\\n}\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": {{ JSON.stringify('Customer name: ' + $('Extract Message Data').item.json.name + '\\nCustomer message: ' + $('Extract Message Data').item.json.text + '\\n\\nRecent conversation history:\\n' + JSON.stringify($('Get Conversation History').first().json)) }}\n    }\n  ]\n}",
         "options": {}
       },
       "continueOnFail": true
@@ -267,12 +273,25 @@
       "parameters": {
         "conditions": {
           "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
           "conditions": [
             {
               "id": "cond-booking-complete",
               "leftValue": "={{ $json.is_booking_complete }}",
               "rightValue": true,
               "operator": { "type": "boolean", "operation": "equals" }
+            },
+            {
+              "id": "cond-booking-has-date",
+              "leftValue": "={{ ($json.booking_details && $json.booking_details.date) || '' }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            },
+            {
+              "id": "cond-booking-date-not-null-string",
+              "leftValue": "={{ ($json.booking_details && $json.booking_details.date) || '' }}",
+              "rightValue": "null",
+              "operator": { "type": "string", "operation": "notEquals" }
             }
           ]
         }
@@ -298,7 +317,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customer_id\": \"{{ $('Parse AI Response').item.json.customer_id }}\",\n  \"date\": \"{{ $('Parse AI Response').item.json.booking_details.date }}\",\n  \"time\": \"{{ $('Parse AI Response').item.json.booking_details.time }}\",\n  \"party_size\": {{ $('Parse AI Response').item.json.booking_details.party_size ?? 'null' }},\n  \"occasion\": {{ $('Parse AI Response').item.json.booking_details.occasion ? '\"' + $('Parse AI Response').item.json.booking_details.occasion + '\"' : 'null' }},\n  \"dietary_notes\": {{ $('Parse AI Response').item.json.booking_details.dietary_notes ? '\"' + $('Parse AI Response').item.json.booking_details.dietary_notes + '\"' : 'null' }},\n  \"status\": \"pending\",\n  \"payment_status\": \"unpaid\",\n  \"sequence_stage\": \"none\"\n}",
+        "jsonBody": "={\n  \"customer_id\": \"{{ $('Parse AI Response').item.json.customer_id }}\",\n  \"date\": {{ JSON.stringify($('Parse AI Response').item.json.booking_details.date && $('Parse AI Response').item.json.booking_details.date !== 'null' ? $('Parse AI Response').item.json.booking_details.date : null) }},\n  \"time\": {{ JSON.stringify($('Parse AI Response').item.json.booking_details.time && $('Parse AI Response').item.json.booking_details.time !== 'null' ? $('Parse AI Response').item.json.booking_details.time : null) }},\n  \"party_size\": {{ $('Parse AI Response').item.json.booking_details.party_size ?? 'null' }},\n  \"occasion\": {{ JSON.stringify($('Parse AI Response').item.json.booking_details.occasion ?? null) }},\n  \"dietary_notes\": {{ JSON.stringify($('Parse AI Response').item.json.booking_details.dietary_notes ?? null) }},\n  \"status\": \"pending\",\n  \"payment_status\": \"unpaid\",\n  \"sequence_stage\": \"none\"\n}",
         "options": {}
       },
       "continueOnFail": true
@@ -406,7 +425,7 @@
       "typeVersion": 2,
       "position": [2380, 480],
       "parameters": {
-        "jsCode": "// Flag complaint for dashboard â add high priority note to customer\nconst data = $('Parse AI Response').first().json;\nreturn [{\n  json: {\n    ...data,\n    priority: 'high',\n    flagged_at: new Date().toISOString()\n  }\n}];\n"
+        "jsCode": "// Flag complaint for dashboard — add high priority note to customer\nconst data = $('Parse AI Response').first().json;\nreturn [{\n  json: {\n    ...data,\n    priority: 'high',\n    flagged_at: new Date().toISOString()\n  }\n}];\n"
       }
     },
     {
@@ -434,7 +453,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"notes\": \"COMPLAINT [{{ new Date().toISOString().slice(0,10) }}]: {{ $('Parse AI Response').item.json.text }}\"\n}",
+        "jsonBody": "={\n  \"notes\": {{ JSON.stringify((($('Upsert Customer').item.json.notes ? $('Upsert Customer').item.json.notes + '\\n' : '')) + 'COMPLAINT [' + new Date().toISOString().slice(0,10) + ']: ' + ($('Parse AI Response').item.json.text || '')) }}\n}",
         "options": {}
       },
       "continueOnFail": true
@@ -730,7 +749,8 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Asia/Colombo"
   },
   "staticData": null,
   "tags": [],

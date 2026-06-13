@@ -52,6 +52,27 @@
       }
     },
     {
+      "id": "node-campaign-ok",
+      "name": "Campaign OK?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [800, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-campaign-ok",
+              "leftValue": "={{ Boolean(!$json.done && !$json.error && $json.campaign_id) }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "node-fetch-customers",
       "name": "Fetch Target Customers",
       "type": "n8n-nodes-base.httpRequest",
@@ -59,19 +80,12 @@
       "position": [920, 300],
       "parameters": {
         "method": "GET",
-        "url": "={{ $env.SUPABASE_URL }}/rest/v1/customers",
+        "url": "={{ $env.SUPABASE_URL }}/rest/v1/customers?select=id,phone,name,segment&opted_out=eq.false{{ $json.segment === 'all' ? '' : '&segment=eq.' + encodeURIComponent($json.segment) }}",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
             { "name": "apikey", "value": "={{ $env.SUPABASE_SERVICE_KEY }}" },
             { "name": "Authorization", "value": "=Bearer {{ $env.SUPABASE_SERVICE_KEY }}" }
-          ]
-        },
-        "sendQuery": true,
-        "queryParameters": {
-          "parameters": [
-            { "name": "select", "value": "id,phone,name,segment" },
-            { "name": "segment", "value": "={{ $json.segment === 'all' ? '' : 'eq.' + $json.segment }}" }
           ]
         },
         "options": {}
@@ -85,7 +99,28 @@
       "typeVersion": 2,
       "position": [1160, 300],
       "parameters": {
-        "jsCode": "const customers = $input.first().json;\nconst campaign = $('Extract Campaign Data').first().json;\nconst template = campaign.message_template;\n\nif (!Array.isArray(customers) || customers.length === 0) {\n  return [{ json: { error: 'No customers in segment', sent: 0 } }];\n}\n\nconst messages = customers.map(c => {\n  let body = template\n    .replace(/\\{\\{name\\}\\}/g, c.name || 'Valued Customer')\n    .replace(/\\{\\{phone\\}\\}/g, c.phone || '')\n    .replace(/\\{\\{segment\\}\\}/g, c.segment || '')\n    .replace(/\\{\\{date\\}\\}/g, new Date().toLocaleDateString('en-GB'))\n    .replace(/\\{\\{offer\\}\\}/g, '10% off your next visit');\n\n  return {\n    customer_id: c.id,\n    phone: c.phone,\n    name: c.name,\n    message_body: body,\n    campaign_id: campaign.campaign_id\n  };\n});\n\nreturn messages.map(m => ({ json: m }));\n"
+        "jsCode": "const customers = $input.first().json;\nconst campaign = $('Extract Campaign Data').first().json;\nconst template = campaign.message_template;\n\nif (!Array.isArray(customers) || customers.length === 0) {\n  return [{ json: { error: 'No customers in segment', sent: 0 } }];\n}\n\nconst messages = customers.map(c => {\n  let body = template\n    .replace(/\\{\\{name\\}\\}/g, c.name || 'Valued Customer')\n    .replace(/\\{\\{phone\\}\\}/g, c.phone || '')\n    .replace(/\\{\\{segment\\}\\}/g, c.segment || '')\n    .replace(/\\{\\{date\\}\\}/g, new Date().toLocaleDateString('en-GB'))\n    .replace(/\\{\\{offer\\}\\}/g, '10% off your next visit');\n\n  // Add opt-out footer if not already present\n  if (!body.includes('STOP')) {\n    body += '\\n\\nReply STOP to unsubscribe.';\n  }\n\n  return {\n    customer_id: c.id,\n    phone: c.phone,\n    name: c.name,\n    message_body: body,\n    campaign_id: campaign.campaign_id\n  };\n});\n\nreturn messages.map(m => ({ json: m }));\n"
+      }
+    },
+    {
+      "id": "node-has-recipients",
+      "name": "Has Recipients?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1280, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-has-recipients",
+              "leftValue": "={{ Boolean(!$json.error && $json.phone) }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
       }
     },
     {
@@ -138,7 +173,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"campaign_id\": \"{{ $json.campaign_id }}\",\n  \"customer_id\": \"{{ $json.customer_id }}\",\n  \"status\": \"sent\"\n}",
+        "jsonBody": "={\n  \"campaign_id\": \"{{ $('Prepare Messages').item.json.campaign_id }}\",\n  \"customer_id\": \"{{ $('Prepare Messages').item.json.customer_id }}\",\n  \"status\": \"{{ $json.messages && $json.messages[0] && $json.messages[0].id ? 'sent' : 'failed' }}\"\n}",
         "options": {}
       },
       "continueOnFail": true
@@ -163,7 +198,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"customer_id\": \"{{ $json.customer_id }}\",\n  \"direction\": \"outbound\",\n  \"message\": {{ JSON.stringify($json.message_body) }},\n  \"intent\": \"CRM_CAMPAIGN\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
+        "jsonBody": "={\n  \"customer_id\": \"{{ $('Prepare Messages').item.json.customer_id }}\",\n  \"direction\": \"outbound\",\n  \"message\": {{ JSON.stringify($('Prepare Messages').item.json.message_body) }},\n  \"intent\": \"CRM_CAMPAIGN\",\n  \"timestamp\": \"{{ new Date().toISOString() }}\"\n}",
         "options": {}
       },
       "continueOnFail": true
@@ -188,7 +223,7 @@
         "sendQuery": true,
         "queryParameters": {
           "parameters": [
-            { "name": "id", "value": "=eq.{{ $json.campaign_id }}" }
+            { "name": "id", "value": "=eq.{{ $('Extract Campaign Data').first().json.campaign_id }}" }
           ]
         },
         "sendBody": true,
@@ -227,8 +262,16 @@
     "Extract Campaign Data": {
       "main": [
         [
-          { "node": "Fetch Target Customers", "type": "main", "index": 0 }
+          { "node": "Campaign OK?", "type": "main", "index": 0 }
         ]
+      ]
+    },
+    "Campaign OK?": {
+      "main": [
+        [
+          { "node": "Fetch Target Customers", "type": "main", "index": 0 }
+        ],
+        []
       ]
     },
     "Fetch Target Customers": {
@@ -241,8 +284,16 @@
     "Prepare Messages": {
       "main": [
         [
-          { "node": "Send WhatsApp Message", "type": "main", "index": 0 }
+          { "node": "Has Recipients?", "type": "main", "index": 0 }
         ]
+      ]
+    },
+    "Has Recipients?": {
+      "main": [
+        [
+          { "node": "Send WhatsApp Message", "type": "main", "index": 0 }
+        ],
+        []
       ]
     },
     "Send WhatsApp Message": {
@@ -275,7 +326,8 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Asia/Colombo"
   },
   "staticData": null,
   "tags": [],

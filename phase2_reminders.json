@@ -1,5 +1,5 @@
 {
-  "name": "Phase 2 â Booking Reminders & Expiry",
+  "name": "Phase 2 — Booking Reminders & Expiry",
   "nodes": [
     {
       "id": "node-schedule",
@@ -46,6 +46,27 @@
       "continueOnFail": true
     },
     {
+      "id": "node-guard-unpaid",
+      "name": "Valid Unpaid Items?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [590, 160],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-unpaid-valid",
+              "leftValue": "={{ Boolean($json.id && $json.customers && $json.customers.phone) }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "node-loop-payment-reminder",
       "name": "Loop Payment Reminders",
       "type": "n8n-nodes-base.splitInBatches",
@@ -74,7 +95,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers.name }}! Just a friendly reminder â your booking for {{ $json.date }} at {{ $json.time }} (party of {{ $json.party_size }}) is pending payment. Please complete your payment to confirm your reservation. Reply if you need help!\"\n  }\n}",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers.name }}! Just a friendly reminder — your booking for {{ $json.date }} at {{ $json.time }} (party of {{ $json.party_size }}) is pending payment. Please complete your payment to confirm your reservation. Reply if you need help!\"\n  }\n}",
         "options": {}
       },
       "continueOnFail": true
@@ -130,13 +151,34 @@
           "parameters": [
             { "name": "date", "value": "=eq.{{ new Date(Date.now() + 86400000).toISOString().slice(0,10) }}" },
             { "name": "reminder_sent_at", "value": "is.null" },
-            { "name": "status", "value": "in.(pending,confirmed)" },
+            { "name": "status", "value": "eq.confirmed" },
             { "name": "select", "value": "id,customer_id,date,time,party_size,customers(phone,name)" }
           ]
         },
         "options": {}
       },
       "continueOnFail": true
+    },
+    {
+      "id": "node-guard-tomorrow",
+      "name": "Valid Tomorrow Items?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [590, 400],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-tomorrow-valid",
+              "leftValue": "={{ Boolean($json.id && $json.customers && $json.customers.phone) }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      }
     },
     {
       "id": "node-loop-booking-reminder",
@@ -167,7 +209,7 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers.name }}, just a reminder â your reservation is tomorrow ({{ $json.date }}) at {{ $json.time }} for {{ $json.party_size }}. Any changes? Reply here or call us. See you soon!\"\n  }\n}",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers.name }}, just a reminder — your reservation is tomorrow ({{ $json.date }}) at {{ $json.time }} for {{ $json.party_size }}. Any changes? Reply here or call us. See you soon!\"\n  }\n}",
         "options": {}
       },
       "continueOnFail": true
@@ -233,6 +275,27 @@
       "continueOnFail": true
     },
     {
+      "id": "node-guard-expired",
+      "name": "Valid Expired Items?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [590, 620],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "combinator": "and",
+          "conditions": [
+            {
+              "id": "cond-expired-valid",
+              "leftValue": "={{ Boolean($json.id && $json.customers && $json.customers.phone) }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ]
+        }
+      }
+    },
+    {
       "id": "node-loop-expire",
       "name": "Loop Expire Bookings",
       "type": "n8n-nodes-base.splitInBatches",
@@ -291,14 +354,14 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers?.phone ?? $('Loop Expire Bookings').item.json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers?.name ?? $('Loop Expire Bookings').item.json.customers.name }}, your unpaid booking has been released as we didn't receive payment within 24 hours. No worries â reply anytime to make a new reservation!\"\n  }\n}",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"to\": \"{{ $json.customers?.phone ?? $('Loop Expire Bookings').item.json.customers.phone }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Hi {{ $json.customers?.name ?? $('Loop Expire Bookings').item.json.customers.name }}, your unpaid booking has been released as we didn't receive payment within 24 hours. No worries — reply anytime to make a new reservation!\"\n  }\n}",
         "options": {}
       },
       "continueOnFail": true
     }
   ],
   "connections": {
-    "Every 15 Minutes": {
+    "Every 2 Hours": {
       "main": [
         [
           { "node": "Fetch Unpaid Bookings (1h+)", "type": "main", "index": 0 },
@@ -310,8 +373,16 @@
     "Fetch Unpaid Bookings (1h+)": {
       "main": [
         [
-          { "node": "Loop Payment Reminders", "type": "main", "index": 0 }
+          { "node": "Valid Unpaid Items?", "type": "main", "index": 0 }
         ]
+      ]
+    },
+    "Valid Unpaid Items?": {
+      "main": [
+        [
+          { "node": "Loop Payment Reminders", "type": "main", "index": 0 }
+        ],
+        []
       ]
     },
     "Loop Payment Reminders": {
@@ -339,8 +410,16 @@
     "Fetch Tomorrow Bookings": {
       "main": [
         [
-          { "node": "Loop Booking Reminders", "type": "main", "index": 0 }
+          { "node": "Valid Tomorrow Items?", "type": "main", "index": 0 }
         ]
+      ]
+    },
+    "Valid Tomorrow Items?": {
+      "main": [
+        [
+          { "node": "Loop Booking Reminders", "type": "main", "index": 0 }
+        ],
+        []
       ]
     },
     "Loop Booking Reminders": {
@@ -368,8 +447,16 @@
     "Fetch Expired Unpaid (24h+)": {
       "main": [
         [
-          { "node": "Loop Expire Bookings", "type": "main", "index": 0 }
+          { "node": "Valid Expired Items?", "type": "main", "index": 0 }
         ]
+      ]
+    },
+    "Valid Expired Items?": {
+      "main": [
+        [
+          { "node": "Loop Expire Bookings", "type": "main", "index": 0 }
+        ],
+        []
       ]
     },
     "Loop Expire Bookings": {
@@ -396,7 +483,8 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Asia/Colombo"
   },
   "staticData": null,
   "tags": [],

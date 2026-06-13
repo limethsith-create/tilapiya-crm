@@ -39,7 +39,7 @@
           "parameters": [
             { "name": "date", "value": "=eq.{{ new Date(Date.now() - 86400000).toISOString().slice(0,10) }}" },
             { "name": "status", "value": "eq.confirmed" },
-            { "name": "sequence_stage", "value": "neq.review_sent" },
+            { "name": "or", "value": "(sequence_stage.is.null,sequence_stage.neq.review_sent)" },
             { "name": "select", "value": "id,customer_id,date,time,party_size,customers(id,phone,name,visit_count,segment)" }
           ]
         },
@@ -171,7 +171,8 @@
         "queryParameters": {
           "parameters": [
             { "name": "last_contact", "value": "=lt.{{ new Date(Date.now() - 30 * 86400000).toISOString() }}" },
-            { "name": "segment", "value": "neq.lapsed" },
+            { "name": "segment", "value": "not.in.(lapsed,vip)" },
+            { "name": "opted_out", "value": "eq.false" },
             { "name": "select", "value": "id,phone,name,segment,last_contact" }
           ]
         },
@@ -297,7 +298,8 @@
     }
   },
   "settings": {
-    "executionOrder": "v1"
+    "executionOrder": "v1",
+    "timezone": "Asia/Colombo"
   },
   "staticData": null,
   "tags": [],

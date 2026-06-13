@@ -1,13 +1,21 @@
 // Vercel Serverless Function - Outbox / Batch WhatsApp Messaging for Tilapiya CRM
-// Handles batch creation, sending, pausing, cancellation, and stats
+// Handles batch creation, sending (chunked + atomic claims), pausing,
+// cancellation, and stats.
+//
+// send_batch processes at most 20 messages per invocation and returns
+// { status: 'in_progress', remaining: N } until done — callers re-invoke.
 
-const crypto = require('crypto');
+const { isAuthorized } = require('../lib/auth');
+const { supabaseRequest } = require('../lib/supabase');
+
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const WA_TOKEN = process.env.META_WHATSAPP_TOKEN;
 const WA_PHONE_ID = process.env.META_PHONE_NUMBER_ID;
 const DASHBOARD_ORIGIN = process.env.DASHBOARD_ORIGIN || '';
-const DASHBOARD_SECRET = process.env.DASHBOARD_SECRET;
+
+const CHUNK_SIZE = 20;       // messages per invocation
+const SEND_DELAY_MS = 350;   // delay between sends
 
 // --- CORS ---
 function setCorsHeaders(res, req) {
@@ -20,48 +28,29 @@ function setCorsHeaders(res, req) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 }
 
-// --- AUTH ---
-function isAuthorized(req) {
-  if (!DASHBOARD_SECRET) {
-    console.error('DASHBOARD_SECRET not set');
-    return false;
-  }
-  var key = req.headers['x-dashboard-key'] || '';
-  if (key.length !== DASHBOARD_SECRET.length) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(key), Buffer.from(DASHBOARD_SECRET));
-  } catch (e) { return false; }
-}
-
-// --- SUPABASE HELPER ---
-async function supabaseRequest(path, method, body, extraHeaders) {
-  var headers = {
+// --- EXACT COUNT HELPER (HEAD-style request with count=exact) ---
+async function countRows(pathWithFilters) {
+  var countHeaders = {
     'apikey': SUPABASE_KEY,
     'Authorization': 'Bearer ' + SUPABASE_KEY,
-    'Content-Type': 'application/json'
+    'Prefer': 'count=exact',
+    'Range-Unit': 'items',
+    'Range': '0-0'
   };
-  if (method === 'POST') headers['Prefer'] = 'return=representation';
-  if (method === 'PATCH') headers['Prefer'] = 'return=representation';
-  if (extraHeaders) {
-    for (var k in extraHeaders) headers[k] = extraHeaders[k];
+  try {
+    var countRes = await fetch(SUPABASE_URL + '/rest/v1/' + pathWithFilters, {
+      method: 'GET', headers: countHeaders, signal: AbortSignal.timeout(15000)
+    });
+    var contentRange = countRes.headers.get('content-range') || '';
+    var rangeMatch = contentRange.match(/\/(\d+)/);
+    return rangeMatch ? parseInt(rangeMatch[1], 10) : 0;
+  } catch (e) {
+    console.error('Count request failed:', pathWithFilters, e.message);
+    return 0;
   }
-  var r = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-    method: method,
-    headers: headers,
-    body: body ? JSON.stringify(body) : undefined
-  });
-  if (!r.ok) {
-    var err = await r.text();
-    console.error('Supabase error:', method, path, r.status, err);
-    return null;
-  }
-  var text = await r.text();
-  if (!text) return null;
-  try { return JSON.parse(text); } catch (e) { return null; }
 }
 
 // --- SEGMENT FILTER BUILDER ---
-// Returns Supabase REST filter query string for the given segment
 function buildSegmentFilter(segment) {
   switch (segment) {
     case 'all':
@@ -77,7 +66,7 @@ function buildSegmentFilter(segment) {
     case 'lapsed':
       // Customers with no contact in 60+ days
       var cutoff = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
-      return '&last_contact=lt.' + cutoff;
+      return '&last_contact=lt.' + encodeURIComponent(cutoff);
     case 'gold':
       // Customers with Gold tier in loyalty table - handled separately
       return '__loyalty_gold__';
@@ -107,6 +96,7 @@ async function sendWhatsAppMessage(to, message) {
       'Authorization': 'Bearer ' + WA_TOKEN,
       'Content-Type': 'application/json'
     },
+    signal: AbortSignal.timeout(15000),
     body: JSON.stringify({
       messaging_product: 'whatsapp',
       to: to,
@@ -144,9 +134,9 @@ async function createBatch(body) {
 
   // Fetch recipients based on segment
   var customers;
+  var goldLoyaltyMap = {};
   if (segment === 'gold') {
     // Gold tier requires joining with loyalty table
-    // First get gold loyalty customer IDs
     var goldLoyalty = await supabaseRequest(
       'loyalty?tier=eq.Gold&select=customer_id,total_points,tier', 'GET'
     );
@@ -154,19 +144,21 @@ async function createBatch(body) {
       return { status: 200, body: { error: 'No customers found for segment: gold', batch: null } };
     }
     var goldIds = goldLoyalty.map(function(l) { return l.customer_id; });
-    // Fetch those customers, excluding opted out
-    customers = await supabaseRequest(
-      'customers?id=in.(' + goldIds.join(',') + ')&opted_out=not.is.true&select=id,phone,name', 'GET'
-    );
+    for (var g = 0; g < goldLoyalty.length; g++) {
+      goldLoyaltyMap[goldLoyalty[g].customer_id] = goldLoyalty[g];
+    }
+    // Fetch those customers in chunks of 50 (avoid URL length issues), excluding opted out
+    customers = [];
+    for (var gi = 0; gi < goldIds.length; gi += 50) {
+      var goldChunk = goldIds.slice(gi, gi + 50);
+      var custChunk = await supabaseRequest(
+        'customers?id=in.(' + goldChunk.map(encodeURIComponent).join(',') + ')&opted_out=not.is.true&select=id,phone,name', 'GET'
+      );
+      if (custChunk) customers = customers.concat(custChunk);
+    }
     // Attach loyalty data
-    if (customers) {
-      var loyaltyMap = {};
-      for (var g = 0; g < goldLoyalty.length; g++) {
-        loyaltyMap[goldLoyalty[g].customer_id] = goldLoyalty[g];
-      }
-      for (var gc = 0; gc < customers.length; gc++) {
-        customers[gc]._loyalty = loyaltyMap[customers[gc].id] || null;
-      }
+    for (var gc = 0; gc < customers.length; gc++) {
+      customers[gc]._loyalty = goldLoyaltyMap[customers[gc].id] || null;
     }
   } else {
     var filter = buildSegmentFilter(segment);
@@ -187,7 +179,7 @@ async function createBatch(body) {
     for (var ci = 0; ci < customerIds.length; ci += 50) {
       var chunk = customerIds.slice(ci, ci + 50);
       var loyaltyRows = await supabaseRequest(
-        'loyalty?customer_id=in.(' + chunk.join(',') + ')&select=customer_id,total_points,tier', 'GET'
+        'loyalty?customer_id=in.(' + chunk.map(encodeURIComponent).join(',') + ')&select=customer_id,total_points,tier', 'GET'
       );
       if (loyaltyRows) {
         for (var lr = 0; lr < loyaltyRows.length; lr++) {
@@ -197,13 +189,13 @@ async function createBatch(body) {
     }
   }
 
-  // Create the batch record
+  // Create the batch record (column names per migration 005)
   var batchRecord = {
     name: name,
     message_template: messageTemplate,
     segment: segment,
     status: 'draft',
-    total_count: customers.length,
+    total_recipients: customers.length,
     sent_count: 0,
     failed_count: 0,
     scheduled_at: scheduledAt,
@@ -216,7 +208,7 @@ async function createBatch(body) {
   }
   var batch = batchResult[0];
 
-  // Create individual message records
+  // Create individual message records (message_text per 005; customer_name added in 006)
   var messageRecords = [];
   for (var m = 0; m < customers.length; m++) {
     var cust = customers[m];
@@ -228,7 +220,7 @@ async function createBatch(body) {
       customer_id: cust.id,
       phone: cust.phone,
       customer_name: cust.name || cust.phone,
-      message: resolvedMessage,
+      message_text: resolvedMessage,
       status: 'queued',
       created_at: new Date().toISOString()
     });
@@ -277,8 +269,10 @@ async function getBatch(body) {
     return { status: 404, body: { error: 'Batch not found' } };
   }
 
-  var page = body.page || 1;
-  var perPage = body.per_page || 50;
+  var page = parseInt(body.page, 10) || 1;
+  var perPage = parseInt(body.per_page, 10) || 50;
+  if (page < 1) page = 1;
+  if (perPage < 1 || perPage > 200) perPage = 50;
   var offset = (page - 1) * perPage;
 
   var messages = await supabaseRequest(
@@ -286,22 +280,9 @@ async function getBatch(body) {
     '&select=*&order=created_at.asc&limit=' + perPage + '&offset=' + offset, 'GET'
   );
 
-  // Get total count via HEAD request with Prefer: count=exact
-  var countHeaders = {
-    'apikey': SUPABASE_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_KEY,
-    'Prefer': 'count=exact',
-    'Range-Unit': 'items',
-    'Range': '0-0'
-  };
-  var countRes = await fetch(
-    SUPABASE_URL + '/rest/v1/outbox_messages?batch_id=eq.' + encodeURIComponent(batchId) + '&select=id',
-    { method: 'GET', headers: countHeaders }
+  var totalMessages = await countRows(
+    'outbox_messages?batch_id=eq.' + encodeURIComponent(batchId) + '&select=id'
   );
-  var contentRange = countRes.headers.get('content-range') || '';
-  var totalMessages = 0;
-  var rangeMatch = contentRange.match(/\/(\d+)/);
-  if (rangeMatch) totalMessages = parseInt(rangeMatch[1], 10);
 
   return {
     status: 200,
@@ -318,7 +299,13 @@ async function getBatch(body) {
   };
 }
 
-// --- SEND BATCH ---
+// --- SEND BATCH (chunked + atomic claims) ---
+// Each invocation:
+//   1. Atomically claims the batch (draft/paused/sending -> sending).
+//   2. Processes at most CHUNK_SIZE queued messages, each atomically claimed
+//      (queued -> sending) so parallel invocations never double-send.
+//   3. Returns { status: 'in_progress', remaining } if more remain;
+//      callers re-invoke send_batch until { status: 'completed' }.
 async function sendBatch(body) {
   var batchId = body.batch_id;
   if (!batchId) return { status: 400, body: { error: 'Missing batch_id' } };
@@ -327,7 +314,7 @@ async function sendBatch(body) {
     return { status: 500, body: { error: 'WhatsApp not configured' } };
   }
 
-  // Get batch
+  // Get batch (for existence check + counters)
   var batches = await supabaseRequest(
     'outbox_batches?id=eq.' + encodeURIComponent(batchId) + '&select=*', 'GET'
   );
@@ -336,126 +323,136 @@ async function sendBatch(body) {
   }
   var batch = batches[0];
 
-  if (batch.status !== 'draft' && batch.status !== 'paused') {
-    return { status: 400, body: { error: 'Batch status is ' + batch.status + ', can only send draft or paused batches' } };
-  }
-
-  // Mark batch as sending
-  await supabaseRequest(
-    'outbox_batches?id=eq.' + encodeURIComponent(batchId), 'PATCH',
-    { status: 'sending', started_at: new Date().toISOString() }
+  // Atomically claim the batch: only draft/paused/sending may transition to sending
+  var claimPatch = { status: 'sending' };
+  if (!batch.started_at) claimPatch.started_at = new Date().toISOString();
+  var claimed = await supabaseRequest(
+    'outbox_batches?id=eq.' + encodeURIComponent(batchId) + '&status=in.(draft,paused,sending)',
+    'PATCH', claimPatch
   );
-
-  // Get all queued messages for this batch
-  var messages = await supabaseRequest(
-    'outbox_messages?batch_id=eq.' + encodeURIComponent(batchId) +
-    '&status=eq.queued&select=*&order=created_at.asc&limit=10000', 'GET'
-  );
-
-  if (!messages || messages.length === 0) {
-    await supabaseRequest(
-      'outbox_batches?id=eq.' + encodeURIComponent(batchId), 'PATCH',
-      { status: 'completed', completed_at: new Date().toISOString() }
-    );
-    return { status: 200, body: { batch_id: batchId, sent: 0, failed: 0, message: 'No queued messages to send' } };
+  if (!claimed || claimed.length === 0) {
+    return { status: 409, body: { error: 'Batch status is ' + batch.status + ', cannot send (only draft, paused, or sending batches)' } };
   }
 
   var sentCount = batch.sent_count || 0;
   var failedCount = batch.failed_count || 0;
+  var chunkSent = 0;
+  var chunkFailed = 0;
 
-  console.log('Starting batch send:', batchId, 'messages:', messages.length);
+  // Fetch the next chunk of queued messages
+  var messages = await supabaseRequest(
+    'outbox_messages?batch_id=eq.' + encodeURIComponent(batchId) +
+    '&status=eq.queued&select=*&order=created_at.asc&limit=' + CHUNK_SIZE, 'GET'
+  );
 
-  for (var i = 0; i < messages.length; i++) {
-    // Re-check batch status to support pausing mid-send
-    if (i > 0 && i % 10 === 0) {
-      var currentBatch = await supabaseRequest(
-        'outbox_batches?id=eq.' + encodeURIComponent(batchId) + '&select=status', 'GET'
+  if (messages && messages.length > 0) {
+    console.log('Sending chunk for batch:', batchId, 'messages:', messages.length);
+
+    for (var i = 0; i < messages.length; i++) {
+      var msg = messages[i];
+
+      // Atomically claim this message (queued -> sending). If another
+      // invocation already claimed it, zero rows return and we skip.
+      var msgClaim = await supabaseRequest(
+        'outbox_messages?id=eq.' + encodeURIComponent(msg.id) + '&status=eq.queued',
+        'PATCH', { status: 'sending' }
       );
-      if (currentBatch && currentBatch[0] && currentBatch[0].status === 'paused') {
-        console.log('Batch', batchId, 'paused at message', i, 'of', messages.length);
-        return {
-          status: 200,
-          body: {
-            batch_id: batchId,
-            status: 'paused',
-            sent: sentCount,
-            failed: failedCount,
-            remaining: messages.length - i
-          }
-        };
+      if (!msgClaim || msgClaim.length === 0) {
+        continue;
       }
-      if (currentBatch && currentBatch[0] && currentBatch[0].status === 'cancelled') {
-        console.log('Batch', batchId, 'cancelled at message', i);
-        return {
-          status: 200,
-          body: {
-            batch_id: batchId,
-            status: 'cancelled',
-            sent: sentCount,
-            failed: failedCount
-          }
-        };
-      }
-    }
 
-    var msg = messages[i];
-    var cleanPhone = msg.phone.replace(/\s/g, '');
-
-    try {
-      var result = await sendWhatsAppMessage(cleanPhone, msg.message);
-
-      if (result.ok) {
-        sentCount++;
+      // Re-check opt-out right before sending
+      var optRows = await supabaseRequest(
+        'customers?id=eq.' + encodeURIComponent(msg.customer_id) + '&select=opted_out', 'GET'
+      );
+      if (optRows && optRows[0] && optRows[0].opted_out) {
         await supabaseRequest(
           'outbox_messages?id=eq.' + encodeURIComponent(msg.id), 'PATCH',
-          {
-            status: 'sent',
-            wa_message_id: result.wa_message_id,
-            sent_at: new Date().toISOString()
-          }
+          { status: 'cancelled', error_detail: 'Customer opted out before send' }
         );
-      } else {
+        continue;
+      }
+
+      var cleanPhone = (msg.phone || '').replace(/\s/g, '');
+
+      try {
+        var result = await sendWhatsAppMessage(cleanPhone, msg.message_text);
+
+        if (result.ok) {
+          sentCount++;
+          chunkSent++;
+          await supabaseRequest(
+            'outbox_messages?id=eq.' + encodeURIComponent(msg.id), 'PATCH',
+            {
+              status: 'sent',
+              wa_message_id: result.wa_message_id,
+              sent_at: new Date().toISOString()
+            }
+          );
+        } else {
+          failedCount++;
+          chunkFailed++;
+          var errorDetail = result.error ? JSON.stringify(result.error).slice(0, 500) : 'Unknown error';
+          await supabaseRequest(
+            'outbox_messages?id=eq.' + encodeURIComponent(msg.id), 'PATCH',
+            {
+              status: 'failed',
+              error_detail: errorDetail,
+              sent_at: new Date().toISOString()
+            }
+          );
+        }
+      } catch (sendErr) {
         failedCount++;
-        var errorDetail = result.error ? JSON.stringify(result.error).slice(0, 500) : 'Unknown error';
+        chunkFailed++;
+        console.error('Send error for message', msg.id, ':', sendErr.message);
         await supabaseRequest(
           'outbox_messages?id=eq.' + encodeURIComponent(msg.id), 'PATCH',
           {
             status: 'failed',
-            error: errorDetail,
+            error_detail: String(sendErr.message || sendErr).slice(0, 500),
             sent_at: new Date().toISOString()
           }
         );
       }
-    } catch (sendErr) {
-      failedCount++;
-      console.error('Send error for message', msg.id, ':', sendErr.message);
-      await supabaseRequest(
-        'outbox_messages?id=eq.' + encodeURIComponent(msg.id), 'PATCH',
-        {
-          status: 'failed',
-          error: sendErr.message.slice(0, 500),
-          sent_at: new Date().toISOString()
-        }
-      );
+
+      // Rate limit between sends
+      if (i < messages.length - 1) {
+        await delay(SEND_DELAY_MS);
+      }
     }
 
-    // Update batch counters periodically (every 5 messages)
-    if (i % 5 === 4 || i === messages.length - 1) {
-      await supabaseRequest(
-        'outbox_batches?id=eq.' + encodeURIComponent(batchId), 'PATCH',
-        { sent_count: sentCount, failed_count: failedCount }
-      );
-    }
-
-    // Rate limit: 1 second between messages
-    if (i < messages.length - 1) {
-      await delay(1000);
-    }
+    // Update batch counters after the chunk
+    await supabaseRequest(
+      'outbox_batches?id=eq.' + encodeURIComponent(batchId), 'PATCH',
+      { sent_count: sentCount, failed_count: failedCount }
+    );
   }
 
-  // Mark batch as completed
+  // How many queued messages remain?
+  var remaining = await countRows(
+    'outbox_messages?batch_id=eq.' + encodeURIComponent(batchId) + '&status=eq.queued&select=id'
+  );
+
+  if (remaining > 0) {
+    return {
+      status: 200,
+      body: {
+        batch_id: batchId,
+        status: 'in_progress',
+        sent: sentCount,
+        failed: failedCount,
+        chunk_sent: chunkSent,
+        chunk_failed: chunkFailed,
+        remaining: remaining
+      }
+    };
+  }
+
+  // Done — mark completed (only if still 'sending', so a pause/cancel
+  // issued meanwhile is not overwritten)
   await supabaseRequest(
-    'outbox_batches?id=eq.' + encodeURIComponent(batchId), 'PATCH',
+    'outbox_batches?id=eq.' + encodeURIComponent(batchId) + '&status=eq.sending', 'PATCH',
     {
       status: 'completed',
       sent_count: sentCount,
@@ -472,7 +469,8 @@ async function sendBatch(body) {
       batch_id: batchId,
       status: 'completed',
       sent: sentCount,
-      failed: failedCount
+      failed: failedCount,
+      remaining: 0
     }
   };
 }
@@ -516,7 +514,8 @@ async function cancelBatch(body) {
     return { status: 400, body: { error: 'Cannot cancel batch with status: ' + batches[0].status } };
   }
 
-  // Mark remaining queued messages as cancelled
+  // Mark only the remaining QUEUED messages as cancelled
+  // ('cancelled' is a valid outbox_messages status as of migration 006)
   await supabaseRequest(
     'outbox_messages?batch_id=eq.' + encodeURIComponent(batchId) + '&status=eq.queued', 'PATCH',
     { status: 'cancelled' }
@@ -572,25 +571,15 @@ async function batchStats(body) {
   }
 
   // Count messages by status
-  var statuses = ['queued', 'sent', 'failed', 'cancelled'];
+  var statuses = ['queued', 'sending', 'sent', 'delivered', 'read', 'failed', 'cancelled'];
   var counts = {};
+  var total = 0;
   for (var si = 0; si < statuses.length; si++) {
     var s = statuses[si];
-    var countHeaders = {
-      'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
-      'Prefer': 'count=exact',
-      'Range-Unit': 'items',
-      'Range': '0-0'
-    };
-    var countRes = await fetch(
-      SUPABASE_URL + '/rest/v1/outbox_messages?batch_id=eq.' + encodeURIComponent(batchId) +
-      '&status=eq.' + s + '&select=id',
-      { method: 'GET', headers: countHeaders }
+    counts[s] = await countRows(
+      'outbox_messages?batch_id=eq.' + encodeURIComponent(batchId) + '&status=eq.' + s + '&select=id'
     );
-    var contentRange = countRes.headers.get('content-range') || '';
-    var rangeMatch = contentRange.match(/\/(\d+)/);
-    counts[s] = rangeMatch ? parseInt(rangeMatch[1], 10) : 0;
+    total += counts[s];
   }
 
   return {
@@ -598,7 +587,7 @@ async function batchStats(body) {
     body: {
       batch: batches[0],
       stats: counts,
-      total: counts.queued + counts.sent + counts.failed + counts.cancelled
+      total: total
     }
   };
 }
@@ -617,8 +606,8 @@ module.exports = async function handler(req, res) {
 
   // GET: simple batch listing
   if (req.method === 'GET') {
-    var result = await listBatches();
-    return res.status(result.status).json(result.body);
+    var listResult = await listBatches();
+    return res.status(listResult.status).json(listResult.body);
   }
 
   if (req.method !== 'POST') {

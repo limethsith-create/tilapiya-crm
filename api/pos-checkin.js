@@ -2,9 +2,13 @@
 // Called by external POS system when a customer checks in or places an order.
 // Upserts customer, logs the visit/order, updates loyalty, returns summary.
 //
-// POST /api/pos-checkin  — Register a visit/order
+// POST /api/pos-checkin  — Register a visit/order (idempotent on pos_reference)
 // GET  /api/pos-checkin  — Look up a customer by phone
 // Auth: Authorization: Bearer <POS_API_SECRET>
+
+const crypto = require('crypto');
+const { normalizePhone } = require('../lib/phone');
+const { supabaseRequest } = require('../lib/supabase');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -13,43 +17,30 @@ const DASHBOARD_ORIGIN = process.env.DASHBOARD_ORIGIN || '';
 
 // --- CORS ---
 function setCors(res, req) {
-  const allowed = [DASHBOARD_ORIGIN, 'https://tilapiya-crm.vercel.app'].filter(Boolean);
+  const allowed = [DASHBOARD_ORIGIN, 'https://tilapiya-crm.vercel.app', 'https://tilapiya-crm.netlify.app'].filter(Boolean);
   const origin = req?.headers?.origin || '';
-  res.setHeader('Access-Control-Allow-Origin', allowed.includes(origin) ? origin : '*');
+  res.setHeader('Access-Control-Allow-Origin', allowed.includes(origin) ? origin : allowed[0] || '');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 }
 
-// --- AUTH ---
+// --- AUTH (timing-safe, hash-both-sides so no length leak) ---
 function isAuthorized(req) {
   if (!POS_API_SECRET) return false;
   const auth = req.headers['authorization'] || '';
-  return auth.replace('Bearer ', '') === POS_API_SECRET;
+  const token = auth.replace('Bearer ', '');
+  try {
+    const a = crypto.createHash('sha256').update(token).digest();
+    const b = crypto.createHash('sha256').update(POS_API_SECRET).digest();
+    return crypto.timingSafeEqual(a, b);
+  } catch (e) { return false; }
 }
 
-// --- SUPABASE HELPER ---
-async function supa(path, method, body) {
-  const headers = {
-    'apikey': SUPABASE_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_KEY,
-    'Content-Type': 'application/json'
-  };
-  if (method === 'POST' || method === 'PATCH') headers['Prefer'] = 'return=representation';
-  const res = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-    method, headers,
-    body: body ? JSON.stringify(body) : undefined
-  });
-  if (!res.ok) {
-    const err = await res.text();
-    console.error('Supabase error:', path, res.status, err);
-    return null;
-  }
-  const text = await res.text();
-  if (!text) return null;
-  try { return JSON.parse(text); } catch (e) { return null; }
-}
+// --- SUPABASE HELPER (shared lib, 15s timeout) ---
+const supa = supabaseRequest;
 
 // --- LOYALTY TIER LOGIC ---
+// Thresholds: Platinum >= 25 visits OR 500 pts, Gold >= 15/300, Silver >= 5/100, Bronze = default
 function calculateTier(totalVisits, totalPoints) {
   if (totalVisits >= 25 || totalPoints >= 500) return 'Platinum';
   if (totalVisits >= 15 || totalPoints >= 300) return 'Gold';
@@ -89,9 +80,7 @@ module.exports = async function handler(req, res) {
       const { phone } = req.query;
       if (!phone) return res.status(400).json({ error: 'Required query param: phone' });
 
-      let cleanPhone = phone.replace(/\s/g, '');
-            // Normalize: add +94 prefix if missing (same as POST)
-            if (!cleanPhone.startsWith('+')) cleanPhone = '+94' + cleanPhone.replace(/^0/, '');
+      const cleanPhone = normalizePhone(phone);
       const customers = await supa(
         'customers?phone=eq.' + encodeURIComponent(cleanPhone) +
         '&select=id,phone,name,segment,visit_count,last_contact,notes,email,created_at',
@@ -106,7 +95,20 @@ module.exports = async function handler(req, res) {
 
       // Also fetch loyalty info
       const loyalty = await supa(
-        'loyalty?customer_id=eq.' + customer.id + '&select=total_points,total_visits,tier',
+        'loyalty?customer_id=eq.' + encodeURIComponent(customer.id) + '&select=total_points,total_visits,tier',
+        'GET'
+      );
+
+      // Also fetch recent visits (order history) for POS display
+      const visits = await supa(
+        'visits?customer_id=eq.' + encodeURIComponent(customer.id) + '&select=id,order_total,items,pos_reference,visit_type,notes,visited_at&order=visited_at.desc&limit=10',
+        'GET'
+      );
+
+      // Also fetch upcoming bookings
+      const today = new Date().toISOString().slice(0, 10);
+      const bookings = await supa(
+        'bookings?customer_id=eq.' + encodeURIComponent(customer.id) + '&date=gte.' + today + '&select=id,date,time,party_size,occasion,status,payment_status&order=date.asc&limit=5',
         'GET'
       );
 
@@ -126,7 +128,9 @@ module.exports = async function handler(req, res) {
           total_points: loyalty[0].total_points,
           total_visits: loyalty[0].total_visits,
           tier: loyalty[0].tier
-        } : { total_points: 0, total_visits: 0, tier: 'Bronze' }
+        } : { total_points: 0, total_visits: 0, tier: 'Bronze' },
+        recent_visits: visits || [],
+        upcoming_bookings: bookings || []
       });
     }
 
@@ -143,7 +147,7 @@ module.exports = async function handler(req, res) {
         pos_reference,
         notes,
         visit_type // 'dine_in', 'takeaway', 'delivery' — optional
-      } = req.body;
+      } = req.body || {};
 
       // Validate required fields
       if (!customer_phone) {
@@ -159,11 +163,25 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      // Normalize phone: if no + prefix, assume Sri Lankan (+94)
-      let phone = customer_phone.replace(/\s/g, '');
-      if (!phone.startsWith('+')) phone = '+94' + phone.replace(/^0/, '');
-
+      const phone = normalizePhone(customer_phone);
       const now = new Date().toISOString();
+
+      // --- 0. Idempotency: skip if this pos_reference was already recorded ---
+      // (Migration 006 adds a partial unique index on visits.pos_reference
+      // as a backstop for races.)
+      if (pos_reference) {
+        const dupes = await supa(
+          'visits?pos_reference=eq.' + encodeURIComponent(pos_reference) + '&select=id&limit=1',
+          'GET'
+        );
+        if (dupes && dupes.length > 0) {
+          return res.status(200).json({
+            status: 'duplicate_ignored',
+            pos_reference: pos_reference,
+            visit_id: dupes[0].id
+          });
+        }
+      }
 
       // --- 1. Upsert customer ---
       const existing = await supa(
@@ -176,7 +194,11 @@ module.exports = async function handler(req, res) {
       let isNewCustomer = false;
 
       if (existing && existing.length > 0) {
-        // Existing customer — increment visit count, update last_contact
+        // Existing customer — increment visit count, update last_contact.
+        // NOTE: read-modify-write kept deliberately; migration 006 provides an
+        // atomic increment_visit(p_customer, p_points) RPC, but this endpoint
+        // also needs the tier breakdown for its response, so it still computes
+        // loyalty here. Low risk given POS sends one check-in per order.
         customerId = existing[0].id;
         visitCount = (existing[0].visit_count || 0) + 1;
 
@@ -192,27 +214,28 @@ module.exports = async function handler(req, res) {
         else if (visitCount >= 5) updates.segment = 'regular';
         else if (visitCount >= 2) updates.segment = 'returning';
 
-        await supa('customers?id=eq.' + customerId, 'PATCH', updates);
+        await supa('customers?id=eq.' + encodeURIComponent(customerId), 'PATCH', updates);
       } else {
-        // New customer
+        // New customer — race-safe merge upsert on unique(phone)
         isNewCustomer = true;
         visitCount = 1;
-        const created = await supa('customers', 'POST', {
+        const created = await supa('customers?on_conflict=phone', 'POST', {
           phone,
           name: customer_name || phone,
           email: customer_email || null,
           segment: 'new',
+          reply_mode: 'bot',
           visit_count: 1,
           last_contact: now,
           notes: notes || null
-        });
+        }, { 'Prefer': 'resolution=merge-duplicates,return=representation' });
         if (!created || !created[0]) {
           return res.status(500).json({ error: 'Failed to create customer record' });
         }
         customerId = created[0].id;
       }
 
-      // --- 2. Log the visit/order ---
+      // --- 2. Log the visit/order (must succeed before loyalty is awarded) ---
       const visitRecord = {
         customer_id: customerId,
         order_total: order_total || 0,
@@ -222,14 +245,32 @@ module.exports = async function handler(req, res) {
         notes: notes || null,
         visited_at: now
       };
-      await supa('visits', 'POST', visitRecord);
+      const visitResult = await supa('visits', 'POST', visitRecord);
+      if (!visitResult || !visitResult[0]) {
+        // Insert may have hit the unique pos_reference backstop (race with a
+        // concurrent duplicate request) — check and report gracefully.
+        if (pos_reference) {
+          const raceDupes = await supa(
+            'visits?pos_reference=eq.' + encodeURIComponent(pos_reference) + '&select=id&limit=1',
+            'GET'
+          );
+          if (raceDupes && raceDupes.length > 0) {
+            return res.status(200).json({
+              status: 'duplicate_ignored',
+              pos_reference: pos_reference,
+              visit_id: raceDupes[0].id
+            });
+          }
+        }
+        return res.status(500).json({ error: 'Failed to record visit — loyalty not awarded' });
+      }
 
       // --- 3. Update loyalty ---
       const pointsEarned = calculatePoints(order_total);
 
       // Get or create loyalty record
       const loyaltyRows = await supa(
-        'loyalty?customer_id=eq.' + customerId + '&select=id,total_points,total_visits,tier',
+        'loyalty?customer_id=eq.' + encodeURIComponent(customerId) + '&select=id,total_points,total_visits,tier',
         'GET'
       );
 
@@ -241,21 +282,21 @@ module.exports = async function handler(req, res) {
         const newVisits = (l.total_visits || 0) + 1;
         const newTier = calculateTier(newVisits, newPoints);
 
-        await supa('loyalty?id=eq.' + l.id, 'PATCH', {
+        await supa('loyalty?id=eq.' + encodeURIComponent(l.id), 'PATCH', {
           total_points: newPoints,
           total_visits: newVisits,
           tier: newTier
         });
         loyaltyData = { total_points: newPoints, total_visits: newVisits, tier: newTier };
       } else {
-        // Create loyalty record
+        // Create loyalty record (race-safe on unique customer_id)
         const newTier = calculateTier(1, pointsEarned);
-        const created = await supa('loyalty', 'POST', {
+        await supa('loyalty?on_conflict=customer_id', 'POST', {
           customer_id: customerId,
           total_points: pointsEarned,
           total_visits: 1,
           tier: newTier
-        });
+        }, { 'Prefer': 'resolution=merge-duplicates,return=representation' });
         loyaltyData = { total_points: pointsEarned, total_visits: 1, tier: newTier };
       }
 
@@ -303,4 +344,3 @@ module.exports = async function handler(req, res) {
     return res.status(500).json({ error: 'Internal server error: ' + err.message });
   }
 };
-h

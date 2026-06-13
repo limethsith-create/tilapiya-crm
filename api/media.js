@@ -4,15 +4,19 @@
 // Called internally by webhook, also exposed as POST handler for dashboard use.
 
 const crypto = require('crypto');
+const { isAuthorized } = require('../lib/auth');
+const { supabaseRequest } = require('../lib/supabase');
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const WA_TOKEN = process.env.META_WHATSAPP_TOKEN;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const DASHBOARD_ORIGIN = process.env.DASHBOARD_ORIGIN || '';
-const DASHBOARD_SECRET = process.env.DASHBOARD_SECRET;
 
-// --- CORS & AUTH (same pattern as send.js) ---
+// Size cap for media downloads (3 MB)
+const MAX_MEDIA_BYTES = 3 * 1024 * 1024;
+
+// --- CORS (same pattern as send.js) ---
 
 function setCorsHeaders(res, req) {
   var allowed = [DASHBOARD_ORIGIN, 'https://tilapiya-crm.vercel.app', 'https://tilapiya-crm.netlify.app'].filter(Boolean);
@@ -24,40 +28,11 @@ function setCorsHeaders(res, req) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
 }
 
-function isAuthorized(req) {
-  if (!DASHBOARD_SECRET) {
-    console.error('[media] DASHBOARD_SECRET not set');
-    return false;
-  }
-  var key = req.headers['x-dashboard-key'] || '';
-  if (key.length !== DASHBOARD_SECRET.length) return false;
-  try {
-    return crypto.timingSafeEqual(Buffer.from(key), Buffer.from(DASHBOARD_SECRET));
-  } catch (e) { return false; }
-}
-
-// --- SUPABASE HELPER ---
-
-async function supabaseRequest(path, method, body) {
-  var headers = {
-    'apikey': SUPABASE_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_KEY,
-    'Content-Type': 'application/json'
-  };
-  if (method === 'POST' || method === 'PATCH') headers['Prefer'] = 'return=representation';
-  var r = await fetch(SUPABASE_URL + '/rest/v1/' + path, {
-    method: method,
-    headers: headers,
-    body: body ? JSON.stringify(body) : undefined
-  });
-  if (!r.ok) {
-    var err = await r.text();
-    console.error('[media] Supabase error:', path, r.status, err);
-    return null;
-  }
-  var text = await r.text();
-  if (!text) return null;
-  try { return JSON.parse(text); } catch (e) { return null; }
+// Error helper carrying an HTTP status code
+function httpError(statusCode, message) {
+  var err = new Error(message);
+  err.statusCode = statusCode;
+  return err;
 }
 
 // --- MIME TYPE HELPERS ---
@@ -94,7 +69,8 @@ async function download_media(media_id) {
   // Step 1: Get the media URL from Meta
   var metaRes = await fetch('https://graph.facebook.com/v22.0/' + media_id, {
     method: 'GET',
-    headers: { 'Authorization': 'Bearer ' + WA_TOKEN }
+    headers: { 'Authorization': 'Bearer ' + WA_TOKEN },
+    signal: AbortSignal.timeout(15000)
   });
 
   if (!metaRes.ok) {
@@ -111,10 +87,16 @@ async function download_media(media_id) {
     throw new Error('No media URL returned by Meta for media_id: ' + media_id);
   }
 
+  // Size cap: refuse oversized media before downloading
+  if (metaData.file_size && Number(metaData.file_size) > MAX_MEDIA_BYTES) {
+    throw httpError(413, 'Media too large: ' + metaData.file_size + ' bytes (max ' + MAX_MEDIA_BYTES + ' bytes / 3MB)');
+  }
+
   // Step 2: Download the actual binary
   var downloadRes = await fetch(mediaUrl, {
     method: 'GET',
-    headers: { 'Authorization': 'Bearer ' + WA_TOKEN }
+    headers: { 'Authorization': 'Bearer ' + WA_TOKEN },
+    signal: AbortSignal.timeout(20000)
   });
 
   if (!downloadRes.ok) {
@@ -125,6 +107,11 @@ async function download_media(media_id) {
 
   var arrayBuffer = await downloadRes.arrayBuffer();
   var buffer = Buffer.from(arrayBuffer);
+
+  // Backstop size check (Meta does not always report file_size)
+  if (buffer.length > MAX_MEDIA_BYTES) {
+    throw httpError(413, 'Media too large: ' + buffer.length + ' bytes (max ' + MAX_MEDIA_BYTES + ' bytes / 3MB)');
+  }
 
   console.log('[media] Downloaded:', media_id, 'size=' + buffer.length, 'mime=' + mimeType);
 
@@ -185,6 +172,7 @@ async function transcribe_voice(media_buffer, mime_type) {
       'Authorization': 'Bearer ' + OPENAI_API_KEY,
       'Content-Type': 'multipart/form-data; boundary=' + boundary
     },
+    signal: AbortSignal.timeout(30000),
     body: bodyBuffer
   });
 
@@ -222,6 +210,7 @@ async function describe_image(media_buffer, mime_type) {
       'Authorization': 'Bearer ' + OPENAI_API_KEY,
       'Content-Type': 'application/json'
     },
+    signal: AbortSignal.timeout(25000),
     body: JSON.stringify({
       model: 'gpt-4o',
       messages: [
@@ -292,6 +281,7 @@ async function detect_and_translate(text, source_hint) {
       'Authorization': 'Bearer ' + OPENAI_API_KEY,
       'Content-Type': 'application/json'
     },
+    signal: AbortSignal.timeout(25000),
     body: JSON.stringify({
       model: 'gpt-4o',
       messages: [
@@ -350,16 +340,20 @@ async function save_media_record(data) {
   if (!SUPABASE_URL || !SUPABASE_KEY) throw new Error('Supabase not configured');
   if (!data) throw new Error('No data provided');
 
+  // Columns match media_messages schema (005) + additions from migration 006
+  // (wa_message_id, file_size, original_filename, processed_at).
   var record = {
     customer_id: data.customer_id || null,
+    conversation_id: data.conversation_id || null,
     wa_message_id: data.wa_message_id || null,
-    media_id: data.media_id || null,
-    media_type: data.media_type || 'unknown',
+    wa_media_id: data.wa_media_id || data.media_id || null,
+    media_type: data.media_type || 'document',
     mime_type: data.mime_type || null,
     file_size: data.file_size || null,
     transcription: data.transcription || null,
     description: data.description || null,
     detected_language: data.detected_language || null,
+    original_text: data.original_text || null,
     translated_text: data.translated_text || null,
     original_filename: data.original_filename || null,
     processed_at: new Date().toISOString()
@@ -392,7 +386,7 @@ module.exports = async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized. Provide X-Dashboard-Key header.' });
   }
 
-  var action = req.body.action;
+  var action = req.body && req.body.action;
   if (!action) {
     return res.status(400).json({ error: 'Missing action field. Valid actions: download_media, transcribe_voice, describe_image, detect_and_translate, save_media_record' });
   }
@@ -442,7 +436,8 @@ module.exports = async function handler(req, res) {
     }
   } catch (err) {
     console.error('[media] Handler error:', action, err.message);
-    return res.status(500).json({ error: err.message });
+    var status = err.statusCode === 413 ? 413 : 500;
+    return res.status(status).json({ error: err.message });
   }
 };
 

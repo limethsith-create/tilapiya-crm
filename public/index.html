@@ -8,22 +8,7 @@
 <meta name="theme-color" content="#0c0a09">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-<script>
-if(typeof supabase==='undefined'){
-  (function(){
-    var err={data:null,error:new Error('Supabase not loaded')};
-    function chain(){
-      var p=Promise.resolve(err);
-      var methods=['select','order','limit','eq','gte','lt','in','like','insert','update','single','delete'];
-      methods.forEach(function(m){p[m]=function(){return chain();};});
-      return p;
-    }
-    window.supabase={createClient:function(){return{from:function(){return{select:chain,insert:chain,update:chain,delete:chain};}};}};
-  })();
-}
-</script>
 <style>
   :root {
     --bg: #111110; --surface: #1c1c1a; --surface-2: #252523;
@@ -188,7 +173,6 @@ if(typeof supabase==='undefined'){
   .bubble-row.out { align-self: flex-end; align-items: flex-end; }
   .bubble { padding: 9px 13px; font-size: 13px; line-height: 1.45; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
   .bubble.in { background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
-  @keyframes fadeSlideIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
   .bubble.out { background: #e8e6e3; color: #111110; border-bottom-right-radius: 4px; }
   .bubble-meta { font-size: 10.5px; color: var(--text-subtle); display: flex; gap: 8px; padding: 0 4px; }
   .contact-panel { overflow-y: auto; padding: 18px; }
@@ -361,34 +345,6 @@ if(typeof supabase==='undefined'){
     .pipeline-board { flex-direction: column; min-height: auto; }
     .pipeline-col { min-width: auto; }
   }
-  /* === OUTBOX STYLES === */
-  @keyframes sending-pulse { 0%,100%{box-shadow:0 0 0 0 rgba(132,204,22,0.25)} 50%{box-shadow:0 0 12px 4px rgba(132,204,22,0.15)} }
-  @keyframes progress-stripe { 0%{background-position:0 0} 100%{background-position:24px 0} }
-  @keyframes ob-fade-in { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-  .outbox-grid { display:grid;grid-template-columns:1.6fr 1fr;gap:12px; }
-  .batch-card { padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;position:relative; }
-  .batch-card:last-child { border-bottom:0; }
-  .batch-card:hover { background:var(--hover); }
-  .batch-card.active { background:var(--surface-2); }
-  .batch-card.is-sending { animation:sending-pulse 2.4s ease-in-out infinite;border-left:2px solid var(--green); }
-  .progress-bar { flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden; }
-  .progress-fill { height:100%;background:var(--green);border-radius:3px;transition:width .4s ease; }
-  .progress-fill.active { background-image:linear-gradient(135deg,rgba(255,255,255,.12) 25%,transparent 25%,transparent 50%,rgba(255,255,255,.12) 50%,rgba(255,255,255,.12) 75%,transparent 75%);background-size:24px 24px;animation:progress-stripe .8s linear infinite; }
-  .batch-status { display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:500;white-space:nowrap; }
-  .batch-status.draft { background:var(--blue-bg);color:var(--blue);border:1px solid rgba(96,165,250,0.2); }
-  .batch-status.sending { background:var(--green-bg);color:var(--green);border:1px solid rgba(132,204,22,0.2); }
-  .batch-status.paused { background:var(--amber-bg);color:var(--amber);border:1px solid rgba(245,158,11,0.2); }
-  .batch-status.failed { background:var(--red-bg);color:var(--red);border:1px solid rgba(239,68,68,0.2); }
-  .batch-status.completed { background:var(--surface-2);color:var(--text-muted);border:1px solid var(--border); }
-  .batch-status.cancelled { background:var(--surface-2);color:var(--text-subtle);border:1px solid var(--border); }
-  .batch-actions { display:flex;align-items:center;gap:6px;padding-top:10px; }
-  .schedule-row { display:flex;align-items:center;gap:12px;padding:12px 0; }
-  .schedule-row input[type="datetime-local"] { padding:7px 12px;border:1px solid var(--border);background:var(--surface-2);border-radius:7px;font-size:13px;color:var(--text);outline:none;color-scheme:dark; }
-  .outbox-empty { display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 24px;text-align:center; }
-  .outbox-empty-title { font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px; }
-  .outbox-empty-desc { font-size:12.5px;color:var(--text-muted);max-width:260px;line-height:1.5; }
-  @media(max-width:1100px){ .outbox-grid{grid-template-columns:1fr;} }
-  @media(max-width:640px){ .outbox-grid{grid-template-columns:1fr;gap:8px;} .batch-card{padding:12px 14px;} .batch-actions{flex-wrap:wrap;} }
 </style>
 </head>
 <body>
@@ -398,7 +354,7 @@ if(typeof supabase==='undefined'){
     <div class="brand-mark">T</div>
     <div class="brand-text">
       <div class="brand-title">Tilapiya CRM</div>
-      <div class="brand-sub">Restaurant WhatsApp CRM</div>
+      <div class="brand-sub">WhatsApp · Messenger · Instagram</div>
     </div>
   </div>
   <div class="top-search">
@@ -415,10 +371,7 @@ if(typeof supabase==='undefined'){
     <div class="nav-section">Workspace</div>
     <div class="nav-item active" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span class="lbl">Overview</span></div>
     <div class="nav-item" data-view="add-customer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg><span class="lbl">Add Customer</span></div>
-    <div class="nav-item channel-nav" data-view="inbox" data-channel="all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H5.17L4 17.17z"/></svg><span class="lbl">All Inquiries</span><span class="count" id="inboxCount">0</span></div>
-    <div class="nav-item channel-nav" data-view="inbox" data-channel="whatsapp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg><span class="lbl">WhatsApp</span><span class="count" id="navCountWhatsapp">0</span></div>
-    <div class="nav-item channel-nav" data-view="inbox" data-channel="instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1.2" fill="currentColor"/></svg><span class="lbl">Instagram</span><span class="count" id="navCountInstagram">0</span></div>
-    <div class="nav-item channel-nav" data-view="inbox" data-channel="facebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg><span class="lbl">Facebook</span><span class="count" id="navCountFacebook">0</span></div>
+    <div class="nav-item" data-view="inbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h16v12H5.17L4 17.17z"/></svg><span class="lbl">Inbox</span><span class="count" id="inboxCount">0</span></div>
     <div class="nav-item" data-view="contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg><span class="lbl">Contacts</span><span class="count" id="contactsCount">0</span></div>
     <div class="nav-item" data-view="pipeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg><span class="lbl">Pipeline</span><span class="count" id="pipelineCount">0</span></div>
     <div class="nav-item" data-view="daily-log"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg><span class="lbl">Daily Log</span></div>
@@ -427,7 +380,6 @@ if(typeof supabase==='undefined'){
     <div class="nav-item" data-view="feedback"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="lbl">Feedback</span><span class="count" id="feedbackCount">0</span></div>
     <div class="nav-section" style="margin-top:14px">Operations</div>
     <div class="nav-item" data-view="crm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 1 3.6 7.2L3 21l1.8-3.6A9 9 0 0 1 3 12z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg><span class="lbl">Automated CRM</span></div>
-    <div class="nav-item" data-view="outbox"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9"/></svg><span class="lbl">Outbox</span><span class="count" id="outboxCount">0</span></div>
     <div class="nav-item" data-view="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg><span class="lbl">Reports</span></div>
     <div class="sidebar-footer">
       <div class="avatar">T</div>
@@ -438,7 +390,7 @@ if(typeof supabase==='undefined'){
 
     <!-- OVERVIEW -->
     <section class="view active" data-view="overview"><div class="page">
-      <div class="page-head"><div><h1>Overview</h1><div class="subtitle">Real-time metrics from your WhatsApp CRM system.</div></div><button class="btn secondary sm" onclick="loadOverview()">Refresh</button></div>
+      <div class="page-head"><div><h1>Overview</h1><div class="subtitle">Real-time metrics across WhatsApp, Messenger &amp; Instagram.</div></div><button class="btn secondary sm" onclick="loadOverview()">Refresh</button></div>
       <section class="stats">
         <div class="card stat"><div class="stat-label">Today's Bookings</div><div class="stat-value" id="ov-bookings">0</div><div class="stat-delta">reservations</div></div>
         <div class="card stat"><div class="stat-label">Week Revenue</div><div class="stat-value" id="ov-revenue">0</div><div class="stat-delta">LKR collected</div></div>
@@ -450,6 +402,11 @@ if(typeof supabase==='undefined'){
         <div class="card stat"><div class="stat-label">Messages Out</div><div class="stat-value" id="ov-msgout">0</div><div class="stat-delta">sent this week</div></div>
         <div class="card stat"><div class="stat-label">Avg Rating</div><div class="stat-value" id="ov-avgrating">—</div><div class="stat-delta">from feedback</div></div>
         <div class="card stat"><div class="stat-label">Loyalty Members</div><div class="stat-value" id="ov-loyalty">0</div><div class="stat-delta">enrolled</div></div>
+      </section>
+      <section class="stats" style="grid-template-columns:repeat(3,1fr)">
+        <div class="card stat"><div class="stat-label"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#25D366;margin-right:5px;vertical-align:middle"></span>WhatsApp Messages</div><div class="stat-value" id="ov-wamsgs">0</div><div class="stat-delta">this week</div></div>
+        <div class="card stat"><div class="stat-label"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#0084ff;margin-right:5px;vertical-align:middle"></span>Messenger Messages</div><div class="stat-value" id="ov-fbmsgs">0</div><div class="stat-delta">this week</div></div>
+        <div class="card stat"><div class="stat-label"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#d6249f;margin-right:5px;vertical-align:middle"></span>Instagram Messages</div><div class="stat-value" id="ov-igmsgs">0</div><div class="stat-delta">this week</div></div>
       </section>
       <section class="stats">
         <div class="card stat"><div class="stat-label">Open Complaints</div><div class="stat-value" id="ov-complaints">0</div><div class="stat-delta">need attention</div></div>
@@ -476,7 +433,7 @@ if(typeof supabase==='undefined'){
       <div id="waStatusBar" style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border)">
         <div style="display:flex;align-items:center;gap:10px">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-          <span style="font-size:12.5px"><span style="font-weight:600" id="inboxConnLabel">WhatsApp Connected</span> <span class="muted">· Number: <span id="waNumber">+94 77 123 4567</span> · Pulling live messages</span></span>
+          <span style="font-size:12.5px"><span style="font-weight:600">Channels Connected</span> <span class="muted">· WhatsApp <span id="waNumber">+94 77 123 4567</span> · Messenger · Instagram</span></span>
           <span class="chip green" id="waLiveChip" style="margin-left:4px">Live</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -489,7 +446,13 @@ if(typeof supabase==='undefined'){
       </div>
       <div class="inbox">
       <div class="inbox-col">
-        <div class="inbox-col-head"><div class="panel-title" id="inboxChannelTitle">All Inquiries</div><span class="muted" style="font-size:11px" id="inboxTotalLabel">0 threads</span></div>
+        <div class="inbox-col-head"><div class="panel-title">Conversations</div><span class="muted" style="font-size:11px" id="inboxTotalLabel">0 threads</span></div>
+        <div class="inbox-filters channel-tabs" style="border-bottom:none;padding-bottom:2px">
+          <div class="filter-pill active" data-channel="all">All Channels <span id="fcAll" style="font-size:10px;opacity:.7"></span></div>
+          <div class="filter-pill" data-channel="whatsapp"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#25D366;margin-right:5px;vertical-align:middle"></span>WhatsApp <span id="fcWhatsapp" style="font-size:10px;opacity:.7"></span></div>
+          <div class="filter-pill" data-channel="facebook"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#0084ff;margin-right:5px;vertical-align:middle"></span>Messenger <span id="fcFacebook" style="font-size:10px;opacity:.7"></span></div>
+          <div class="filter-pill" data-channel="instagram"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#d6249f;margin-right:5px;vertical-align:middle"></span>Instagram <span id="fcInstagram" style="font-size:10px;opacity:.7"></span></div>
+        </div>
         <div class="inbox-filters">
           <div class="filter-pill active" data-filter="all">All <span id="fpAll" style="font-size:10px;opacity:.7"></span></div>
           <div class="filter-pill" data-filter="BOOKING">Booking <span id="fpBooking" style="font-size:10px;opacity:.7"></span></div>
@@ -497,16 +460,15 @@ if(typeof supabase==='undefined'){
           <div class="filter-pill" data-filter="COMPLAINT">Complaint <span id="fpComplaint" style="font-size:10px;opacity:.7"></span></div>
           <div class="filter-pill" data-filter="FEEDBACK">Feedback <span id="fpFeedback" style="font-size:10px;opacity:.7"></span></div>
         </div>
-        <div style="padding:8px 12px;border-bottom:1px solid var(--border)"><button onclick="showNewMessageModal()" style="width:100%;padding:8px;border-radius:8px;border:1px solid #3a3a3a;background:#1a1a1a;color:#c8b88a;font-size:12px;font-weight:600;cursor:pointer">+ New Message</button></div>
         <div class="thread-list" id="threadList"><div class="empty-inline">Loading...</div></div>
       </div>
       <div class="inbox-col">
-        <div class="thread-header"><div class="who"><div class="avatar" style="width:36px;height:36px;font-size:13px;" id="chatAvatar">—</div><div><div class="who-name" id="chatName">Select a conversation</div><div class="who-sub" id="chatPhone">Choose from left</div></div></div><div style="display:flex;gap:8px;align-items:center"><div id="botToggleWrap" style="display:none"><button id="botToggleBtn" onclick="toggleBotMode()" style="display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:999px;border:1px solid var(--border-strong);background:var(--surface-2);color:var(--text-muted);font-size:11.5px;font-weight:600;cursor:pointer;transition:all .15s"><span id="botToggleDot" style="width:8px;height:8px;border-radius:50%;background:var(--text-subtle)"></span><span id="botToggleLabel">Bot: Off</span></button></div><div id="chatPipelineLink"></div></div></div>
+        <div class="thread-header"><div class="who"><div class="avatar" style="width:36px;height:36px;font-size:13px;" id="chatAvatar">—</div><div><div class="who-name" id="chatName">Select a conversation</div><div class="who-sub" id="chatPhone">Choose from left</div></div></div><div style="display:flex;gap:8px;align-items:center"><button class="btn sm secondary" id="botModeBtn" style="display:none" onclick="toggleBotMode()">Bot: —</button><div id="chatPipelineLink"></div></div></div>
         <div class="thread-body" id="chatMessages" style="flex:1;overflow-y:auto"><div class="empty-inline" style="margin:auto">Select a conversation</div></div>
         <div id="replyBox" style="display:none;padding:10px 16px;border-top:1px solid #2a2a2a;background:#1a1a1a;flex-shrink:0">
           <div style="display:flex;gap:8px;align-items:center">
             <input type="text" id="replyInput" placeholder="Type your reply..." style="flex:1;padding:10px 14px;border-radius:20px;border:1px solid #3a3a3a;background:#0d0d0d;color:#e0e0e0;font-size:14px;outline:none" onkeydown="if(event.key==='Enter')sendManualReply()">
-            <button onclick="sendManualReply()" style="padding:10px 20px;border-radius:20px;border:none;background:#e8e6e3;color:#111110;font-weight:600;cursor:pointer;font-size:14px;white-space:nowrap">Send</button>
+            <button onclick="sendManualReply()" style="padding:10px 20px;border-radius:20px;border:none;background:#0c0a09;color:#c8b88a;font-weight:600;cursor:pointer;font-size:14px;white-space:nowrap">Send</button>
           </div>
           <div id="replyStatus" style="font-size:12px;color:#888;margin-top:4px;display:none"></div>
         </div>
@@ -515,7 +477,6 @@ if(typeof supabase==='undefined'){
         <div class="contact-id"><div class="contact-avatar" id="detailAvatar">—</div><div class="contact-name" id="detailName">No contact</div><div class="contact-sub" id="detailPhone">—</div></div>
         <div class="contact-section"><h3>Activity</h3><div class="kv"><span class="k">Segment</span><span class="v" id="detailSegment">—</span></div><div class="kv"><span class="k">Visits</span><span class="v" id="detailVisits">0</span></div><div class="kv"><span class="k">First contact</span><span class="v" id="detailFirst">—</span></div><div class="kv"><span class="k">Last contact</span><span class="v" id="detailLast">—</span></div></div>
         <div class="contact-section"><h3>Loyalty</h3><div class="kv"><span class="k">Tier</span><span class="v" id="detailTier">—</span></div><div class="kv"><span class="k">Points</span><span class="v" id="detailPoints">0</span></div></div>
-        <div class="contact-section"><h3>Bot Reply Mode</h3><div class="kv"><span class="k">Auto-reply</span><span class="v" id="detailBotMode">—</span></div></div>
         <div class="contact-section"><h3>Pipeline Stage</h3><div class="kv"><span class="k">Status</span><span class="v" id="detailPipelineStage">—</span></div></div>
         <div class="contact-section"><h3>Notes</h3><div id="detailNotes" style="font-size:12.5px;color:var(--text-muted)">—</div></div>
       </div></div>
@@ -672,59 +633,6 @@ if(typeof supabase==='undefined'){
       </div>
     </div></section>
 
-    <!-- OUTBOX -->
-    <section class="view" data-view="outbox"><div class="page">
-      <div class="page-head"><div><h1>Outbox</h1><div class="subtitle">Send bulk WhatsApp messages to customer segments.</div></div><button class="btn secondary sm" onclick="loadOutbox()">Refresh</button></div>
-      <section class="stats">
-        <div class="card stat"><div class="stat-label">Total Batches</div><div class="stat-value" id="outbox-total">0</div></div>
-        <div class="card stat"><div class="stat-label">Messages Sent</div><div class="stat-value" id="outbox-sent">0</div></div>
-        <div class="card stat"><div class="stat-label">Delivered</div><div class="stat-value" id="outbox-delivered">0</div></div>
-        <div class="card stat"><div class="stat-label">Failed</div><div class="stat-value" id="outbox-failed">0</div></div>
-      </section>
-      <div class="outbox-grid">
-        <div class="card"><div class="panel-head"><div><div class="panel-title">Compose Bulk Message</div><div class="panel-sub">Use variables to personalise your template.</div></div></div><div class="panel-body">
-          <div class="variable-chips">
-            <div class="var-chip outbox-var-chip" data-var="{{name}}">{{name}}</div>
-            <div class="var-chip outbox-var-chip" data-var="{{phone}}">{{phone}}</div>
-            <div class="var-chip outbox-var-chip" data-var="{{date}}">{{date}}</div>
-            <div class="var-chip outbox-var-chip" data-var="{{offer}}">{{offer}}</div>
-            <div class="var-chip outbox-var-chip" data-var="{{points}}">{{points}}</div>
-            <div class="var-chip outbox-var-chip" data-var="{{tier}}">{{tier}}</div>
-          </div>
-          <textarea id="outboxCompose" class="compose-textarea" placeholder="Hi {{name}}, we have an exclusive offer for you..."></textarea>
-          <div class="compose-meta"><div></div><div><span id="outboxCharCount">0</span> / 1024</div></div>
-          <div class="preview-box"><div class="preview-label">Preview</div><div class="preview-bubble" id="outboxPreview">Start typing...</div></div>
-          <input class="field" id="outboxBatchName" placeholder="Batch name (e.g. Weekend Promo May)" style="margin-top:14px">
-          <select class="field" id="outboxSegment" style="margin-top:8px"><option value="all">All</option><option value="new">New</option><option value="returning">Returning</option><option value="vip">VIP</option><option value="lapsed">Lapsed</option><option value="gold">Gold+Platinum</option></select>
-          <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
-            <label style="display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--text-muted);cursor:pointer">
-              <input type="checkbox" id="outboxScheduleToggle" onchange="document.getElementById('outboxSchedule').style.display=this.checked?'block':'none'"> Schedule for later
-            </label>
-          </div>
-          <input type="datetime-local" class="field" id="outboxSchedule" style="margin-top:8px;display:none;color-scheme:dark">
-          <div style="margin-top:14px;font-size:12.5px;color:var(--text-muted)" id="outboxRecipientCount">Estimated recipients: --</div>
-          <div style="display:flex;gap:8px;margin-top:16px">
-            <button class="btn secondary" onclick="previewOutboxRecipients()">Preview Recipients</button>
-            <button class="btn" onclick="createOutboxBatch()">Create Batch</button>
-          </div>
-        </div></div>
-        <div class="card"><div class="panel-head"><div><div class="panel-title">Batch Queue</div><div class="panel-sub">Manage outgoing message batches</div></div></div>
-          <div style="padding:10px 16px;border-bottom:1px solid var(--border);display:flex;gap:6px;overflow-x:auto">
-            <span class="filter-pill outbox-filter-pill active" data-status="all">All</span>
-            <span class="filter-pill outbox-filter-pill" data-status="draft">Draft</span>
-            <span class="filter-pill outbox-filter-pill" data-status="sending">Sending</span>
-            <span class="filter-pill outbox-filter-pill" data-status="completed">Completed</span>
-            <span class="filter-pill outbox-filter-pill" data-status="failed">Failed</span>
-          </div>
-          <div id="outboxBatchList" style="max-height:520px;overflow-y:auto;padding:12px"><div class="empty-inline">No batches yet. Compose a message and create your first batch.</div></div>
-        </div>
-      </div>
-      <div class="card" id="outboxBatchDetail" style="display:none;margin-top:12px">
-        <div class="panel-head"><div><div class="panel-title" id="outboxDetailName">Batch Detail</div><div class="panel-sub" id="outboxDetailStatus">Select a batch above</div></div><button class="btn sm secondary" onclick="document.getElementById('outboxBatchDetail').style.display='none'">Close</button></div>
-        <div class="panel-body" id="outboxDetailBody"><div class="empty-inline">Select a batch to view details</div></div>
-      </div>
-    </div></section>
-
     <!-- REPORTS -->
     <section class="view" data-view="reports"><div class="page">
       <div class="page-head"><div><h1>Reports</h1><div class="subtitle">Download daily, weekly, and monthly reach-out reports.</div></div></div>
@@ -752,22 +660,26 @@ if(typeof supabase==='undefined'){
 </div>
 
 <script>
-// --- HTML ESCAPING (XSS prevention) ---
+/* ── XSS PREVENTION ── */
 function escapeHTML(str){
-  if(!str)return str;
+  if(str==null)return '';
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
-// --- AUTH GATE ---
-const API_BASE = window.location.origin; // Vercel API base
-let DASHBOARD_KEY = sessionStorage.getItem('tilapiya_dash_key') || '';
-const DASH_KEY_EXPIRY = parseInt(sessionStorage.getItem('tilapiya_dash_exp') || '0');
 
-function showAuthGate() {
-  document.querySelector('.shell').style.display = 'none';
-  document.querySelector('.topbar').style.display = 'none';
-  const gate = document.createElement('div');
-  gate.id = 'authGate';
-  gate.innerHTML = `
+/* ── AUTH GATE ── */
+const API_BASE=window.location.origin;
+let DASHBOARD_KEY=sessionStorage.getItem('tilapiya_dash_key')||'';
+let DASH_KEY_EXPIRY=parseInt(sessionStorage.getItem('tilapiya_dash_exp')||'0',10);
+
+function apiHeaders(){return {'X-Dashboard-Key':DASHBOARD_KEY};}
+
+function showAuthGate(){
+  if(document.getElementById('authGate'))return;
+  document.querySelector('.shell').style.display='none';
+  document.querySelector('.topbar').style.display='none';
+  const gate=document.createElement('div');
+  gate.id='authGate';
+  gate.innerHTML=`
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:40px;max-width:360px;width:100%;text-align:center;">
         <div style="width:40px;height:40px;background:#e8e6e3;color:#111;border-radius:10px;display:grid;place-items:center;font-weight:700;font-size:14px;margin:0 auto 16px;">T</div>
@@ -779,337 +691,317 @@ function showAuthGate() {
       </div>
     </div>`;
   document.body.prepend(gate);
-  document.getElementById('authPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  document.getElementById('authPass').addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
   document.getElementById('authPass').focus();
 }
 
-async function doLogin() {
-  const pass = document.getElementById('authPass').value;
-  const errEl = document.getElementById('authError');
-  const btn = document.getElementById('authBtn');
-  if (!pass) { errEl.textContent = 'Password required'; errEl.style.display = 'block'; return; }
-  btn.textContent = 'Signing in...'; btn.disabled = true;
-  try {
-    const r = await fetch(API_BASE + '/api/auth', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password: pass })
+async function doLogin(){
+  const pass=document.getElementById('authPass').value;
+  const errEl=document.getElementById('authError');
+  const btn=document.getElementById('authBtn');
+  if(!pass){errEl.textContent='Password required';errEl.style.display='block';return;}
+  btn.textContent='Signing in...';btn.disabled=true;
+  try{
+    const r=await fetch(API_BASE+'/api/auth',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({password:pass})
     });
-    const data = await r.json();
-    if (r.ok && data.key) {
-      DASHBOARD_KEY = data.key;
-      sessionStorage.setItem('tilapiya_dash_key', data.key);
-      sessionStorage.setItem('tilapiya_dash_exp', String(data.expires || Date.now() + 86400000));
-      document.getElementById('authGate').remove();
-      document.querySelector('.shell').style.display = '';
-      document.querySelector('.topbar').style.display = '';
-      initApp();
-    } else {
-      errEl.textContent = data.error || 'Invalid password';
-      errEl.style.display = 'block';
-      btn.textContent = 'Sign In'; btn.disabled = false;
+    const data=await r.json();
+    if(r.ok&&data.key){
+      DASHBOARD_KEY=data.key;
+      DASH_KEY_EXPIRY=data.expires||(Date.now()+86400000);
+      sessionStorage.setItem('tilapiya_dash_key',data.key);
+      sessionStorage.setItem('tilapiya_dash_exp',String(DASH_KEY_EXPIRY));
+      const g=document.getElementById('authGate');if(g)g.remove();
+      document.querySelector('.shell').style.display='';
+      document.querySelector('.topbar').style.display='';
+      boot();
+    }else{
+      errEl.textContent=data.error||'Invalid password';
+      errEl.style.display='block';
+      btn.textContent='Sign In';btn.disabled=false;
     }
-  } catch (e) {
-    errEl.textContent = 'Connection error. Is the API running?';
-    errEl.style.display = 'block';
-    btn.textContent = 'Sign In'; btn.disabled = false;
+  }catch(e){
+    errEl.textContent='Connection error. Is the API running?';
+    errEl.style.display='block';
+    btn.textContent='Sign In';btn.disabled=false;
   }
 }
 
-// Helper: add auth header to dashboard API calls
-function dashHeaders() {
-  return { 'Content-Type': 'application/json', 'X-Dashboard-Key': DASHBOARD_KEY };
-}
-
-// Check if already authenticated
-if (DASHBOARD_KEY && DASH_KEY_EXPIRY > Date.now()) {
-  // Already have a valid key from this session
-  document.addEventListener('DOMContentLoaded', () => initApp());
-} else {
+function clearAuth(){
+  DASHBOARD_KEY='';DASH_KEY_EXPIRY=0;
   sessionStorage.removeItem('tilapiya_dash_key');
   sessionStorage.removeItem('tilapiya_dash_exp');
-  DASHBOARD_KEY = '';
-  document.addEventListener('DOMContentLoaded', () => showAuthGate());
+  showAuthGate();
 }
 
-function initApp() {
-
-// ⚠️ UPDATE THESE: Go to Supabase → Settings → API → copy Project URL and anon/public key
-const SUPABASE_URL='https://awahengrenjpdfuyvllj.supabase.co';
-const SUPABASE_ANON='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3YWhlbmdyZW5qcGRmdXl2bGxqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcwODk5NjUsImV4cCI6MjA5MjY2NTk2NX0.FfMX1g9YlBWHOcm1-eR8sOqZJkdkn6AMhCIlLFpm5h0';
-let sb;
-try{
-  sb=supabase.createClient(SUPABASE_URL,SUPABASE_ANON);
-}catch(e){
-  console.warn('Supabase init failed',e);
-  sb=supabase.createClient('https://placeholder.supabase.co','placeholder');
+/* ── DATA LAYER (authenticated proxy — no direct Supabase access) ── */
+async function dbQuery(body){
+  const r=await fetch(API_BASE+'/api/data',{
+    method:'POST',
+    headers:Object.assign({'Content-Type':'application/json'},apiHeaders()),
+    body:JSON.stringify(body)
+  });
+  if(r.status===401){clearAuth();throw new Error('Unauthorized');}
+  let j=null;try{j=await r.json();}catch(e){}
+  if(!r.ok||(j&&j.error))throw new Error((j&&j.error)||('HTTP '+r.status));
+  return j||{data:[]};
+}
+async function dbCount(table,filters){
+  const res=await dbQuery({table:table,action:'select',select:'id',filters:filters||[],limit:1,count:true});
+  return res.count!=null?res.count:((res.data||[]).length);
 }
 
+/* ── CONFIG ── */
+const WA_NUMBER_DISPLAY='';// set to e.g. '+94 7X XXX XXXX' once the business number is final; empty = hidden
+
+/* ── FORMAT HELPERS ── */
 function fmt(ts){if(!ts)return'—';return new Date(ts).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}
 function fmtDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
-function segChip(s){const m={vip:'green',returning:'',lapsed:'red','first-timer':'amber',new:'blue'};return`<span class="chip ${m[s]||''}">${s||'new'}</span>`;}
-function payChip(s){const m={paid:'green',unpaid:'',awaiting:'amber',expired:'red'};return`<span class="chip ${m[s]||''}">${s||'unpaid'}</span>`;}
-function statusChip(s){const m={confirmed:'green',pending:'amber',expired:'red',cancelled:'red'};return`<span class="chip ${m[s]||''}">${s||'pending'}</span>`;}
-function tierBadge(t){const tc=(t||'Bronze').toLowerCase();return`<span class="tier-badge tier-${tc}">${t||'Bronze'}</span>`;}
+function segChip(s){const m={vip:'green',returning:'',lapsed:'red','first-timer':'amber',new:'blue'};return`<span class="chip ${m[s]||''}">${escapeHTML(s||'new')}</span>`;}
+function payChip(s){const m={paid:'green',unpaid:'',awaiting:'amber',expired:'red'};return`<span class="chip ${m[s]||''}">${escapeHTML(s||'unpaid')}</span>`;}
+function statusChip(s){const m={confirmed:'green',pending:'amber',expired:'red',cancelled:'red'};return`<span class="chip ${m[s]||''}">${escapeHTML(s||'pending')}</span>`;}
+function tierBadge(t){const tc=escapeHTML((t||'Bronze').toLowerCase());return`<span class="tier-badge tier-${tc}">${escapeHTML(t||'Bronze')}</span>`;}
 function starsHTML(n){let h='';for(let i=1;i<=5;i++)h+=`<span class="star ${i<=n?'filled':''}">&#9733;</span>`;return`<span class="stars">${h}</span>`;}
-function initials(name){return(name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
+function initials(name){return escapeHTML((name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2));}
 function avg(arr,key){const v=arr.map(a=>a[key]).filter(x=>x!=null);if(!v.length)return'—';return(v.reduce((s,x)=>s+x,0)/v.length).toFixed(1);}
 
 const navItems=document.querySelectorAll('.nav-item');
 const views=document.querySelectorAll('.view');
-const loaders={overview:loadOverview,'add-customer':loadRecentCustomers,inbox:loadInbox,contacts:loadContacts,pipeline:loadPipeline,'daily-log':loadDailyLog,crm:loadCRM,outbox:loadOutbox,loyalty:loadLoyalty,feedback:loadFeedback,reports:loadReports};
-function show(v){navItems.forEach(n=>{if(n.classList.contains('channel-nav'))return;n.classList.toggle('active',n.dataset.view===v);});if(v!=='inbox'){document.querySelectorAll('.channel-nav').forEach(x=>x.classList.remove('active'));}views.forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='inbox'){startInboxPolling();}else{stopInboxPolling();}if(v!=='outbox'&&typeof stopOutboxPolling==='function'){stopOutboxPolling();}if(loaders[v])loaders[v]();}
-window.currentInboxChannel=window.currentInboxChannel||'all';
-window.currentInboxIntent=window.currentInboxIntent||'all';
-function updateInboxChannelTitle(){var ch=window.currentInboxChannel||'all';var names={all:'All Inquiries',whatsapp:'WhatsApp',instagram:'Instagram',facebook:'Facebook'};var t=document.getElementById('inboxChannelTitle');if(t)t.textContent=names[ch]||'Conversations';var cl=document.getElementById('inboxConnLabel');if(cl)cl.textContent=(ch==='all'?'All Channels':(names[ch]+' Connected'));}
-navItems.forEach(n=>n.addEventListener('click',()=>{
-  if(n.classList.contains('channel-nav')){
-    window.currentInboxChannel=n.dataset.channel;
-    _activeThreadIdx=null;_activeCustomerId=null;
-    document.querySelectorAll('.channel-nav').forEach(x=>x.classList.remove('active'));
-    n.classList.add('active');
-    show('inbox');
-    updateInboxChannelTitle();
-  } else { show(n.dataset.view); }
-}));
+const loaders={overview:loadOverview,'add-customer':loadRecentCustomers,inbox:loadInbox,contacts:loadContacts,pipeline:loadPipeline,'daily-log':loadDailyLog,crm:loadCRM,loyalty:loadLoyalty,feedback:loadFeedback,reports:loadReports};
+function show(v){navItems.forEach(n=>n.classList.toggle('active',n.dataset.view===v));views.forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(loaders[v])loaders[v]();}
+navItems.forEach(n=>n.addEventListener('click',()=>show(n.dataset.view)));
 
-async function checkConnection(){try{const{error}=await sb.from('customers').select('id').limit(1);if(error)throw error;document.getElementById('statusDot').classList.add('live');document.getElementById('statusText').textContent='Connected';return true;}catch(e){document.getElementById('statusText').textContent='Not connected';return false;}}
+function setChannelStatus(ok){
+  const chip=document.getElementById('waLiveChip');
+  if(chip){chip.textContent=ok?'Live':'Offline';chip.className='chip '+(ok?'green':'red');}
+  const num=document.getElementById('waNumber');
+  if(num)num.textContent=WA_NUMBER_DISPLAY;
+}
+async function checkConnection(){
+  try{
+    await dbQuery({table:'customers',action:'select',select:'id',limit:1});
+    document.getElementById('statusDot').classList.add('live');
+    document.getElementById('statusText').textContent='Connected';
+    setChannelStatus(true);
+    return true;
+  }catch(e){
+    document.getElementById('statusDot').classList.remove('live');
+    document.getElementById('statusText').textContent='Not connected';
+    setChannelStatus(false);
+    return false;
+  }
+}
 window.addEventListener('offline',()=>document.getElementById('offlineBar').classList.add('show'));
-window.addEventListener('online',()=>{document.getElementById('offlineBar').classList.remove('show');loadOverview();});
+window.addEventListener('online',()=>{document.getElementById('offlineBar').classList.remove('show');if(!window._demoMode)loadOverview();});
+
+function drawBookingsChart(labels,counts){
+  const ctx=document.getElementById('bookingsChart');
+  if(!ctx||typeof Chart==='undefined')return;
+  if(window._bookingsChart)window._bookingsChart.destroy();
+  window._bookingsChart=new Chart(ctx,{
+    type:'bar',
+    data:{labels,datasets:[{label:'Bookings',data:counts,backgroundColor:'rgba(132,204,22,0.5)',borderColor:'#84cc16',borderWidth:1,borderRadius:4,barPercentage:0.6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+      x:{grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#78716c',font:{size:11}}},
+      y:{beginAtZero:true,grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#78716c',font:{size:11},stepSize:1}}
+    }}
+  });
+}
 
 async function loadOverview(){
+  if(window._demoMode){renderDemoOverview();return;}
   const today=new Date().toISOString().slice(0,10),weekAgo=new Date(Date.now()-7*864e5).toISOString(),thirtyAgo=new Date(Date.now()-30*864e5).toISOString();
   try{
+    const cq=(table,filters)=>dbQuery({table,action:'select',select:'id',filters,limit:1,count:true});
     const results=await Promise.allSettled([
-      sb.from('bookings').select('id').eq('date',today),
-      sb.from('payments').select('amount').eq('status','paid').gte('paid_at',weekAgo),
-      sb.from('customers').select('id').gte('created_at',weekAgo),
-      sb.from('bookings').select('id').in('payment_status',['unpaid','awaiting']),
-      sb.from('conversations').select('id').eq('direction','inbound').gte('timestamp',weekAgo),
-      sb.from('conversations').select('id').eq('direction','outbound').gte('timestamp',weekAgo),
-      sb.from('conversations').select('id').eq('intent','COMPLAINT').gte('timestamp',weekAgo),
-      sb.from('customers').select('id'),
-      sb.from('feedback').select('overall_rating'),
-      sb.from('loyalty').select('id'),
-      sb.from('loyalty').select('id').in('tier',['Gold','Platinum'])
+      cq('bookings',[{column:'date',op:'eq',value:today}]),
+      dbQuery({table:'payments',action:'select',select:'amount',filters:[{column:'status',op:'eq',value:'paid'},{column:'paid_at',op:'gte',value:weekAgo}],limit:1000}),
+      cq('customers',[{column:'created_at',op:'gte',value:weekAgo}]),
+      cq('bookings',[{column:'payment_status',op:'in',value:['unpaid','awaiting']}]),
+      cq('conversations',[{column:'direction',op:'eq',value:'inbound'},{column:'timestamp',op:'gte',value:weekAgo}]),
+      cq('conversations',[{column:'direction',op:'eq',value:'outbound'},{column:'timestamp',op:'gte',value:weekAgo}]),
+      cq('conversations',[{column:'intent',op:'eq',value:'COMPLAINT'},{column:'timestamp',op:'gte',value:weekAgo}]),
+      cq('customers',[]),
+      dbQuery({table:'feedback',action:'select',select:'overall_rating',limit:1000}),
+      cq('loyalty',[]),
+      cq('loyalty',[{column:'tier',op:'in',value:['Gold','Platinum']}]),
+      cq('conversations',[{column:'platform',op:'eq',value:'whatsapp'},{column:'timestamp',op:'gte',value:weekAgo}]),
+      cq('conversations',[{column:'platform',op:'eq',value:'facebook'},{column:'timestamp',op:'gte',value:weekAgo}]),
+      cq('conversations',[{column:'platform',op:'eq',value:'instagram'},{column:'timestamp',op:'gte',value:weekAgo}]),
+      cq('customers',[{column:'last_contact',op:'lt',value:thirtyAgo}])
     ]);
-    const g=i=>(results[i]&&results[i].status==='fulfilled'&&results[i].value?.data)||[];
-    document.getElementById('ov-bookings').textContent=g(0).length;
-    document.getElementById('ov-revenue').textContent=g(1).reduce((s,p)=>s+parseFloat(p.amount||0),0).toLocaleString();
-    document.getElementById('ov-contacts').textContent=g(2).length;
-    document.getElementById('ov-pending').textContent=g(3).length;
-    document.getElementById('ov-msgin').textContent=g(4).length;
-    document.getElementById('ov-msgout').textContent=g(5).length;
-    document.getElementById('ov-complaints').textContent=g(6).length;
-    document.getElementById('ov-total').textContent=g(7).length;
-    document.getElementById('contactsCount').textContent=g(7).length;
-    const ratings=g(8).map(f=>f.overall_rating).filter(v=>v!=null);
+    const cnt=i=>{const r=results[i];if(!r||r.status!=='fulfilled')return 0;const v=r.value;return v.count!=null?v.count:((v.data||[]).length);};
+    const rows=i=>{const r=results[i];return(r&&r.status==='fulfilled'&&r.value.data)||[];};
+    document.getElementById('ov-bookings').textContent=cnt(0);
+    document.getElementById('ov-revenue').textContent=rows(1).reduce((s,p)=>s+parseFloat(p.amount||0),0).toLocaleString();
+    document.getElementById('ov-contacts').textContent=cnt(2);
+    document.getElementById('ov-pending').textContent=cnt(3);
+    document.getElementById('ov-msgin').textContent=cnt(4);
+    document.getElementById('ov-msgout').textContent=cnt(5);
+    document.getElementById('ov-complaints').textContent=cnt(6);
+    document.getElementById('ov-total').textContent=cnt(7);
+    document.getElementById('contactsCount').textContent=cnt(7);
+    const ratings=rows(8).map(f=>f.overall_rating).filter(v=>v!=null);
     document.getElementById('ov-avgrating').textContent=ratings.length?(ratings.reduce((s,v)=>s+v,0)/ratings.length).toFixed(1):'—';
-    document.getElementById('ov-loyalty').textContent=g(9).length;
-    document.getElementById('loyaltyCount').textContent=g(9).length;
-    document.getElementById('ov-goldplus').textContent=g(10).length;
-    try{const{data:lapsed}=await sb.from('customers').select('id').lt('last_contact',thirtyAgo);document.getElementById('ov-lapsed').textContent=lapsed?.length??0;}catch(le){}
+    document.getElementById('ov-loyalty').textContent=cnt(9);
+    document.getElementById('loyaltyCount').textContent=cnt(9);
+    document.getElementById('ov-goldplus').textContent=cnt(10);
+    var _setch=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
+    _setch('ov-wamsgs',cnt(11));_setch('ov-fbmsgs',cnt(12));_setch('ov-igmsgs',cnt(13));
+    document.getElementById('ov-lapsed').textContent=cnt(14);
   }catch(e){console.warn('Overview stats error',e);}
   try{
-    const{data}=await sb.from('conversations').select('message,intent,direction,timestamp,customers(name)').order('timestamp',{ascending:false}).limit(8);
+    const res=await dbQuery({table:'conversations',action:'select',select:'message,intent,direction,timestamp,customers(name)',order:{column:'timestamp',ascending:false},limit:8});
+    const data=res.data||[];
     const tb=document.getElementById('ov-feed');
-    if(!data?.length){tb.innerHTML='<tr><td colspan="4" class="empty-inline">No conversations yet</td></tr>';}
-    else{tb.innerHTML=data.map(c=>`<tr><td><span class="chip ${c.direction==='inbound'?'':'solid'}">${c.direction||'—'}</span></td><td>${c.customers?.name||'Unknown'}</td><td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.message||'—'}</td><td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td></tr>`).join('');}
-  }catch(e){document.getElementById('ov-feed').innerHTML='<tr><td colspan="4" class="empty-inline">No conversations yet — connect Supabase first</td></tr>';}
+    if(!data.length){tb.innerHTML='<tr><td colspan="4" class="empty-inline">No conversations yet</td></tr>';}
+    else{tb.innerHTML=data.map(c=>`<tr><td><span class="chip ${c.direction==='inbound'?'':'solid'}">${escapeHTML(c.direction||'—')}</span></td><td>${escapeHTML(c.customers?.name||'Unknown')}</td><td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(c.message||'—')}</td><td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td></tr>`).join('');}
+  }catch(e){document.getElementById('ov-feed').innerHTML='<tr><td colspan="4" class="empty-inline">No conversations yet</td></tr>';}
   try{
-    const{data}=await sb.from('feedback').select('*,customers(name)').order('created_at',{ascending:false}).limit(5);
+    const res=await dbQuery({table:'feedback',action:'select',select:'*,customers(name)',order:{column:'created_at',ascending:false},limit:5,count:true});
+    const data=res.data||[];
     const el=document.getElementById('ov-feedback-list');
-    document.getElementById('feedbackCount').textContent=data?.length??0;
-    if(!data?.length){el.innerHTML='<div class="empty-inline">No feedback yet</div>';}
+    document.getElementById('feedbackCount').textContent=res.count!=null?res.count:data.length;
+    if(!data.length){el.innerHTML='<div class="empty-inline">No feedback yet</div>';}
     else{el.innerHTML=data.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${escapeHTML(f.customers?.name||'Anon')}</span>${starsHTML(f.overall_rating||0)}</div>${f.comment?`<div class="feedback-comment">"${escapeHTML(f.comment)}"</div>`:''}<div style="font-size:11px;color:var(--text-subtle);margin-top:6px">${fmt(f.created_at)}</div></div>`).join('');}
-  }catch(e){document.getElementById('ov-feedback-list').innerHTML='<div class="empty-inline">No feedback yet — connect Supabase first</div>';}
+  }catch(e){document.getElementById('ov-feedback-list').innerHTML='<div class="empty-inline">No feedback yet</div>';}
   document.getElementById('lastUpdated').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  // Bookings bar chart
+  // Bookings bar chart — single ranged query, bucketed client-side
   try{
+    const since=new Date(Date.now()-6*864e5).toISOString().slice(0,10);
+    const res=await dbQuery({table:'bookings',action:'select',select:'date',filters:[{column:'date',op:'gte',value:since}],limit:1000});
+    const byDay={};(res.data||[]).forEach(b=>{if(b.date)byDay[b.date]=(byDay[b.date]||0)+1;});
     const labels=[],counts=[];
     for(let i=6;i>=0;i--){
       const d=new Date(Date.now()-i*864e5);
       labels.push(d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric'}));
-      const ds=d.toISOString().slice(0,10);
-      const{data}=await sb.from('bookings').select('id').eq('date',ds);
-      counts.push(data?.length||0);
+      counts.push(byDay[d.toISOString().slice(0,10)]||0);
     }
-    const ctx=document.getElementById('bookingsChart');
-    if(window._bookingsChart)window._bookingsChart.destroy();
-    window._bookingsChart=new Chart(ctx,{
-      type:'bar',
-      data:{labels,datasets:[{label:'Bookings',data:counts,backgroundColor:'rgba(132,204,22,0.5)',borderColor:'#84cc16',borderWidth:1,borderRadius:4,barPercentage:0.6}]},
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
-        x:{grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#78716c',font:{size:11}}},
-        y:{beginAtZero:true,grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:'#78716c',font:{size:11},stepSize:1}}
-      }}
-    });
+    drawBookingsChart(labels,counts);
   }catch(e){console.warn('Chart error',e);}
 }
 
+/* ── INBOX ── */
 let allConvos=[],convoGroups=[];
-async function loadInbox(){
-  try{
-    const{data,error}=await sb.from('conversations').select('*,customers(name,phone,platform,platform_user_id,segment,visit_count,first_contact,last_contact,notes)').order('timestamp',{ascending:false}).limit(300);
-    if(error)throw error;
-    allConvos=data||[];const groups={};
-    allConvos.forEach(c=>{const k=c.customer_id||'unknown';if(!groups[k])groups[k]={customer:c.customers,customer_id:c.customer_id,msgs:[]};groups[k].msgs.push(c);});
-    convoGroups=Object.values(groups);
-    convoGroups.sort(function(a,b){return inboxGroupTime(b)-inboxGroupTime(a);});
-    var _chCounts={whatsapp:0,instagram:0,facebook:0};
-    convoGroups.forEach(function(g){var _p=inboxChannelOf(g);if(_chCounts[_p]!=null)_chCounts[_p]++;});
-    var _setTxt=function(id,v){var el=document.getElementById(id);if(el)el.textContent=v;};
-    _setTxt('inboxCount',convoGroups.length);_setTxt('navCountWhatsapp',_chCounts.whatsapp);_setTxt('navCountInstagram',_chCounts.instagram);_setTxt('navCountFacebook',_chCounts.facebook);
-    document.getElementById('inboxTotalLabel').textContent=convoGroups.length+' threads';
-    // Update filter pill counts
-    const allIntents=allConvos.map(c=>(c.intent||'').toUpperCase());
-    const bookingCount=allIntents.filter(i=>i==='BOOKING').length;
-    const inquiryCount=allIntents.filter(i=>['MENU','LOCATION','GENERAL','GREETING'].includes(i)).length;
-    const complaintCount=allIntents.filter(i=>i==='COMPLAINT').length;
-    const feedbackCount=allIntents.filter(i=>i==='THANKS'||i==='FEEDBACK').length;
-    document.getElementById('fpAll').textContent='('+convoGroups.length+')';
-    document.getElementById('fpBooking').textContent='('+bookingCount+')';
-    document.getElementById('fpInquiry').textContent='('+inquiryCount+')';
-    document.getElementById('fpComplaint').textContent='('+complaintCount+')';
-    document.getElementById('fpFeedback').textContent='('+feedbackCount+')';
-    renderThreads(convoGroups);
-    var _fv=applyInboxVisibility();
-    updateInboxChannelTitle();
-    if(_activeThreadIdx==null&&_fv>=0)setTimeout((function(idx){return function(){openThread(idx);};})(_fv),100);
-  }catch(e){console.error('Inbox load error:',e);document.getElementById('threadList').innerHTML='<div class="empty-inline">No conversations yet. Connect Supabase to see data.</div>';convoGroups=[];}
-}
-
-// --- REAL-TIME & POLLING (FAST) ---
-let _inboxPollTimer=null;
-let _threadPollTimer=null;
-let _activeThreadIdx=null;
-let _activeCustomerId=null;
-let _realtimeChannel=null;
-let _lastKnownMsgIds=new Set();
-
-function startInboxPolling(){
-  stopInboxPolling();
-  _inboxPollTimer=setInterval(()=>{loadInbox();},3000);
-}
-function stopInboxPolling(){
-  if(_inboxPollTimer){clearInterval(_inboxPollTimer);_inboxPollTimer=null;}
-  stopThreadPolling();
-}
-function startThreadPolling(idx){
-  stopThreadPolling();
-  _activeThreadIdx=idx;
-  _threadPollTimer=setInterval(async()=>{
-    if(_activeThreadIdx==null)return;
-    try{
-      const g=convoGroups.find(x=>x.customer_id===_activeCustomerId);
-      if(!g)return;
-      const lastTs=g.msgs[0]?.timestamp;
-      const{data}=await sb.from('conversations').select('*,customers(name,phone,platform,platform_user_id,segment,visit_count,first_contact,last_contact,notes)').eq('customer_id',g.customer_id).gt('timestamp',lastTs||'2000-01-01').order('timestamp',{ascending:true});
-      if(data&&data.length>0){
-        let added=false;
-        data.forEach(m=>{
-          if(!g.msgs.find(x=>x.id===m.id)){
-            g.msgs.unshift(m);
-            appendBubble(m);
-            added=true;
-          }
-        });
-        if(added){
-          renderThreads(convoGroups);
-          var _ai=convoGroups.findIndex(x=>x.customer_id===_activeCustomerId);
-          document.getElementById('thread-'+_ai)?.classList.add('active');
-        }
-      }
-    }catch(e){console.warn('Thread poll error',e);}
-  },2000);
-}
-function stopThreadPolling(){
-  if(_threadPollTimer){clearInterval(_threadPollTimer);_threadPollTimer=null;}
-}
-function appendBubble(m){
-  const chatDiv=document.getElementById('chatMessages');
-  if(!chatDiv)return;
-  const el=document.createElement('div');
-  el.className='bubble-row '+(m.direction==='inbound'?'in':'out');
-  const intentBadge=m.intent?(m.intent.includes('bot_reply')?' · <span class="chip green">AI Bot</span>':m.intent.includes('manual_reply')?' · <span class="chip">Staff</span>':' · '+escapeHTML(m.intent)):'';
-  el.innerHTML='<div class="bubble '+(m.direction==='inbound'?'in':'out')+'">'+escapeHTML(m.message||'—')+'</div><div class="bubble-meta">'+escapeHTML(fmt(m.timestamp))+intentBadge+'</div>';
-  el.style.animation='fadeSlideIn 0.25s ease-out';
-  chatDiv.appendChild(el);
-  chatDiv.scrollTop=chatDiv.scrollHeight;
-}
-
-function setupRealtime(){
-  try{
-    _realtimeChannel=sb.channel('conversations-changes')
-      .on('postgres_changes',{event:'INSERT',schema:'public',table:'conversations'},payload=>{
-        console.log('RT message:',payload.new?.direction,payload.new?.message?.slice(0,30));
-        const msg=payload.new;
-        // If we have an active thread open, check if this message belongs to it
-        if(_activeCustomerId!=null&&msg){
-          const g=convoGroups.find(x=>x.customer_id===_activeCustomerId);
-          if(g&&msg.customer_id===g.customer_id&&!g.msgs.find(x=>x.id===msg.id)){
-            g.msgs.unshift(msg);
-            appendBubble(msg);
-          }
-        }
-        // Always refresh inbox sidebar
-        const activeView=document.querySelector('.view.active');
-        if(activeView&&activeView.dataset.view==='inbox'){
-          loadInbox().then(()=>{
-            if(_activeCustomerId!=null){
-              var _ai=convoGroups.findIndex(x=>x.customer_id===_activeCustomerId);
-              document.getElementById('thread-'+_ai)?.classList.add('active');
-            }
-          });
-        }
-      })
-      .subscribe((status)=>{
-        console.log('Realtime status:',status);
-      });
-  }catch(e){console.warn('Realtime setup failed, polling only:',e);}
-}
-
-function inboxGroupTime(g){var mx=0;(g.msgs||[]).forEach(function(m){var t=new Date(m.timestamp).getTime();if(t>mx)mx=t;});return mx;}
-function inboxChannelOf(g){return threadPlatform(g);}
-function inboxIntentMatch(g,f){if(f==='all')return true;return (g.msgs||[]).some(function(m){var it=(m.intent||'').toUpperCase();if(f==='BOOKING')return it==='BOOKING';if(f==='INQUIRY')return ['MENU','LOCATION','GENERAL','GREETING'].indexOf(it)>=0;if(f==='COMPLAINT')return it==='COMPLAINT';if(f==='FEEDBACK')return it==='THANKS'||it==='FEEDBACK';return false;});}
-function applyInboxVisibility(){var ch=window.currentInboxChannel||'all';var f=window.currentInboxIntent||'all';var firstVisible=-1;convoGroups.forEach(function(g,i){var vis=(ch==='all'||inboxChannelOf(g)===ch)&&inboxIntentMatch(g,f);var el=document.getElementById('thread-'+i);if(el)el.style.display=vis?'':'none';if(vis&&firstVisible<0)firstVisible=i;});return firstVisible;}
 function threadPlatform(g){return (g&&g.customer&&g.customer.platform)||(g&&g.msgs&&g.msgs[0]&&g.msgs[0].platform)||'whatsapp';}
 function channelBadge(p){var m={whatsapp:['WhatsApp','#25D366','#0b3d23'],facebook:['Messenger','#ffffff','#0084ff'],instagram:['Instagram','#ffffff','#d6249f']};var x=m[p]||m.whatsapp;return '<span style="font-size:9px;font-weight:600;vertical-align:middle;margin-left:5px;padding:1px 6px;border-radius:8px;color:'+x[1]+';background:'+x[2]+'">'+x[0]+'</span>';}
 function channelLabel(p){return p==='instagram'?'via Instagram':p==='facebook'?'via Messenger':'via WhatsApp';}
-function replyTargetId(c){if(!c)return null;return (c.platform&&c.platform!=='whatsapp')?(c.platform_user_id||c.phone||null):(c.phone||c.platform_user_id||null);}
+function replyTargetId(c){return (c&&c.platform&&c.platform!=='whatsapp')?(c.platform_user_id||c.phone):(c&&(c.phone||c.platform_user_id));}
+const INBOX_SELECT_FULL='*,customers(name,phone,platform,platform_user_id,segment,visit_count,first_contact,last_contact,notes,reply_mode)';
+const INBOX_SELECT_BASIC='*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes,reply_mode)';
+async function loadInbox(){
+  if(window._demoMode){renderDemoThreadList();return;}
+  try{
+    let res;
+    try{res=await dbQuery({table:'conversations',action:'select',select:INBOX_SELECT_FULL,order:{column:'timestamp',ascending:false},limit:300});}
+    catch(e){if(e.message==='Unauthorized')throw e;res=await dbQuery({table:'conversations',action:'select',select:INBOX_SELECT_BASIC,order:{column:'timestamp',ascending:false},limit:300});}
+    allConvos=res.data||[];const groups={};
+    allConvos.forEach(c=>{const k=c.customer_id||'unknown';if(!groups[k])groups[k]={customer:c.customers,customer_id:c.customer_id,msgs:[]};groups[k].msgs.push(c);});
+    convoGroups=Object.values(groups);
+    document.getElementById('inboxCount').textContent=convoGroups.length;
+    document.getElementById('inboxTotalLabel').textContent=convoGroups.length+' threads';
+    updateChannelCounts();updateIntentCounts();applyInboxFilters();
+  }catch(e){document.getElementById('threadList').innerHTML='<div class="empty-inline">No conversations yet.</div>';convoGroups=[];}
+}
 function renderThreads(groups){
   const el=document.getElementById('threadList');
   if(!groups.length){el.innerHTML='<div class="empty-inline">No conversations</div>';return;}
   el.innerHTML=groups.map((g,i)=>{const last=g.msgs[0];const name=g.customer?.name||g.customer?.phone||'Unknown';return`<div class="thread-item" onclick="openThread(${i})" id="thread-${i}"><div class="avatar">${initials(name)}</div><div><div class="thread-name">${escapeHTML(name)}${channelBadge(threadPlatform(g))}</div><div class="thread-preview">${escapeHTML((last.message||'—').slice(0,60))}</div></div><div class="thread-meta"><div class="thread-time">${fmt(last.timestamp)}</div>${g.msgs.length>1?`<div class="thread-badge">${g.msgs.length}</div>`:''}</div></div>`;}).join('');
-  applyInboxVisibility();
 }
 async function openThread(i){
-  startThreadPolling(i);
   document.querySelectorAll('.thread-item').forEach(el=>el.classList.remove('active'));document.getElementById('thread-'+i)?.classList.add('active');
   const g=convoGroups[i],c=g.customer,name=c?.name||c?.phone||'Unknown';
-  _activeCustomerId=g.customer_id;
-  document.getElementById('chatAvatar').textContent=initials(name);document.getElementById('chatName').textContent=name;document.getElementById('chatPhone').textContent=((c&&(c.phone||c.platform_user_id))||'—')+' · '+channelLabel((c&&c.platform)||'whatsapp');
-  _currentReplyCustomerId=g.customer_id;_currentReplyPhone=c?.phone||'';_currentReplyPlatform=(c&&c.platform)||'whatsapp';_currentReplyTo=replyTargetId(c)||(c?.phone||'');
-  document.getElementById('replyBox').style.display='block';
-  document.getElementById('detailAvatar').textContent=initials(name);document.getElementById('detailName').textContent=name;document.getElementById('detailPhone').textContent=c?.phone||'—';
+  const _plat=(c&&c.platform)||'whatsapp';const _handle=(c&&(c.phone||c.platform_user_id))||'—';
+  document.getElementById('chatAvatar').textContent=initials(name);document.getElementById('chatName').textContent=name;document.getElementById('chatPhone').textContent=_handle+' · '+channelLabel(_plat);
+  window._replyTarget={to:replyTargetId(c),platform:_plat,customer_id:g.customer_id};
+  var _rb=document.getElementById('replyBox');if(_rb)_rb.style.display='block';
+  document.getElementById('detailAvatar').textContent=initials(name);document.getElementById('detailName').textContent=name;document.getElementById('detailPhone').textContent=c?.phone||c?.platform_user_id||'—';
   document.getElementById('detailSegment').textContent=c?.segment||'new';document.getElementById('detailVisits').textContent=c?.visit_count||0;
   document.getElementById('detailFirst').textContent=fmtDate(c?.first_contact);document.getElementById('detailLast').textContent=fmtDate(c?.last_contact);
   document.getElementById('detailNotes').textContent=c?.notes||'No notes';
-  fetchBotMode(g.customer_id);
-  try{const{data:ly}=await sb.from('loyalty').select('*').eq('customer_id',g.customer_id).single();document.getElementById('detailTier').innerHTML=ly?tierBadge(ly.tier):'—';document.getElementById('detailPoints').textContent=ly?ly.total_points:'0';}catch(e){document.getElementById('detailTier').textContent='—';document.getElementById('detailPoints').textContent='0';}
+  fetchBotMode(g.customer_id,c?.reply_mode);
+  try{
+    const res=await dbQuery({table:'loyalty',action:'select',select:'*',filters:[{column:'customer_id',op:'eq',value:g.customer_id}],limit:1});
+    const ly=(res.data||[])[0];
+    document.getElementById('detailTier').innerHTML=ly?tierBadge(ly.tier):'—';
+    document.getElementById('detailPoints').textContent=ly?ly.total_points:'0';
+  }catch(e){document.getElementById('detailTier').textContent='—';document.getElementById('detailPoints').textContent='0';}
   const msgs=[...g.msgs].reverse();
-  document.getElementById('chatMessages').innerHTML=msgs.map(m=>{const ib=m.intent?(m.intent.includes('bot_reply')?'· <span class="chip green">AI Bot</span>':m.intent.includes('manual_reply')?'· <span class="chip">Staff</span>':'· '+escapeHTML(m.intent)):'';return`<div class="bubble-row ${m.direction==='inbound'?'in':'out'}"><div class="bubble ${m.direction==='inbound'?'in':'out'}">${escapeHTML(m.message||'—')}</div><div class="bubble-meta">${escapeHTML(fmt(m.timestamp))} ${ib}</div></div>`;}).join('');
+  document.getElementById('chatMessages').innerHTML=msgs.map(m=>{const ib=m.intent?(String(m.intent).includes('bot_reply')?'· <span class="chip green">AI Bot</span>':String(m.intent).includes('manual_reply')?'· <span class="chip">Staff</span>':'· '+escapeHTML(m.intent)):'';return`<div class="bubble-row ${m.direction==='inbound'?'in':'out'}"><div class="bubble ${m.direction==='inbound'?'in':'out'}">${escapeHTML(m.message||'—')}</div><div class="bubble-meta">${fmt(m.timestamp)} ${ib}</div></div>`;}).join('');
   document.getElementById('chatMessages').scrollTop=99999;
 }
-document.querySelectorAll('.inbox-filters .filter-pill').forEach(p=>{p.addEventListener('click',()=>{document.querySelectorAll('.inbox-filters .filter-pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');window.currentInboxIntent=p.dataset.filter||'all';applyInboxVisibility();});});
 
+/* ── BOT / MANUAL REPLY TOGGLE (per customer) ── */
+let _botModeCustomer=null,_botMode='bot';
+function updateBotModeBtn(){
+  const btn=document.getElementById('botModeBtn');if(!btn)return;
+  btn.textContent=_botMode==='manual'?'Manual mode':'Bot: ON';
+  btn.title=_botMode==='manual'?'AI replies paused — click to re-enable the bot':'AI bot replies automatically — click to switch to manual';
+}
+async function fetchBotMode(customerId,knownMode){
+  const btn=document.getElementById('botModeBtn');if(!btn)return;
+  if(window._demoMode||!customerId){btn.style.display='none';_botModeCustomer=null;return;}
+  _botModeCustomer=customerId;btn.style.display='';
+  if(knownMode){_botMode=knownMode;updateBotModeBtn();return;}
+  btn.textContent='Bot: …';
+  try{
+    const r=await fetch(API_BASE+'/api/toggle-mode?customer_id='+encodeURIComponent(customerId),{headers:apiHeaders()});
+    if(r.status===401){clearAuth();return;}
+    const d=await r.json();
+    _botMode=(d&&d.reply_mode)||'bot';
+  }catch(e){_botMode='bot';}
+  updateBotModeBtn();
+}
+async function toggleBotMode(){
+  if(!_botModeCustomer||window._demoMode)return;
+  const next=_botMode==='manual'?'bot':'manual';
+  const btn=document.getElementById('botModeBtn');if(btn)btn.disabled=true;
+  try{
+    const r=await fetch(API_BASE+'/api/toggle-mode',{
+      method:'POST',
+      headers:Object.assign({'Content-Type':'application/json'},apiHeaders()),
+      body:JSON.stringify({customer_id:_botModeCustomer,reply_mode:next})
+    });
+    if(r.status===401){clearAuth();return;}
+    if(r.ok){_botMode=next;updateBotModeBtn();}
+  }catch(e){console.warn('toggle-mode failed',e);}
+  if(btn)btn.disabled=false;
+}
+
+/* ── INBOX FILTERS (bound once — work in both live & demo mode) ── */
+var _intentFilter='all',_channelFilter='all';
+function updateChannelCounts(){var cc={whatsapp:0,facebook:0,instagram:0};convoGroups.forEach(function(g){var p=threadPlatform(g);if(cc[p]==null)cc[p]=0;cc[p]++;});var s=function(id,v){var e=document.getElementById(id);if(e)e.textContent='('+v+')';};s('fcAll',convoGroups.length);s('fcWhatsapp',cc.whatsapp);s('fcFacebook',cc.facebook);s('fcInstagram',cc.instagram);}
+function updateIntentCounts(){
+  var cats={BOOKING:0,INQUIRY:0,COMPLAINT:0,FEEDBACK:0};
+  convoGroups.forEach(function(g){var seen={};g.msgs.forEach(function(m){var it=(m.intent||'').toUpperCase();if(cats[it]!=null&&!seen[it]){cats[it]++;seen[it]=true;}});});
+  var s=function(id,v){var e=document.getElementById(id);if(e)e.textContent='('+v+')';};
+  s('fpAll',convoGroups.length);s('fpBooking',cats.BOOKING);s('fpInquiry',cats.INQUIRY);s('fpComplaint',cats.COMPLAINT);s('fpFeedback',cats.FEEDBACK);
+  var c=function(id,label,v){var e=document.getElementById(id);if(e)e.textContent=label+': '+v;};
+  c('inboxBookingCount','Bookings',cats.BOOKING);c('inboxInquiryCount','Inquiries',cats.INQUIRY);c('inboxComplaintCount','Complaints',cats.COMPLAINT);c('inboxFeedbackCount','Feedback',cats.FEEDBACK);
+}
+function applyInboxFilters(){var gs=convoGroups;if(_channelFilter!=='all')gs=gs.filter(function(g){return threadPlatform(g)===_channelFilter;});if(_intentFilter!=='all')gs=gs.filter(function(g){return g.msgs.some(function(m){return (m.intent||'').toUpperCase()===_intentFilter;});});renderThreads(gs);}
+document.querySelectorAll('.inbox-filters .filter-pill[data-filter]').forEach(p=>{p.addEventListener('click',()=>{
+  document.querySelectorAll('.inbox-filters .filter-pill[data-filter]').forEach(x=>x.classList.remove('active'));p.classList.add('active');
+  _intentFilter=p.dataset.filter;
+  if(window._demoMode)renderDemoThreadList();else applyInboxFilters();
+});});
+document.querySelectorAll('.channel-tabs .filter-pill[data-channel]').forEach(p=>{p.addEventListener('click',()=>{
+  document.querySelectorAll('.channel-tabs .filter-pill[data-channel]').forEach(x=>x.classList.remove('active'));p.classList.add('active');
+  _channelFilter=p.dataset.channel;
+  if(window._demoMode)renderDemoThreadList();else applyInboxFilters();
+});});
+
+/* ── CONTACTS ── */
 let allCustomers=[],customerLoyalty={};
 async function loadContacts(){
+  if(window._demoMode){renderDemoContacts();return;}
   try{
-    const r1=await sb.from('customers').select('*').order('last_contact',{ascending:false});
+    const r1=await dbQuery({table:'customers',action:'select',select:'*',order:{column:'last_contact',ascending:false},limit:1000});
     allCustomers=r1.data||[];customerLoyalty={};
-    try{const r2=await sb.from('loyalty').select('customer_id,total_points,tier');(r2.data||[]).forEach(l=>customerLoyalty[l.customer_id]=l);}catch(le){/* loyalty table may not exist yet */}
+    try{const r2=await dbQuery({table:'loyalty',action:'select',select:'customer_id,total_points,tier',limit:1000});(r2.data||[]).forEach(l=>customerLoyalty[l.customer_id]=l);}catch(le){/* loyalty table may not exist yet */}
     renderContacts(allCustomers);
-  }catch(e){document.getElementById('contactsTable').innerHTML='<tr><td colspan="7" class="empty-inline">No contacts yet. Connect Supabase to see data.</td></tr>';}
+  }catch(e){document.getElementById('contactsTable').innerHTML='<tr><td colspan="7" class="empty-inline">No contacts yet.</td></tr>';}
 }
 function renderContacts(rows){
   const tb=document.getElementById('contactsTable');
@@ -1118,25 +1010,32 @@ function renderContacts(rows){
 }
 document.getElementById('contactSearch')?.addEventListener('input',e=>{const q=e.target.value.toLowerCase();renderContacts(allCustomers.filter(c=>(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q)));});
 
+/* ── DAILY LOG ── */
 async function loadDailyLog(){
   const today=new Date().toISOString().slice(0,10);document.getElementById('dailyDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  try{const{data}=await sb.from('bookings').select('*,customers(name,phone)').eq('date',today).order('time');
-  const confirmed=(data||[]).filter(b=>b.status==='confirmed').length,pending=(data||[]).filter(b=>b.status==='pending').length,guests=(data||[]).reduce((s,b)=>s+(b.party_size||0),0);
-  document.getElementById('dl-bookings').textContent=data?.length??0;document.getElementById('dl-confirmed').textContent=confirmed;document.getElementById('dl-pending').textContent=pending;document.getElementById('dl-guests').textContent=guests;
-  const tb=document.getElementById('dailyTable');
-  if(!data?.length){tb.innerHTML='<tr><td colspan="8" class="empty-inline">No bookings today</td></tr>';return;}
-  tb.innerHTML=data.map(b=>`<tr><td style="font-weight:600">${b.time||'—'}</td><td>${b.customers?.name||'—'}<br><span class="muted" style="font-size:11px">${b.customers?.phone||''}</span></td><td>${b.party_size||'—'}</td><td class="muted">${b.occasion||'—'}</td><td class="muted" style="font-size:12px">${b.dietary_notes||'—'}</td><td>${payChip(b.payment_status)}</td><td>${statusChip(b.status)}</td><td>${b.status==='confirmed'?'<span class="muted" style="font-size:12px">Done</span>':`<button class="btn green sm" onclick="confirmBooking('${b.id}')">Confirm</button>`}</td></tr>`).join('');}catch(e){document.getElementById('dailyTable').innerHTML='<tr><td colspan="8" class="empty-inline">No bookings today</td></tr>';}
-}
-async function confirmBooking(id){await sb.from('bookings').update({status:'confirmed',confirmed_by:'staff'}).eq('id',id);loadDailyLog();}
-
-async function loadLoyalty(){
+  if(window._demoMode){renderDemoDailyLog();return;}
   try{
-    const[s1,s2,s3]=await Promise.allSettled([
-      sb.from('loyalty').select('*,customers(name,phone)').order('total_points',{ascending:false}),
-      sb.from('rewards').select('*').eq('is_active',true).order('points_required'),
-      sb.from('loyalty_transactions').select('*,customers(name)').order('created_at',{ascending:false}).limit(20)
-    ]);
-    const members=(s1.status==='fulfilled'&&s1.value?.data)||[];
+    const res=await dbQuery({table:'bookings',action:'select',select:'*,customers(name,phone)',filters:[{column:'date',op:'eq',value:today}],order:{column:'time',ascending:true},limit:500});
+    const data=res.data||[];
+    const confirmed=data.filter(b=>b.status==='confirmed').length,pending=data.filter(b=>b.status==='pending').length,guests=data.reduce((s,b)=>s+(b.party_size||0),0);
+    document.getElementById('dl-bookings').textContent=data.length;document.getElementById('dl-confirmed').textContent=confirmed;document.getElementById('dl-pending').textContent=pending;document.getElementById('dl-guests').textContent=guests;
+    const tb=document.getElementById('dailyTable');
+    if(!data.length){tb.innerHTML='<tr><td colspan="8" class="empty-inline">No bookings today</td></tr>';return;}
+    tb.innerHTML=data.map(b=>`<tr><td style="font-weight:600">${escapeHTML(b.time?String(b.time).slice(0,5):'—')}</td><td>${escapeHTML(b.customers?.name||'—')}<br><span class="muted" style="font-size:11px">${escapeHTML(b.customers?.phone||'')}</span></td><td>${b.party_size||'—'}</td><td class="muted">${escapeHTML(b.occasion||'—')}</td><td class="muted" style="font-size:12px">${escapeHTML(b.dietary_notes||'—')}</td><td>${payChip(b.payment_status)}</td><td>${statusChip(b.status)}</td><td>${b.status==='confirmed'?'<span class="muted" style="font-size:12px">Done</span>':`<button class="btn green sm" onclick="confirmBooking('${escapeHTML(b.id)}')">Confirm</button>`}</td></tr>`).join('');
+  }catch(e){document.getElementById('dailyTable').innerHTML='<tr><td colspan="8" class="empty-inline">No bookings today</td></tr>';}
+}
+async function confirmBooking(id){
+  if(window._demoMode)return;
+  try{await dbQuery({table:'bookings',action:'update',values:{status:'confirmed',confirmed_by:'staff'},filters:[{column:'id',op:'eq',value:id}]});}catch(e){alert('Update failed: '+e.message);}
+  loadDailyLog();
+}
+
+/* ── LOYALTY ── */
+async function loadLoyalty(){
+  if(window._demoMode){renderDemoLoyalty();return;}
+  try{
+    const res=await dbQuery({table:'loyalty',action:'select',select:'*,customers(name,phone)',order:{column:'total_points',ascending:false},limit:1000});
+    const members=res.data||[];
     document.getElementById('loyaltyCount').textContent=members.length;
     document.getElementById('ly-bronze').textContent=members.filter(m=>m.tier==='Bronze').length;
     document.getElementById('ly-silver').textContent=members.filter(m=>m.tier==='Silver').length;
@@ -1144,214 +1043,163 @@ async function loadLoyalty(){
     document.getElementById('ly-plat').textContent=members.filter(m=>m.tier==='Platinum').length;
     const el=document.getElementById('loyaltyList');
     if(!members.length){el.innerHTML='<div class="empty-inline">No members yet. Auto-enrolled on first visit.</div>';}
-    else{el.innerHTML=members.map(m=>`<div class="loyalty-card"><div class="avatar" style="width:36px;height:36px;font-size:13px">${initials(m.customers?.name)}</div><div class="loyalty-info"><div class="loyalty-name">${m.customers?.name||'—'}</div><div class="loyalty-detail">${m.customers?.phone||'—'} · ${m.total_visits||0} visits · ${tierBadge(m.tier)}</div></div><div class="loyalty-points"><div class="loyalty-pts">${m.total_points||0}</div><div class="loyalty-pts-label">points</div></div></div>`).join('');}
-    const rewards=(s2.status==='fulfilled'&&s2.value?.data)||[];
-    const rEl=document.getElementById('rewardsList');
-    if(!rewards.length){rEl.innerHTML='<div class="empty-inline">No rewards</div>';}
-    else{rEl.innerHTML=rewards.map(r=>`<div class="reward-card"><div class="reward-name">${r.name}</div><div class="reward-desc">${r.description||''}</div><div class="reward-meta">${tierBadge(r.tier_required)}<span class="reward-pts">${r.points_required} pts</span></div></div>`).join('');}
-    const activity=(s3.status==='fulfilled'&&s3.value?.data)||[];
-    const aEl=document.getElementById('pointsActivity');
-    if(!activity.length){aEl.innerHTML='<div class="empty-inline">No activity</div>';}
-    else{aEl.innerHTML=activity.map(a=>{const sign=a.type==='redeemed'?'-':'+',color=a.type==='redeemed'?'var(--red)':'var(--green)';return`<div style="padding:10px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;font-weight:500">${a.customers?.name||'—'}</div><div style="font-size:11px;color:var(--text-muted)">${a.reason||a.type} · ${fmt(a.created_at)}</div></div><div style="font-weight:700;color:${color};font-size:14px">${sign}${Math.abs(a.points)}</div></div>`;}).join('');}
+    else{el.innerHTML=members.map(m=>`<div class="loyalty-card"><div class="avatar" style="width:36px;height:36px;font-size:13px">${initials(m.customers?.name)}</div><div class="loyalty-info"><div class="loyalty-name">${escapeHTML(m.customers?.name||'—')}</div><div class="loyalty-detail">${escapeHTML(m.customers?.phone||'—')} · ${m.total_visits||0} visits · ${tierBadge(m.tier)}</div></div><div class="loyalty-points"><div class="loyalty-pts">${m.total_points||0}</div><div class="loyalty-pts-label">points</div></div></div>`).join('');}
+    // rewards & loyalty_transactions are not exposed via the /api/data proxy table allow-list
+    document.getElementById('rewardsList').innerHTML='<div class="empty-inline">Rewards are managed in Supabase</div>';
+    document.getElementById('pointsActivity').innerHTML='<div class="empty-inline">No recent activity</div>';
   }catch(e){
-    document.getElementById('loyaltyList').innerHTML='<div class="empty-inline">No loyalty data yet. Run the v2 schema SQL in Supabase first.</div>';
+    document.getElementById('loyaltyList').innerHTML='<div class="empty-inline">No loyalty data yet.</div>';
     document.getElementById('rewardsList').innerHTML='<div class="empty-inline">No rewards yet</div>';
     document.getElementById('pointsActivity').innerHTML='<div class="empty-inline">No activity yet</div>';
   }
 }
 
+/* ── FEEDBACK ── */
 async function loadFeedback(){
-  try{const{data}=await sb.from('feedback').select('*,customers(name)').order('created_at',{ascending:false});const all=data||[];
-  document.getElementById('feedbackCount').textContent=all.length;document.getElementById('fb-total-label').textContent=`${all.length} responses`;
-  document.getElementById('fb-avg').textContent=avg(all,'overall_rating');document.getElementById('fb-food').textContent=avg(all,'food_rating');
-  document.getElementById('fb-service').textContent=avg(all,'service_rating');document.getElementById('fb-ambience').textContent=avg(all,'ambience_rating');
-  const avgVal=parseFloat(avg(all,'overall_rating'));document.getElementById('fb-avg-stars').innerHTML=isNaN(avgVal)?'':starsHTML(Math.round(avgVal));
-  const total=all.filter(f=>f.overall_rating!=null).length;
-  for(let i=1;i<=5;i++){const cnt=all.filter(f=>f.overall_rating===i).length;document.getElementById('cnt-'+i).textContent=cnt;document.getElementById('bar-'+i).style.width=total?(cnt/total*100)+'%':'0%';}
-  const recData=all.filter(f=>f.would_recommend!=null),recYes=recData.filter(f=>f.would_recommend===true).length;
-  document.getElementById('fb-recommend').textContent=recData.length?Math.round(recYes/recData.length*100)+'%':'—';
-  const el=document.getElementById('feedbackList');
-  if(!all.length){el.innerHTML='<div class="empty-inline">No feedback yet. Requested automatically after visits.</div>';}
-  else{el.innerHTML=all.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${escapeHTML(f.customers?.name||'Anon')}</span>${starsHTML(f.overall_rating||0)}</div>${f.comment?`<div class="feedback-comment">"${escapeHTML(f.comment)}"</div>`:''}<div class="feedback-scores"><div class="feedback-score"><div class="feedback-score-label">Food</div><div class="feedback-score-val">${f.food_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Service</div><div class="feedback-score-val">${f.service_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Ambience</div><div class="feedback-score-val">${f.ambience_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Recommend</div><div class="feedback-score-val">${f.would_recommend==null?'—':f.would_recommend?'Yes':'No'}</div></div></div><div style="font-size:11px;color:var(--text-subtle);margin-top:8px">${fmt(f.created_at)} · via ${f.collected_via||'whatsapp'}</div></div>`).join('');}
+  if(window._demoMode){renderDemoFeedbackPage();return;}
+  try{
+    const res=await dbQuery({table:'feedback',action:'select',select:'*,customers(name)',order:{column:'created_at',ascending:false},limit:1000,count:true});
+    const all=res.data||[];
+    document.getElementById('feedbackCount').textContent=res.count!=null?res.count:all.length;
+    document.getElementById('fb-total-label').textContent=`${res.count!=null?res.count:all.length} responses`;
+    document.getElementById('fb-avg').textContent=avg(all,'overall_rating');document.getElementById('fb-food').textContent=avg(all,'food_rating');
+    document.getElementById('fb-service').textContent=avg(all,'service_rating');document.getElementById('fb-ambience').textContent=avg(all,'ambience_rating');
+    const avgVal=parseFloat(avg(all,'overall_rating'));document.getElementById('fb-avg-stars').innerHTML=isNaN(avgVal)?'':starsHTML(Math.round(avgVal));
+    const total=all.filter(f=>f.overall_rating!=null).length;
+    for(let i=1;i<=5;i++){const cnt=all.filter(f=>f.overall_rating===i).length;document.getElementById('cnt-'+i).textContent=cnt;document.getElementById('bar-'+i).style.width=total?(cnt/total*100)+'%':'0%';}
+    const recData=all.filter(f=>f.would_recommend!=null),recYes=recData.filter(f=>f.would_recommend===true).length;
+    document.getElementById('fb-recommend').textContent=recData.length?Math.round(recYes/recData.length*100)+'%':'—';
+    const el=document.getElementById('feedbackList');
+    if(!all.length){el.innerHTML='<div class="empty-inline">No feedback yet. Requested automatically after visits.</div>';}
+    else{el.innerHTML=all.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${escapeHTML(f.customers?.name||'Anon')}</span>${starsHTML(f.overall_rating||0)}</div>${f.comment?`<div class="feedback-comment">"${escapeHTML(f.comment)}"</div>`:''}<div class="feedback-scores"><div class="feedback-score"><div class="feedback-score-label">Food</div><div class="feedback-score-val">${f.food_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Service</div><div class="feedback-score-val">${f.service_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Ambience</div><div class="feedback-score-val">${f.ambience_rating||'—'}</div></div><div class="feedback-score"><div class="feedback-score-label">Recommend</div><div class="feedback-score-val">${f.would_recommend==null?'—':f.would_recommend?'Yes':'No'}</div></div></div><div style="font-size:11px;color:var(--text-subtle);margin-top:8px">${fmt(f.created_at)} · via ${escapeHTML(f.collected_via||'whatsapp')}</div></div>`).join('');}
   }catch(e){
-    document.getElementById('feedbackList').innerHTML='<div class="empty-inline">No feedback yet. Run the v2 schema SQL in Supabase first.</div>';
+    document.getElementById('feedbackList').innerHTML='<div class="empty-inline">No feedback yet.</div>';
   }
 }
 
+/* ── CRM ── */
 async function loadCRM(){
-  try{const[s1,s2,s3]=await Promise.allSettled([sb.from('crm_campaigns').select('*').order('created_at',{ascending:false}),sb.from('customers').select('id').eq('segment','vip'),sb.from('customers').select('id').eq('segment','lapsed')]);
-  const campaigns=(s1.status==='fulfilled'&&s1.value?.data)||[];document.getElementById('crm-total').textContent=campaigns.length;document.getElementById('crm-sent').textContent=campaigns.reduce((s,c)=>s+(c.sent_count||0),0);
-  document.getElementById('crm-vip').textContent=(s2.status==='fulfilled'&&s2.value?.data?.length)||0;document.getElementById('crm-lapsed').textContent=(s3.status==='fulfilled'&&s3.value?.data?.length)||0;
-  const el=document.getElementById('crmCampaigns');
-  if(!campaigns.length){el.innerHTML='<div class="empty-inline">No campaigns</div>';return;}
-  el.innerHTML=campaigns.map(c=>`<div style="padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:13px">${c.name}</div><div class="muted" style="font-size:12px;margin-top:4px">${segChip(c.segment)} · Sent: ${c.sent_count||0} · ${fmtDate(c.last_run)}</div><div class="muted" style="font-size:12px;margin-top:6px">${(c.message_template||'').slice(0,100)}...</div></div>`).join('');}catch(e){document.getElementById('crmCampaigns').innerHTML='<div class="empty-inline">No campaigns yet</div>';}
+  if(window._demoMode){renderDemoCRM();return;}
+  try{
+    const[s1,s2,s3]=await Promise.allSettled([
+      dbQuery({table:'crm_campaigns',action:'select',select:'*',order:{column:'created_at',ascending:false},limit:200}),
+      dbCount('customers',[{column:'segment',op:'eq',value:'vip'}]),
+      dbCount('customers',[{column:'segment',op:'eq',value:'lapsed'}])
+    ]);
+    const campaigns=(s1.status==='fulfilled'&&s1.value.data)||[];
+    document.getElementById('crm-total').textContent=campaigns.length;
+    document.getElementById('crm-sent').textContent=campaigns.reduce((s,c)=>s+(c.sent_count||0),0);
+    document.getElementById('crm-vip').textContent=(s2.status==='fulfilled'&&s2.value)||0;
+    document.getElementById('crm-lapsed').textContent=(s3.status==='fulfilled'&&s3.value)||0;
+    const el=document.getElementById('crmCampaigns');
+    if(!campaigns.length){el.innerHTML='<div class="empty-inline">No campaigns</div>';return;}
+    el.innerHTML=campaigns.map(c=>`<div style="padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:13px">${escapeHTML(c.name)}</div><div class="muted" style="font-size:12px;margin-top:4px">${segChip(c.segment)} · Sent: ${c.sent_count||0} · ${fmtDate(c.last_run)}</div><div class="muted" style="font-size:12px;margin-top:6px">${escapeHTML((c.message_template||'').slice(0,100))}...</div></div>`).join('');
+  }catch(e){document.getElementById('crmCampaigns').innerHTML='<div class="empty-inline">No campaigns yet</div>';}
 }
 const crmTA=document.getElementById('crmCompose'),crmPreview=document.getElementById('crmPreview'),crmCount=document.getElementById('crmCharCount');
 if(crmTA){crmTA.addEventListener('input',()=>{crmCount.textContent=crmTA.value.length;const v=crmTA.value.replace(/\{\{name\}\}/g,'Friend').replace(/\{\{phone\}\}/g,'+94 ••••').replace(/\{\{date\}\}/g,'Sat, 24 Apr').replace(/\{\{offer\}\}/g,'10% off').replace(/\{\{points\}\}/g,'120').replace(/\{\{tier\}\}/g,'Silver');crmPreview.textContent=v||'Start typing...';});}
 document.querySelectorAll('.var-chip').forEach(chip=>{chip.addEventListener('click',()=>{if(!crmTA)return;const v=chip.dataset.var,s=crmTA.selectionStart;crmTA.value=crmTA.value.slice(0,s)+v+crmTA.value.slice(crmTA.selectionEnd);crmTA.focus();crmTA.selectionStart=crmTA.selectionEnd=s+v.length;crmTA.dispatchEvent(new Event('input'));});});
-async function saveCrmCampaign(){const name=document.getElementById('crmCampaignName').value.trim(),template=crmTA.value.trim(),segment=document.getElementById('crmSegment').value;if(!name||!template)return alert('Name and message required');try{await sb.from('crm_campaigns').insert({name,segment,message_template:template});document.getElementById('crmCampaignName').value='';crmTA.value='';crmTA.dispatchEvent(new Event('input'));loadCRM();}catch(e){alert('Error: '+e.message);}}
-
-/* ══════════════════════════════════════════════════════════════════
-   OUTBOX MODULE — Bulk message batches
-   ══════════════════════════════════════════════════════════════════ */
-let _outboxPollTimer=null,_outboxActiveBatchId=null;
-function outboxStatusChip(s){const m={draft:'blue',sending:'amber',completed:'green',failed:'red',paused:'purple',cancelled:''};return`<span class="chip ${m[s]||''}">${escapeHTML(s||'draft')}</span>`;}
-async function outboxAPI(payload){const res=await fetch(API_BASE+'/api/outbox',{method:'POST',headers:{'Content-Type':'application/json','X-Dashboard-Key':DASHBOARD_KEY},body:JSON.stringify(payload)});if(!res.ok){const err=await res.json().catch(()=>({error:res.statusText}));throw new Error(err.error||'Request failed');}return res.json();}
-
-async function loadOutbox(){
-  try{const{data:batches,error}=await sb.from('outbox_batches').select('id,status,sent_count,delivered_count,failed_count,total_recipients');
-  if(error)throw error;const rows=batches||[];
-  document.getElementById('outbox-total').textContent=rows.length;
-  document.getElementById('outbox-sent').textContent=rows.reduce((s,b)=>s+(b.sent_count||0),0);
-  document.getElementById('outbox-delivered').textContent=rows.reduce((s,b)=>s+(b.delivered_count||0),0);
-  document.getElementById('outbox-failed').textContent=rows.reduce((s,b)=>s+(b.failed_count||0),0);
-  document.getElementById('outboxCount').textContent=rows.filter(b=>b.status==='sending'||b.status==='draft').length||'';
-  }catch(e){console.warn('Outbox stats error',e);}
-  await loadOutboxBatches();
+async function saveCrmCampaign(){
+  const name=document.getElementById('crmCampaignName').value.trim(),template=crmTA.value.trim(),segment=document.getElementById('crmSegment').value;
+  if(!name||!template)return alert('Name and message required');
+  if(window._demoMode)return alert('Demo mode — connect the API to save campaigns.');
+  try{
+    await dbQuery({table:'crm_campaigns',action:'insert',values:{name,segment,message_template:template}});
+    document.getElementById('crmCampaignName').value='';crmTA.value='';crmTA.dispatchEvent(new Event('input'));loadCRM();
+  }catch(e){alert('Error: '+e.message);}
 }
 
-async function loadOutboxBatches(statusFilter){
-  try{let q=sb.from('outbox_batches').select('*').order('created_at',{ascending:false});
-  if(statusFilter&&statusFilter!=='all')q=q.eq('status',statusFilter);
-  const{data:batches,error}=await q;if(error)throw error;
-  const el=document.getElementById('outboxBatchList');
-  if(!batches||!batches.length){el.innerHTML='<div class="empty-inline">No batches yet. Compose a message and create your first batch.</div>';return;}
-  el.innerHTML=batches.map(b=>{const total=b.total_recipients||0,sent=b.sent_count||0,pct=total>0?Math.round(sent/total*100):0,st=(b.status||'draft').toLowerCase();
-  let actions='';
-  if(st==='draft')actions=`<button class="btn sm green" onclick="event.stopPropagation();sendOutboxBatch('${b.id}')">Send Now</button><button class="btn sm secondary" onclick="event.stopPropagation();deleteOutboxBatch('${b.id}')">Delete</button>`;
-  else if(st==='sending')actions=`<button class="btn sm secondary" onclick="event.stopPropagation();pauseOutboxBatch('${b.id}')">Pause</button><button class="btn sm secondary" onclick="event.stopPropagation();cancelOutboxBatch('${b.id}')">Cancel</button>`;
-  else if(st==='paused')actions=`<button class="btn sm green" onclick="event.stopPropagation();sendOutboxBatch('${b.id}')">Resume</button><button class="btn sm secondary" onclick="event.stopPropagation();cancelOutboxBatch('${b.id}')">Cancel</button>`;
-  else actions=`<button class="btn sm secondary" onclick="event.stopPropagation();deleteOutboxBatch('${b.id}')">Delete</button>`;
-  return`<div class="batch-card ${st==='sending'?'is-sending':''}" onclick="showBatchDetail('${b.id}')">
-    <div style="display:flex;justify-content:space-between;align-items:center"><span style="font-weight:600;font-size:13px">${escapeHTML(b.name||'Untitled')}</span>${outboxStatusChip(st)}</div>
-    <div style="margin-top:8px"><div style="background:var(--surface-2);border-radius:4px;height:6px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--green);border-radius:4px;transition:width .3s" class="${st==='sending'?'progress-fill active':''}"></div></div>
-    <div style="font-size:11px;color:var(--text-muted);margin-top:4px">${sent} of ${total} sent (${pct}%)</div></div>
-    ${b.segment?`<div style="margin-top:6px">${segChip(b.segment)}</div>`:''}
-    <div class="batch-actions">${actions}</div>
-    <div style="font-size:11px;color:var(--text-subtle);margin-top:6px">${fmt(b.created_at)}</div>
-  </div>`;}).join('');}catch(e){console.error('Outbox batches error',e);document.getElementById('outboxBatchList').innerHTML='<div class="empty-inline">Failed to load batches.</div>';}
-}
-
-function filterOutboxBatches(status){document.querySelectorAll('.outbox-filter-pill').forEach(p=>p.classList.toggle('active',p.dataset.status===status));loadOutboxBatches(status);}
-
-async function previewOutboxRecipients(){
-  const seg=document.getElementById('outboxSegment').value;
-  try{let q=sb.from('customers').select('id,name,phone,segment').eq('opted_out',false);
-  if(seg&&seg!=='all'){if(seg==='gold'){/* handled differently */}else q=q.eq('segment',seg);}
-  const{data,error}=await q;if(error)throw error;
-  document.getElementById('outboxRecipientCount').textContent='Estimated recipients: '+(data?data.length:0);
-  }catch(e){document.getElementById('outboxRecipientCount').textContent='Estimated recipients: (error)';}
-}
-
-async function createOutboxBatch(){
-  const name=document.getElementById('outboxBatchName').value.trim(),
-    template=document.getElementById('outboxCompose').value.trim(),
-    segment=document.getElementById('outboxSegment').value,
-    schedule=document.getElementById('outboxSchedule').value;
-  if(!name)return alert('Batch name is required.');
-  if(!template)return alert('Message template is required.');
-  try{const data=await outboxAPI({action:'create_batch',name,message_template:template,segment,scheduled_at:schedule||null});
-  if(data.error)throw new Error(data.error);
-  document.getElementById('outboxBatchName').value='';document.getElementById('outboxCompose').value='';
-  document.getElementById('outboxCompose').dispatchEvent(new Event('input'));
-  alert('Batch created with '+(data.total_recipients||data.batch?.total_recipients||0)+' recipients.');
-  await loadOutbox();}catch(e){alert('Failed: '+e.message);}
-}
-
-async function sendOutboxBatch(id){if(!confirm('Send this batch now?'))return;try{await outboxAPI({action:'send_batch',batch_id:id});pollBatchProgress(id);await loadOutboxBatches();}catch(e){alert('Failed: '+e.message);}}
-async function pauseOutboxBatch(id){try{await outboxAPI({action:'pause_batch',batch_id:id});stopOutboxPolling();await loadOutboxBatches();}catch(e){alert('Failed: '+e.message);}}
-async function cancelOutboxBatch(id){if(!confirm('Cancel this batch?'))return;try{await outboxAPI({action:'cancel_batch',batch_id:id});stopOutboxPolling();await loadOutboxBatches();}catch(e){alert('Failed: '+e.message);}}
-async function deleteOutboxBatch(id){if(!confirm('Delete this batch permanently?'))return;try{await outboxAPI({action:'delete_batch',batch_id:id});if(_outboxActiveBatchId===id){document.getElementById('outboxBatchDetail').style.display='none';_outboxActiveBatchId=null;}await loadOutbox();}catch(e){alert('Failed: '+e.message);}}
-
-async function showBatchDetail(id){
-  _outboxActiveBatchId=id;const panel=document.getElementById('outboxBatchDetail');panel.style.display='block';
-  try{const data=await outboxAPI({action:'get_batch',batch_id:id});if(data.error)throw new Error(data.error);
-  const b=data.batch||{},msgs=data.messages||[],total=b.total_recipients||0,sent=b.sent_count||0,pct=total>0?Math.round(sent/total*100):0;
-  document.getElementById('outboxDetailName').textContent=b.name||'Untitled';
-  document.getElementById('outboxDetailStatus').innerHTML='Status: '+outboxStatusChip(b.status||'draft');
-  function mChip(s){const m={sent:'green',delivered:'green',read:'purple',failed:'red',queued:'blue',sending:'amber'};return`<span class="chip ${m[s]||''}">${escapeHTML(s||'queued')}</span>`;}
-  document.getElementById('outboxDetailBody').innerHTML=`
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);margin-bottom:6px"><span>${pct}%</span><span>${sent} / ${total}</span></div>
-    <div style="height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;margin-bottom:16px"><div style="height:100%;width:${pct}%;background:var(--green);border-radius:3px;transition:width .4s"></div></div>
-    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:18px">
-      <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:18px;font-weight:600">${total}</div><div style="font-size:11px;color:var(--text-muted)">Total</div></div>
-      <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:18px;font-weight:600">${sent}</div><div style="font-size:11px;color:var(--text-muted)">Sent</div></div>
-      <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:18px;font-weight:600;color:var(--green)">${b.delivered_count||0}</div><div style="font-size:11px;color:var(--text-muted)">Delivered</div></div>
-      <div style="text-align:center;padding:10px;background:var(--surface-2);border-radius:8px;border:1px solid var(--border)"><div style="font-size:18px;font-weight:600;color:var(--red)">${b.failed_count||0}</div><div style="font-size:11px;color:var(--text-muted)">Failed</div></div>
-    </div>
-    ${b.message_template?`<div class="card" style="margin-bottom:14px"><div class="panel-head"><span class="panel-title">Template</span></div><div class="panel-body" style="font-size:13px;white-space:pre-wrap;color:var(--text-muted)">${escapeHTML(b.message_template)}</div></div>`:''}
-    <div class="card"><div class="panel-head"><span class="panel-title">Messages (${msgs.length})</span></div>
-    <div style="max-height:340px;overflow-y:auto"><table><thead><tr><th>Name</th><th>Phone</th><th>Status</th><th>Sent</th></tr></thead><tbody>
-    ${msgs.length?msgs.map(m=>`<tr><td style="font-weight:500">${escapeHTML(m.customer_name||m.phone||'—')}</td><td class="muted">${escapeHTML(m.phone||'—')}</td><td>${mChip(m.status)}</td><td class="muted" style="font-size:12px">${m.sent_at?fmt(m.sent_at):'—'}</td></tr>`).join(''):'<tr><td colspan="4" class="empty-inline">No messages</td></tr>'}
-    </tbody></table></div></div>`;
-  }catch(e){document.getElementById('outboxDetailBody').innerHTML='<div class="empty-inline">Failed to load: '+escapeHTML(e.message)+'</div>';}
-}
-
-function pollBatchProgress(id){stopOutboxPolling();_outboxPollTimer=setInterval(async()=>{try{const{data:b}=await sb.from('outbox_batches').select('*').eq('id',id).single();if(!b){stopOutboxPolling();return;}
-if(['completed','failed','paused','cancelled'].includes(b.status)){stopOutboxPolling();loadOutbox();if(_outboxActiveBatchId===id)showBatchDetail(id);return;}
-loadOutboxBatches();if(_outboxActiveBatchId===id)showBatchDetail(id);}catch(e){console.warn('Poll error',e);}},2500);}
-function stopOutboxPolling(){if(_outboxPollTimer){clearInterval(_outboxPollTimer);_outboxPollTimer=null;}}
-
-// Outbox compose wiring
-(function(){const ta=document.getElementById('outboxCompose'),pv=document.getElementById('outboxPreview'),cc=document.getElementById('outboxCharCount'),seg=document.getElementById('outboxSegment');
-if(!ta)return;
-ta.addEventListener('input',()=>{if(cc)cc.textContent=ta.value.length;if(pv){pv.textContent=(ta.value||'Start typing...').replace(/\{\{name\}\}/g,'Friend').replace(/\{\{phone\}\}/g,'+94 ****').replace(/\{\{date\}\}/g,'Sat, 24 May').replace(/\{\{offer\}\}/g,'10% off').replace(/\{\{points\}\}/g,'120').replace(/\{\{tier\}\}/g,'Silver');}});
-document.querySelectorAll('.outbox-var-chip').forEach(c=>c.addEventListener('click',()=>{const v=c.dataset.var;if(!v)return;const s=ta.selectionStart;ta.value=ta.value.slice(0,s)+v+ta.value.slice(ta.selectionEnd);ta.focus();ta.selectionStart=ta.selectionEnd=s+v.length;ta.dispatchEvent(new Event('input'));}));
-if(seg)seg.addEventListener('change',()=>previewOutboxRecipients());
+/* ── GLOBAL SEARCH (debounced; Enter = immediate) ── */
+(function(){
+  const gs=document.getElementById('globalSearch');
+  if(!gs)return;
+  let timer=null;
+  const applySearch=()=>{
+    const q=gs.value.trim();
+    if(q.length<2)return;
+    show('contacts');
+    const s=document.getElementById('contactSearch');
+    if(s){s.value=q;s.dispatchEvent(new Event('input'));}
+  };
+  gs.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(applySearch,500);});
+  gs.addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(timer);applySearch();}});
 })();
-// Outbox filter pills
-(function(){document.querySelectorAll('.outbox-filter-pill').forEach(p=>p.addEventListener('click',()=>{document.querySelectorAll('.outbox-filter-pill').forEach(x=>x.classList.remove('active'));p.classList.add('active');loadOutboxBatches(p.dataset.status||'all');}));})();
-/* ══ END OUTBOX MODULE ══ */
 
-document.getElementById('globalSearch')?.addEventListener('input',async e=>{const q=e.target.value.trim();if(q.length<2)return;show('contacts');const s=document.getElementById('contactSearch');if(s){s.value=q;s.dispatchEvent(new Event('input'));}});
-
-/* ── PIPELINE & ADD CUSTOMER ── */
+/* ── PIPELINE (real bookings; demo only when offline) ── */
 let pipelineData=[];
 let recentlyAdded=[];
-let addedContacts=[];
-
 
 function catChip(cat){
   const m={BOOKING:'green',INQUIRY:'blue',COMPLAINT:'red',FEEDBACK:'amber'};
-  return`<span class="chip ${m[cat]||''}">${cat||'BOOKING'}</span>`;
+  return`<span class="chip ${m[cat]||''}">${escapeHTML(cat||'BOOKING')}</span>`;
 }
-
+function bookingToStage(b){
+  const st=String(b.status||'pending').toLowerCase(),ps=String(b.payment_status||'unpaid').toLowerCase();
+  if(st==='cancelled'||st==='rejected'||st==='expired')return 'rejected';
+  if(st==='confirmed')return 'confirmed';
+  if(ps==='paid')return 'review';
+  if(ps==='awaiting')return 'awaiting';
+  return 'inquiry';
+}
 function renderPipelineCard(item){
   const showApprove=item.stage==='review';
   const showAdvance=item.stage==='inquiry';
   const showAwaitingAdvance=item.stage==='awaiting';
   let actions='';
   if(showAdvance){
-    actions=`<div class="pc-actions"><button class="btn sm secondary" onclick="movePipeline('${item.id}','awaiting')">Move to Awaiting</button></div>`;
+    actions=`<div class="pc-actions"><button class="btn sm secondary" onclick="movePipeline('${escapeHTML(item.id)}','awaiting')">Move to Awaiting</button></div>`;
   } else if(showAwaitingAdvance){
-    actions=`<div class="pc-actions"><button class="btn sm secondary" onclick="movePipeline('${item.id}','review')">Payment Received</button></div>`;
+    actions=`<div class="pc-actions"><button class="btn sm secondary" onclick="movePipeline('${escapeHTML(item.id)}','review')">Payment Received</button></div>`;
   } else if(showApprove){
-    actions=`<div class="pc-actions"><button class="btn sm approve" onclick="movePipeline('${item.id}','confirmed')">Approve</button><button class="btn sm reject" onclick="movePipeline('${item.id}','rejected')">Reject</button></div>`;
+    actions=`<div class="pc-actions"><button class="btn sm approve" onclick="movePipeline('${escapeHTML(item.id)}','confirmed')">Approve</button><button class="btn sm reject" onclick="movePipeline('${escapeHTML(item.id)}','rejected')">Reject</button></div>`;
   }
-  return`<div class="pipeline-card"><div style="display:flex;justify-content:space-between;align-items:center"><div class="pc-name">${escapeHTML(item.name)}</div>${catChip(item.category)}</div><div class="pc-phone">${escapeHTML(item.phone)}</div><div class="pc-details"><span class="chip">${item.party} pax</span><span class="chip">${escapeHTML(item.occasion||'—')}</span><span class="chip">${fmtDate(item.date)}</span><span class="chip">${escapeHTML(item.time)}</span></div><div class="pc-details" style="margin-top:4px"><span style="font-size:12px;font-weight:600">LKR ${(item.amount||0).toLocaleString()}</span></div>${actions}</div>`;
+  return`<div class="pipeline-card"><div style="display:flex;justify-content:space-between;align-items:center"><div class="pc-name">${escapeHTML(item.name)}</div>${catChip(item.category)}</div><div class="pc-phone">${escapeHTML(item.phone)}</div><div class="pc-details"><span class="chip">${item.party||0} pax</span><span class="chip">${escapeHTML(item.occasion||'—')}</span><span class="chip">${fmtDate(item.date)}</span><span class="chip">${escapeHTML(item.time||'—')}</span></div><div class="pc-details" style="margin-top:4px"><span style="font-size:12px;font-weight:600">LKR ${(item.amount||0).toLocaleString()}</span></div>${actions}</div>`;
 }
-
 async function loadPipeline(){
-  // Load real bookings from Supabase as pipeline data
-  try{
-    const{data:bookings}=await sb.from('bookings').select('*,customers(name,phone)').order('created_at',{ascending:false});
-    if(bookings&&bookings.length){
-      pipelineData=bookings.map(b=>({id:b.id,name:b.customers?.name||'Unknown',phone:b.customers?.phone||'—',stage:b.status==='confirmed'?'confirmed':b.status==='rejected'||b.status==='cancelled'?'rejected':b.payment_status==='paid'?'review':b.payment_status==='awaiting'?'awaiting':'inquiry',category:'BOOKING',date:b.date,time:b.time,party:b.party_size||2,occasion:b.occasion||'',pos_ref:b.pos_reference||''}));
-    } else { pipelineData=[]; }
-  }catch(e){ pipelineData=[]; }
+  if(window._demoMode){
+    if(!pipelineData.length)pipelineData=generateDemoPipeline();
+  }else{
+    try{
+      const res=await dbQuery({table:'bookings',action:'select',select:'*,customers(name,phone)',order:{column:'created_at',ascending:false},limit:200});
+      pipelineData=(res.data||[]).map(b=>({
+        id:b.id,
+        name:b.customers?.name||'Unknown',
+        phone:b.customers?.phone||'—',
+        party:b.party_size||0,
+        occasion:b.occasion||'',
+        category:'BOOKING',
+        date:b.date,
+        time:b.time?String(b.time).slice(0,5):'—',
+        amount:parseFloat(b.payment_amount||0),
+        stage:bookingToStage(b),
+        created:b.created_at,
+        notes:''
+      }));
+    }catch(e){console.warn('Pipeline load error',e);pipelineData=[];}
+  }
+  renderPipeline();
+}
+function renderPipeline(){
   const stages={inquiry:[],awaiting:[],review:[],confirmed:[],rejected:[]};
-  pipelineData.forEach(p=>stages[p.stage].push(p));
+  pipelineData.forEach(p=>{if(stages[p.stage])stages[p.stage].push(p);});
   document.getElementById('pp-inquiry').textContent=stages.inquiry.length;
   document.getElementById('pp-awaiting').textContent=stages.awaiting.length;
   document.getElementById('pp-review').textContent=stages.review.length;
   document.getElementById('pp-confirmed').textContent=stages.confirmed.length;
-  // Category counts
   const cats={BOOKING:0,INQUIRY:0,COMPLAINT:0,FEEDBACK:0};
   pipelineData.filter(p=>p.stage!=='confirmed'&&p.stage!=='rejected').forEach(p=>{if(cats[p.category]!==undefined)cats[p.category]++;});
   document.getElementById('pp-cat-booking').textContent=cats.BOOKING;
   document.getElementById('pp-cat-inquiry').textContent=cats.INQUIRY;
   document.getElementById('pp-cat-complaint').textContent=cats.COMPLAINT;
   document.getElementById('pp-cat-feedback').textContent=cats.FEEDBACK;
+  if(window._demoMode){
+    try{
+      document.getElementById('inboxBookingCount').textContent='Bookings: '+cats.BOOKING;
+      document.getElementById('inboxInquiryCount').textContent='Inquiries: '+cats.INQUIRY;
+      document.getElementById('inboxComplaintCount').textContent='Complaints: '+cats.COMPLAINT;
+      document.getElementById('inboxFeedbackCount').textContent='Feedback: '+cats.FEEDBACK;
+    }catch(e){}
+  }
   document.getElementById('pp-col-inquiry').textContent=stages.inquiry.length;
   document.getElementById('pp-col-awaiting').textContent=stages.awaiting.length;
   document.getElementById('pp-col-review').textContent=stages.review.length;
@@ -1365,21 +1213,23 @@ async function loadPipeline(){
   const total=pipelineData.filter(p=>p.stage!=='confirmed'&&p.stage!=='rejected').length;
   document.getElementById('pipelineCount').textContent=total;
 }
-
 async function movePipeline(id,newStage){
+  if(window._demoMode){
+    const item=pipelineData.find(p=>p.id===id);
+    if(item){item.stage=newStage;renderPipeline();}
+    return;
+  }
+  const values=newStage==='awaiting'?{payment_status:'awaiting'}
+    :newStage==='review'?{payment_status:'paid'}
+    :newStage==='confirmed'?{status:'confirmed',confirmed_by:'staff'}
+    :{status:'cancelled'};
   try{
-    const updates={};
-    if(newStage==='confirmed'){updates.status='confirmed';updates.confirmed_by='staff';}
-    else if(newStage==='rejected'){updates.status='rejected';}
-    else if(newStage==='awaiting'){updates.payment_status='awaiting';}
-    else if(newStage==='review'){updates.payment_status='paid';}
-    await sb.from('bookings').update(updates).eq('id',id);
-  }catch(e){console.warn('movePipeline DB error',e);}
-  const item=pipelineData.find(p=>p.id===id);
-  if(item){item.stage=newStage;}
+    await dbQuery({table:'bookings',action:'update',values,filters:[{column:'id',op:'eq',value:id}]});
+  }catch(e){alert('Update failed: '+e.message);}
   loadPipeline();
 }
 
+/* ── ADD CUSTOMER ── */
 async function addNewCustomer(){
   const name=document.getElementById('nc-name').value.trim();
   const phone=document.getElementById('nc-phone').value.trim();
@@ -1393,39 +1243,215 @@ async function addNewCustomer(){
   const amount=document.getElementById('nc-amount').value;
   const notes=document.getElementById('nc-notes').value.trim();
   if(!name||!phone)return alert('Name and phone number are required.');
-  try{
-    const{data:cust,error:ce}=await sb.from('customers').insert({name,phone,email:email||null,segment,notes:notes||null}).select().single();
-    if(ce)throw ce;
-    const bookingDate=date||new Date().toISOString().slice(0,10);
-    const bookingTime=time||'19:00';
-    await sb.from('bookings').insert({customer_id:cust.id,date:bookingDate,time:bookingTime,party_size:parseInt(party)||2,occasion:occasion||'Casual',dietary_notes:dietary||null,status:'pending',payment_status:amount?'awaiting':'unpaid'});
-    if(amount){await sb.from('payments').insert({customer_id:cust.id,amount:parseFloat(amount),status:'awaiting'});}
-    recentlyAdded.unshift({name,phone,segment,date:bookingDate,time:bookingTime,added:new Date().toISOString()});
+  const st=document.getElementById('nc-status');
+  const clearForm=()=>{
     ['nc-name','nc-phone','nc-email','nc-party','nc-date','nc-time','nc-dietary','nc-amount','nc-notes'].forEach(id=>{document.getElementById(id).value='';});
-    document.getElementById('nc-segment').value='new';document.getElementById('nc-occasion').value='';
-    const st=document.getElementById('nc-status');st.style.display='inline';setTimeout(()=>st.style.display='none',3000);
-    loadRecentCustomers();loadPipeline();
+    document.getElementById('nc-segment').value='new';
+    document.getElementById('nc-occasion').value='';
+  };
+  if(window._demoMode){
+    const entry={
+      id:'pp-'+Date.now(),name,phone,email,
+      party:parseInt(party)||2,occasion:occasion||'Casual',category:'BOOKING',
+      date:date||new Date().toISOString().slice(0,10),time:time||'19:00',
+      amount:parseInt(amount)||0,stage:'inquiry',created:new Date().toISOString(),notes,dietary,segment
+    };
+    pipelineData.unshift(entry);
+    recentlyAdded.unshift({name,phone,segment,date:entry.date,time:entry.time,added:new Date().toISOString()});
+    if(window.demoInboxThreads){
+      window.demoInboxThreads.unshift({name,phone,intent:'BOOKING',msgs:[
+        {direction:'inbound',message:`New customer registered: ${name} (${phone}). Booking for ${entry.party} pax on ${fmtDate(entry.date)} at ${entry.time}.`,timestamp:new Date().toISOString(),intent:'BOOKING'}
+      ]});
+    }
+    clearForm();
+    st.textContent='Customer added! (demo)';st.style.color='var(--green)';st.style.display='inline';setTimeout(()=>st.style.display='none',3000);
+    loadRecentCustomers();renderPipeline();
     document.getElementById('contactsCount').textContent=parseInt(document.getElementById('contactsCount').textContent||'0')+1;
-  }catch(e){alert('Error adding customer: '+e.message);}
+    return;
+  }
+  st.textContent='Saving...';st.style.color='var(--text-muted)';st.style.display='inline';
+  try{
+    const custRes=await dbQuery({table:'customers',action:'insert',values:{
+      name,phone:phone.replace(/\s+/g,''),email:email||null,segment,notes:notes||null
+    }});
+    const cust=(custRes.data||[])[0];
+    if(date){
+      if(!cust||!cust.id)throw new Error('Customer saved but no id returned — booking not created');
+      await dbQuery({table:'bookings',action:'insert',values:{
+        customer_id:cust.id,date,time:time||null,party_size:parseInt(party)||null,
+        occasion:occasion||null,dietary_notes:dietary||null,
+        payment_amount:amount?parseFloat(amount):null,
+        status:'pending',payment_status:'unpaid'
+      }});
+    }
+    clearForm();
+    st.textContent='Customer added!';st.style.color='var(--green)';st.style.display='inline';setTimeout(()=>st.style.display='none',4000);
+    loadRecentCustomers();loadPipeline();
+  }catch(e){
+    st.textContent='Error: '+e.message;st.style.color='var(--red)';st.style.display='inline';
+  }
 }
 
 async function loadRecentCustomers(){
   const tb=document.getElementById('recentCustomersTable');
-  if(recentlyAdded.length){
-    tb.innerHTML=recentlyAdded.slice(0,10).map(c=>'<tr><td style="font-weight:500">'+escapeHTML(c.name)+'</td><td class="muted">'+escapeHTML(c.phone)+'</td><td>'+segChip(c.segment)+'</td><td class="muted" style="font-size:12px">'+(c.date?fmtDate(c.date)+' '+c.time:'—')+'</td><td class="muted" style="font-size:12px">'+fmt(c.added)+'</td></tr>').join('');
+  if(window._demoMode){
+    if(!recentlyAdded.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No customers added yet</td></tr>';return;}
+    tb.innerHTML=recentlyAdded.slice(0,10).map(c=>`<tr><td style="font-weight:500">${escapeHTML(c.name)}</td><td class="muted">${escapeHTML(c.phone)}</td><td>${segChip(c.segment)}</td><td class="muted" style="font-size:12px">${c.date?fmtDate(c.date)+' '+escapeHTML(c.time||''):'—'}</td><td class="muted" style="font-size:12px">${fmt(c.added)}</td></tr>`).join('');
     return;
   }
   try{
-    const{data}=await sb.from('customers').select('name,phone,segment,created_at').order('created_at',{ascending:false}).limit(10);
-    if(data&&data.length){tb.innerHTML=data.map(c=>'<tr><td style="font-weight:500">'+escapeHTML(c.name||'—')+'</td><td class="muted">'+escapeHTML(c.phone||'—')+'</td><td>'+segChip(c.segment)+'</td><td class="muted" style="font-size:12px">—</td><td class="muted" style="font-size:12px">'+fmt(c.created_at)+'</td></tr>').join('');}
-    else{tb.innerHTML='<tr><td colspan="5" class="empty-inline">No customers added yet</td></tr>';}
+    const res=await dbQuery({table:'customers',action:'select',select:'name,phone,segment,created_at',order:{column:'created_at',ascending:false},limit:10});
+    const data=res.data||[];
+    if(!data.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No customers added yet</td></tr>';return;}
+    tb.innerHTML=data.map(c=>`<tr><td style="font-weight:500">${escapeHTML(c.name||'—')}</td><td class="muted">${escapeHTML(c.phone||'—')}</td><td>${segChip(c.segment)}</td><td class="muted" style="font-size:12px">—</td><td class="muted" style="font-size:12px">${fmt(c.created_at)}</td></tr>`).join('');
   }catch(e){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No customers added yet</td></tr>';}
 }
 
-/* -- DEMO DATA -- */
+/* ── REPORTS (real conversations data; demo only when offline) ── */
+let _reportRows=[];
+function renderReportsView(rows){
+  const now=new Date(),todayStr=now.toISOString().slice(0,10);
+  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
+  const monthAgo=new Date(Date.now()-30*864e5).toISOString();
+  const todayItems=rows.filter(r=>(r.timestamp||'').slice(0,10)===todayStr);
+  const weekItems=rows.filter(r=>r.timestamp>=weekAgo);
+  const monthItems=rows.filter(r=>r.timestamp>=monthAgo);
+  document.getElementById('rp-today').textContent=todayItems.length;
+  document.getElementById('rp-week').textContent=weekItems.length;
+  document.getElementById('rp-month').textContent=monthItems.length;
+  document.getElementById('rp-avgday').textContent=monthItems.length>0?Math.round(monthItems.length/30):'0';
+  const tb=document.getElementById('reportsTable');
+  const show20=rows.slice(0,20);
+  if(!show20.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No reach outs yet</td></tr>';return;}
+  tb.innerHTML=show20.map(r=>{
+    const chChip=r.channel==='Phone Call'?'amber':'green';
+    return`<tr><td class="muted" style="font-size:12px">${fmt(r.timestamp)}</td><td style="font-weight:500">${escapeHTML(r.name)}</td><td><span class="chip ${r.direction==='inbound'?'':'solid'}">${escapeHTML(r.direction||'—')}</span></td><td><span class="chip ${chChip}">${escapeHTML(r.channel||'WhatsApp')}</span></td><td><span class="chip">${escapeHTML(r.intent||'—')}</span></td></tr>`;
+  }).join('');
+}
+async function loadReports(){
+  if(window._demoMode){_reportRows=demoReachOuts;renderReportsView(demoReachOuts);return;}
+  const monthAgo=new Date(Date.now()-30*864e5).toISOString();
+  try{
+    let res;
+    try{
+      res=await dbQuery({table:'conversations',action:'select',select:'timestamp,direction,intent,message,platform,customers(name,phone)',filters:[{column:'timestamp',op:'gte',value:monthAgo}],order:{column:'timestamp',ascending:false},limit:1000});
+    }catch(e){
+      if(e.message==='Unauthorized')throw e;
+      res=await dbQuery({table:'conversations',action:'select',select:'timestamp,direction,intent,message,customers(name,phone)',filters:[{column:'timestamp',op:'gte',value:monthAgo}],order:{column:'timestamp',ascending:false},limit:1000});
+    }
+    _reportRows=(res.data||[]).map(c=>({
+      timestamp:c.timestamp,
+      name:c.customers?.name||'Unknown',
+      phone:c.customers?.phone||'',
+      channel:c.platform?(c.platform.charAt(0).toUpperCase()+c.platform.slice(1)):'WhatsApp',
+      direction:c.direction||'—',
+      intent:c.intent||'—',
+      message:c.message||''
+    }));
+    renderReportsView(_reportRows);
+  }catch(e){
+    document.getElementById('reportsTable').innerHTML='<tr><td colspan="5" class="empty-inline">No data yet</td></tr>';
+  }
+}
+function downloadReport(period){
+  const source=window._demoMode?demoReachOuts:_reportRows;
+  let items,filename;
+  const now=new Date(),todayStr=now.toISOString().slice(0,10);
+  if(period==='daily'){
+    items=source.filter(r=>(r.timestamp||'').slice(0,10)===todayStr);
+    filename=`tilapiya_daily_report_${todayStr}.csv`;
+  }else if(period==='weekly'){
+    const weekAgo=new Date(Date.now()-7*864e5).toISOString();
+    items=source.filter(r=>r.timestamp>=weekAgo);
+    filename=`tilapiya_weekly_report_${todayStr}.csv`;
+  }else{
+    const monthAgo=new Date(Date.now()-30*864e5).toISOString();
+    items=source.filter(r=>r.timestamp>=monthAgo);
+    filename=`tilapiya_monthly_report_${todayStr}.csv`;
+  }
+  let csv='Date,Time,Name,Phone,Channel,Direction,Intent,Message\n';
+  items.forEach(r=>{
+    const d=new Date(r.timestamp);
+    const date=d.toLocaleDateString('en-GB');
+    const time=d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    const cell=v=>'"'+String(v==null?'':v).replace(/"/g,'""')+'"';
+    csv+=[cell(date),cell(time),cell(r.name),cell(r.phone),cell(r.channel),cell(r.direction),cell(r.intent),cell(r.message)].join(',')+'\n';
+  });
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const link=document.createElement('a');
+  link.href=URL.createObjectURL(blob);
+  link.download=filename;
+  link.click();
+  URL.revokeObjectURL(link.href);
+}
+
+/* ── MANUAL REPLY ── */
+async function sendManualReply(){
+  var input=document.getElementById('replyInput');
+  var status=document.getElementById('replyStatus');
+  var message=input.value.trim();
+  var _rt=window._replyTarget||{};
+  if(!message||!_rt.to)return;
+  if(window._demoMode){
+    status.style.display='block';status.style.color='#f59e0b';
+    status.textContent='Demo mode — connect the API to send messages.';
+    return;
+  }
+  status.style.display='block';
+  status.style.color='#888';
+  status.textContent='Sending...';
+  input.disabled=true;
+  try{
+    var resp=await fetch(API_BASE+'/api/send',{
+      method:'POST',
+      headers:Object.assign({'Content-Type':'application/json'},apiHeaders()),
+      body:JSON.stringify({
+        to:String(_rt.to).replace(/\s+/g,''),
+        message:message,
+        customer_id:_rt.customer_id,
+        platform:_rt.platform
+      })
+    });
+    if(resp.status===401){input.disabled=false;clearAuth();return;}
+    var data=await resp.json().catch(function(){return{};});
+    if(resp.ok){
+      status.style.color='#4caf50';
+      status.textContent='Sent!';
+      input.value='';
+      var chatDiv=document.getElementById('chatMessages');
+      var row=document.createElement('div');
+      row.className='bubble-row out';
+      var now=new Date();
+      var timeStr=now.getDate()+' '+now.toLocaleString('default',{month:'short'})+', '+now.getHours().toString().padStart(2,'0')+':'+now.getMinutes().toString().padStart(2,'0');
+      row.innerHTML='<div class="bubble out">'+escapeHTML(message)+'</div><div class="bubble-meta">'+escapeHTML(timeStr)+' · <span class="chip">Staff</span></div>';
+      chatDiv.appendChild(row);
+      chatDiv.scrollTop=chatDiv.scrollHeight;
+      setTimeout(function(){status.style.display='none';},2000);
+    }else{
+      status.style.color='#f44336';
+      status.textContent='Error: '+(data.error||'Failed to send');
+    }
+  }catch(e){
+    status.style.color='#f44336';
+    status.textContent='Network error: '+e.message;
+  }
+  input.disabled=false;
+  input.focus();
+}
+
+/* ── DEMO DATA (shown only when the API is unreachable) ── */
 const DEMO_NAMES=['Kasun Perera','Nimali Fernando','Ruwan Silva','Tharushi Jayawardena','Dinesh Rathnayake','Sachini De Silva','Amara Wickramasinghe','Pradeep Bandara','Hashini Gunawardena','Lakshan Mendis','Dulani Samarasinghe','Isuru Pathirana','Kavindya Rajapaksa','Nimal Herath','Sanduni Ekanayake','Chamara Dissanayake','Rashmi Abeysekara','Janith Kumara','Iresha Weerasinghe','Tharindu Gunasekara'];
 const DEMO_PHONES=['+94 77 234 5678','+94 71 890 1234','+94 76 456 7890','+94 75 123 4567','+94 77 567 8901','+94 71 345 6789','+94 76 789 0123','+94 75 901 2345','+94 77 012 3456','+94 71 678 9012','+94 76 234 5678','+94 75 456 7890','+94 77 890 1234','+94 71 012 3456','+94 76 567 8901','+94 75 789 0123','+94 77 345 6789','+94 71 901 2345','+94 76 012 3456','+94 75 234 5678'];
-const DEMO_MESSAGES=['Hi, I want to book a table for 4 this Saturday','What are your opening hours?','The food was cold last time','Amazing service, thank you!','Need to cancel my reservation','Do you have parking?','Can I book the private room?','Is there a kids menu?','Wonderful anniversary dinner','Table for 2 tonight please','Do you cater for events?','I called about my booking','Is the chef special available?','We want to celebrate a birthday','Can I change my reservation time?','What vegetarian options?','We loved the ambience','Booking for corporate lunch, 12 people','Any gluten-free desserts?','Quick question about the menu'];
+const DEMO_INTENTS=['BOOKING','INQUIRY','COMPLAINT','FEEDBACK','CANCEL','OTHER'];
+const DEMO_CHANNELS=['WhatsApp','Phone Call','Phone Call','WhatsApp','WhatsApp','Phone Call'];
+const DEMO_MESSAGES=['Hi, I want to book a table for 4 this Saturday','What are your opening hours?','The food was cold last time we visited','Amazing service, thank you so much!','Need to cancel my reservation for tomorrow','Do you have parking available?','Can I book the private dining room?','Is there a kids menu?','We had a wonderful anniversary dinner','Table for 2 tonight please','Do you cater for events?','I called earlier about my booking','Is the chef\'s special still available?','We want to celebrate a birthday','Can I change my reservation time?','What vegetarian options do you have?','We loved the ambience last visit','Booking for a corporate lunch, 12 people','Any gluten-free desserts?','Quick question about the menu'];
+const demoFeedback=[
+  {name:'Sachini De Silva',rating:5,comment:'Best fish we\'ve had in Colombo! The ambience was perfect for our date night.'},
+  {name:'Kasun Perera',rating:4,comment:'Good food, friendly staff. A bit noisy during peak hours.'},
+  {name:'Tharushi Jayawardena',rating:5,comment:'The seafood platter was incredible. Will be back!'},
+  {name:'Dinesh Rathnayake',rating:3,comment:'Food was decent but the wait time was too long.'},
+  {name:'Amara Wickramasinghe',rating:4,comment:'Lovely place. The chef\'s special was amazing.'}
+];
 
 function generateDemoPipeline(){
   const occasions=['Birthday','Anniversary','Business','Date Night','Family','Casual'];
@@ -1433,163 +1459,240 @@ function generateDemoPipeline(){
   const entries=[];
   for(let i=0;i<18;i++){
     const idx=Math.floor(Math.random()*DEMO_NAMES.length);
-    let stage;if(i<4)stage='inquiry';else if(i<8)stage='awaiting';else if(i<12)stage='review';else if(i<16)stage='confirmed';else stage='rejected';
-    entries.push({id:'pp-'+i,name:DEMO_NAMES[idx],phone:DEMO_PHONES[idx],party:Math.floor(Math.random()*8)+2,occasion:occasions[Math.floor(Math.random()*occasions.length)],category:categories[i]||'BOOKING',date:new Date(Date.now()+Math.floor(Math.random()*14)*864e5).toISOString().slice(0,10),time:['11:30','12:00','13:00','18:00','19:00','19:30','20:00'][Math.floor(Math.random()*7)],amount:Math.floor(Math.random()*30+5)*1000,stage:stage});
+    let stage;
+    if(i<4) stage='inquiry';
+    else if(i<8) stage='awaiting';
+    else if(i<12) stage='review';
+    else if(i<16) stage='confirmed';
+    else stage='rejected';
+    entries.push({
+      id:'pp-'+i,
+      name:DEMO_NAMES[idx],
+      phone:DEMO_PHONES[idx],
+      party:Math.floor(Math.random()*8)+2,
+      occasion:occasions[Math.floor(Math.random()*occasions.length)],
+      category:categories[i]||'BOOKING',
+      date:new Date(Date.now()+Math.floor(Math.random()*14)*864e5).toISOString().slice(0,10),
+      time:['11:30','12:00','13:00','18:00','19:00','19:30','20:00'][Math.floor(Math.random()*7)],
+      amount:Math.floor(Math.random()*30+5)*1000,
+      stage:stage,
+      created:new Date(Date.now()-Math.floor(Math.random()*5)*864e5).toISOString(),
+      notes:''
+    });
   }
   return entries;
 }
 
 function generateDemoReachOuts(days){
-  const intents=['BOOKING','INQUIRY','COMPLAINT','FEEDBACK','CANCEL','OTHER'];
-  const channels=['WhatsApp','Phone Call','Phone Call','WhatsApp','WhatsApp','Phone Call'];
   const data=[];
   for(let d=0;d<days;d++){
-    const date=new Date(Date.now()-d*864e5);const count=Math.floor(Math.random()*8)+4;
+    const date=new Date(Date.now()-d*864e5);
+    const count=Math.floor(Math.random()*8)+4;
     for(let i=0;i<count;i++){
       const idx=Math.floor(Math.random()*DEMO_NAMES.length);
-      const hr=Math.floor(Math.random()*12)+8;const mn=Math.floor(Math.random()*60);
+      const hr=Math.floor(Math.random()*12)+8;
+      const mn=Math.floor(Math.random()*60);
       const ts=new Date(date);ts.setHours(hr,mn,0,0);
-      data.push({timestamp:ts.toISOString(),name:DEMO_NAMES[idx],phone:DEMO_PHONES[idx],channel:channels[Math.floor(Math.random()*channels.length)],intent:intents[Math.floor(Math.random()*intents.length)],message:DEMO_MESSAGES[Math.floor(Math.random()*DEMO_MESSAGES.length)],direction:Math.random()>0.4?'inbound':'outbound'});
+      data.push({
+        timestamp:ts.toISOString(),
+        name:DEMO_NAMES[idx],
+        phone:DEMO_PHONES[idx],
+        channel:DEMO_CHANNELS[Math.floor(Math.random()*DEMO_CHANNELS.length)],
+        intent:DEMO_INTENTS[Math.floor(Math.random()*DEMO_INTENTS.length)],
+        message:DEMO_MESSAGES[Math.floor(Math.random()*DEMO_MESSAGES.length)],
+        direction:Math.random()>0.4?'inbound':'outbound'
+      });
     }
   }
   return data.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
 }
 const demoReachOuts=generateDemoReachOuts(30);
 
-function loadReports(){
-  const now=new Date(),todayStr=now.toISOString().slice(0,10);
-  const weekAgo=new Date(Date.now()-7*864e5).toISOString();
-  const monthAgo=new Date(Date.now()-30*864e5).toISOString();
-  const todayItems=demoReachOuts.filter(r=>r.timestamp.slice(0,10)===todayStr);
-  const weekItems=demoReachOuts.filter(r=>r.timestamp>=weekAgo);
-  const monthItems=demoReachOuts.filter(r=>r.timestamp>=monthAgo);
-  document.getElementById('rp-today').textContent=todayItems.length;
-  document.getElementById('rp-week').textContent=weekItems.length;
-  document.getElementById('rp-month').textContent=monthItems.length;
-  document.getElementById('rp-avgday').textContent=monthItems.length>0?Math.round(monthItems.length/30):'0';
-  const tb=document.getElementById('reportsTable');
-  const show20=demoReachOuts.slice(0,20);
-  if(!show20.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No reach outs</td></tr>';return;}
-  tb.innerHTML=show20.map(r=>{const chChip=r.channel==='Phone Call'?'amber':'green';return'<tr><td class="muted" style="font-size:12px">'+fmt(r.timestamp)+'</td><td style="font-weight:500">'+r.name+'</td><td><span class="chip '+(r.direction==='inbound'?'':'solid')+'">'+r.direction+'</span></td><td><span class="chip '+chChip+'">'+r.channel+'</span></td><td><span class="chip">'+r.intent+'</span></td></tr>';}).join('');
-}
-
-function downloadReport(period){
-  let items,filename;const now=new Date(),todayStr=now.toISOString().slice(0,10);
-  if(period==='daily'){items=demoReachOuts.filter(r=>r.timestamp.slice(0,10)===todayStr);filename='tilapiya_daily_'+todayStr+'.csv';}
-  else if(period==='weekly'){items=demoReachOuts.filter(r=>r.timestamp>=new Date(Date.now()-7*864e5).toISOString());filename='tilapiya_weekly_'+todayStr+'.csv';}
-  else{items=demoReachOuts.filter(r=>r.timestamp>=new Date(Date.now()-30*864e5).toISOString());filename='tilapiya_monthly_'+todayStr+'.csv';}
-  let csv='Date,Time,Name,Phone,Channel,Direction,Intent,Message\n';
-  items.forEach(r=>{const d=new Date(r.timestamp);csv+='"'+d.toLocaleDateString('en-GB')+'","'+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})+'","'+r.name+'","'+r.phone+'","'+r.channel+'","'+r.direction+'","'+r.intent+'","'+(r.message||'').replace(/"/g,'""')+'"\n';});
-  const blob=new Blob([csv],{type:'text/csv'});const link=document.createElement('a');link.href=URL.createObjectURL(blob);link.download=filename;link.click();
-}
-
-/* -- BOT TOGGLE -- */
-async function fetchBotMode(customerId){
-  document.getElementById('botToggleWrap').style.display='inline-block';
+function renderDemoOverview(){
+  document.getElementById('ov-bookings').textContent='7';
+  document.getElementById('ov-revenue').textContent='184,500';
+  document.getElementById('ov-contacts').textContent='14';
+  document.getElementById('ov-pending').textContent='3';
+  document.getElementById('ov-msgin').textContent='68';
+  document.getElementById('ov-msgout').textContent='42';
+  document.getElementById('ov-avgrating').textContent='4.3';
+  document.getElementById('ov-loyalty').textContent='26';
+  document.getElementById('ov-complaints').textContent='2';
+  document.getElementById('ov-total').textContent='143';
+  document.getElementById('ov-goldplus').textContent='8';
+  document.getElementById('ov-lapsed').textContent='11';
+  var _setch=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
+  _setch('ov-wamsgs','51');_setch('ov-fbmsgs','11');_setch('ov-igmsgs','6');
+  document.getElementById('contactsCount').textContent='143';
+  document.getElementById('loyaltyCount').textContent='26';
+  document.getElementById('inboxCount').textContent='12';
+  const demoConvos=demoReachOuts.slice(0,8);
+  document.getElementById('ov-feed').innerHTML=demoConvos.map(c=>`<tr><td><span class="chip ${c.direction==='inbound'?'':'solid'}">${escapeHTML(c.direction)}</span></td><td>${escapeHTML(c.name)}</td><td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(c.message)}</td><td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td></tr>`).join('');
+  document.getElementById('ov-feedback-list').innerHTML=demoFeedback.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${escapeHTML(f.name)}</span>${starsHTML(f.rating)}</div><div class="feedback-comment">"${escapeHTML(f.comment)}"</div><div style="font-size:11px;color:var(--text-subtle);margin-top:6px">Today</div></div>`).join('');
+  document.getElementById('feedbackCount').textContent='5';
   try{
-    const{data}=await sb.from('customers').select('bot_mode').eq('id',customerId).single();
-    const mode=(data&&data.bot_mode!==false);
-    updateBotToggleUI(mode);
-    document.getElementById('detailBotMode').textContent=mode?'On (Auto)':'Off (Manual)';
-  }catch(e){updateBotToggleUI(true);}
-}
-function updateBotToggleUI(isOn){
-  const dot=document.getElementById('botToggleDot'),label=document.getElementById('botToggleLabel'),btn=document.getElementById('botToggleBtn');
-  if(isOn){dot.style.background='var(--green)';label.textContent='Bot: On';btn.style.borderColor='rgba(63,98,18,0.4)';btn.style.background='var(--green-bg)';}
-  else{dot.style.background='var(--text-subtle)';label.textContent='Bot: Off';btn.style.borderColor='var(--border-strong)';btn.style.background='var(--surface-2)';}
-}
-async function toggleBotMode(){
-  if(!_currentReplyCustomerId)return;
-  try{
-    const{data}=await sb.from('customers').select('bot_mode').eq('id',_currentReplyCustomerId).single();
-    const current=(data&&data.bot_mode!==false);
-    const newMode=!current;
-    await sb.from('customers').update({bot_mode:newMode}).eq('id',_currentReplyCustomerId);
-    updateBotToggleUI(newMode);
-    document.getElementById('detailBotMode').textContent=newMode?'On (Auto)':'Off (Manual)';
-  }catch(e){console.warn('Toggle bot mode error',e);}
+    const labels=[],counts=[];
+    for(let i=6;i>=0;i--){const d=new Date(Date.now()-i*864e5);labels.push(d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric'}));counts.push(Math.floor(Math.random()*6)+3);}
+    drawBookingsChart(labels,counts);
+  }catch(e){}
+  document.getElementById('lastUpdated').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
 
-/* -- NEW MESSAGE MODAL -- */
-function showNewMessageModal(){
-  const existing=document.getElementById('newMsgModal');
-  if(existing)existing.remove();
-  const modal=document.createElement('div');
-  modal.id='newMsgModal';
-  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:9999';
-  modal.innerHTML='<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;width:400px;max-width:90vw"><h3 style="font-size:16px;font-weight:600;margin-bottom:16px">New Message</h3><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Phone Number</label><input id="newMsgPhone" class="field" placeholder="+94 77 123 4567" style="margin-bottom:12px"><label style="font-size:12px;color:var(--text-muted);display:block;margin-bottom:4px">Message</label><textarea id="newMsgText" class="compose-textarea" placeholder="Type your message..." style="min-height:100px;margin-bottom:12px"></textarea><div style="display:flex;gap:8px;justify-content:flex-end"><button class="btn secondary" onclick="document.getElementById(\'newMsgModal\').remove()">Cancel</button><button class="btn" onclick="sendNewMessage()">Send</button></div></div>';
-  document.body.appendChild(modal);
-  modal.addEventListener('click',function(e){if(e.target===modal)modal.remove();});
-  document.getElementById('newMsgPhone').focus();
-}
-async function sendNewMessage(){
-  const phone=document.getElementById('newMsgPhone').value.trim();
-  const message=document.getElementById('newMsgText').value.trim();
-  if(!phone||!message)return alert('Phone and message are required.');
-  try{
-    const resp=await fetch(API_BASE+'/api/send',{method:'POST',headers:dashHeaders(),body:JSON.stringify({to:phone,message:message})});
-    const data=await resp.json();
-    if(!resp.ok)throw new Error(data.error||'Failed');
-    document.getElementById('newMsgModal').remove();
-    loadInbox();
-  }catch(e){alert('Error: '+e.message);}
+function renderDemoContacts(){
+  document.getElementById('contactsTable').innerHTML=DEMO_NAMES.slice(0,15).map((n,i)=>{
+    const segs=['vip','returning','new','first-timer','lapsed'];
+    const tiers=['Bronze','Silver','Gold','Platinum'];
+    const seg=segs[i%segs.length];const tier=tiers[Math.min(i%4,3)];const pts=Math.floor(Math.random()*500)+10;
+    return`<tr><td style="font-weight:500">${escapeHTML(n)}</td><td class="muted">${escapeHTML(DEMO_PHONES[i])}</td><td>${segChip(seg)}</td><td>${Math.floor(Math.random()*20)+1}</td><td>${tierBadge(tier)}</td><td>${pts}</td><td class="muted" style="font-size:12px">${fmtDate(new Date(Date.now()-Math.floor(Math.random()*30)*864e5))}</td></tr>`;
+  }).join('');
 }
 
-/* -- BOOT -- */
+function buildDemoInbox(){
+  const intentMap={0:'BOOKING',1:'INQUIRY',2:'COMPLAINT',3:'FEEDBACK',4:'BOOKING',5:'INQUIRY',6:'BOOKING',7:'INQUIRY',8:'FEEDBACK',9:'BOOKING',10:'INQUIRY',11:'BOOKING'};
+  window.demoInboxThreads=DEMO_NAMES.slice(0,12).map((n,i)=>{
+    const intent=intentMap[i]||'BOOKING';
+    const replies=[
+      {direction:'inbound',message:DEMO_MESSAGES[i],timestamp:new Date(Date.now()-i*3600000).toISOString(),intent},
+      {direction:'outbound',message:['Thank you for reaching out! Let me check availability.','Sure, I can help with that.','We appreciate your feedback!','I\'ll look into this right away.','Your table is being prepared.','Let me get back to you shortly.'][i%6],timestamp:new Date(Date.now()-i*3600000+300000).toISOString(),intent}
+    ];
+    if(Math.random()>0.5) replies.push({direction:'inbound',message:['Great, thank you!','Perfect, see you then.','Sounds good.','Alright, we\'ll wait.','Thanks for the quick response!'][Math.floor(Math.random()*5)],timestamp:new Date(Date.now()-i*3600000+600000).toISOString(),intent});
+    return{name:n,phone:DEMO_PHONES[i],intent,msgs:replies};
+  });
+}
+
+function renderDemoThreads(threads){
+  if(!threads.length){document.getElementById('threadList').innerHTML='<div class="empty-inline">No conversations on this channel yet</div>';return;}
+  document.getElementById('threadList').innerHTML=threads.map((t,i)=>{
+    const lastMsg=t.msgs[t.msgs.length-1];
+    const catColors={BOOKING:'green',INQUIRY:'blue',COMPLAINT:'red',FEEDBACK:'amber'};
+    return`<div class="thread-item" onclick="openDemoThread(${i})" id="thread-${i}"><div class="avatar">${initials(t.name)}</div><div><div class="thread-name">${escapeHTML(t.name)} <span class="chip ${catColors[t.intent]||''}" style="font-size:9px;vertical-align:middle;margin-left:4px">${escapeHTML(t.intent)}</span></div><div class="thread-preview">${escapeHTML((lastMsg.message||'—').slice(0,55))}</div></div><div class="thread-meta"><div class="thread-time">${fmt(lastMsg.timestamp)}</div>${t.msgs.length>1?`<div class="thread-badge">${t.msgs.length}</div>`:''}</div></div>`;
+  }).join('');
+}
+
+let _demoFilteredThreads=[];
+function renderDemoThreadList(){
+  if(!window.demoInboxThreads)buildDemoInbox();
+  let threads=window.demoInboxThreads;
+  if(_channelFilter!=='all'&&_channelFilter!=='whatsapp')threads=[];
+  if(_intentFilter!=='all')threads=threads.filter(t=>t.intent===_intentFilter);
+  _demoFilteredThreads=threads;
+  renderDemoThreads(threads);
+  const inboxCats={BOOKING:0,INQUIRY:0,COMPLAINT:0,FEEDBACK:0};
+  window.demoInboxThreads.forEach(t=>{if(inboxCats[t.intent]!==undefined)inboxCats[t.intent]++;});
+  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent='('+v+')';};
+  s('fpAll',window.demoInboxThreads.length);s('fpBooking',inboxCats.BOOKING);s('fpInquiry',inboxCats.INQUIRY);s('fpComplaint',inboxCats.COMPLAINT);s('fpFeedback',inboxCats.FEEDBACK);
+  s('fcAll',window.demoInboxThreads.length);s('fcWhatsapp',window.demoInboxThreads.length);s('fcFacebook',0);s('fcInstagram',0);
+  document.getElementById('inboxTotalLabel').textContent=window.demoInboxThreads.length+' threads';
+}
+
+window.openDemoThread=function(i){
+  const t=_demoFilteredThreads[i]||window.demoInboxThreads[i];
+  if(!t)return;
+  document.querySelectorAll('.thread-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('thread-'+i)?.classList.add('active');
+  document.getElementById('chatAvatar').textContent=initials(t.name);
+  document.getElementById('chatName').textContent=t.name;
+  document.getElementById('chatPhone').textContent=t.phone+' · via WhatsApp';
+  document.getElementById('detailAvatar').textContent=initials(t.name);
+  document.getElementById('detailName').textContent=t.name;
+  document.getElementById('detailPhone').textContent=t.phone;
+  document.getElementById('detailSegment').textContent='returning';
+  document.getElementById('detailVisits').textContent=Math.floor(Math.random()*10)+1;
+  document.getElementById('detailFirst').textContent=fmtDate(new Date(Date.now()-90*864e5));
+  document.getElementById('detailLast').textContent=fmtDate(new Date());
+  document.getElementById('detailNotes').textContent='Connected via WhatsApp';
+  window._replyTarget={to:t.phone,platform:'whatsapp',customer_id:null};
+  fetchBotMode(null);
+  const pMatch=pipelineData.find(p=>p.name===t.name);
+  const stageLabel=pMatch?{inquiry:'New Inquiry',awaiting:'Awaiting Payment',review:'Payment Review',confirmed:'Confirmed',rejected:'Rejected'}[pMatch.stage]||'—':'Not in pipeline';
+  document.getElementById('detailPipelineStage').innerHTML=pMatch?`<span class="chip ${pMatch.stage==='confirmed'?'green':pMatch.stage==='rejected'?'red':pMatch.stage==='review'?'purple':'amber'}">${escapeHTML(stageLabel)}</span>`:escapeHTML(stageLabel);
+  document.getElementById('chatPipelineLink').innerHTML=pMatch?`<button class="btn sm secondary" onclick="show('pipeline')">View in Pipeline</button>`:'';
+  document.getElementById('chatMessages').innerHTML=t.msgs.map(m=>`<div class="bubble-row ${m.direction==='inbound'?'in':'out'}"><div class="bubble ${m.direction==='inbound'?'in':'out'}">${escapeHTML(m.message)}</div><div class="bubble-meta">${fmt(m.timestamp)} · ${escapeHTML(m.intent||'')} · WhatsApp</div></div>`).join('');
+  document.getElementById('chatMessages').scrollTop=99999;
+};
+
+function renderDemoDailyLog(){
+  document.getElementById('dl-bookings').textContent='7';document.getElementById('dl-confirmed').textContent='5';document.getElementById('dl-pending').textContent='2';document.getElementById('dl-guests').textContent='28';
+  const times=['11:30','12:00','12:30','13:00','18:00','19:00','20:00'];
+  document.getElementById('dailyTable').innerHTML=times.map((t,i)=>`<tr><td style="font-weight:600">${t}</td><td>${escapeHTML(DEMO_NAMES[i])}<br><span class="muted" style="font-size:11px">${escapeHTML(DEMO_PHONES[i])}</span></td><td>${Math.floor(Math.random()*6)+2}</td><td class="muted">${['Birthday','Anniversary','Business','Casual','Date Night','Family','Casual'][i]}</td><td class="muted" style="font-size:12px">${['None','Vegetarian','Gluten-free','None','Nut allergy','None','Halal'][i]}</td><td>${i<5?payChip('paid'):payChip('unpaid')}</td><td>${i<5?statusChip('confirmed'):statusChip('pending')}</td><td>${i<5?'<span class="muted" style="font-size:12px">Done</span>':'<button class="btn green sm">Confirm</button>'}</td></tr>`).join('');
+}
+
+function renderDemoLoyalty(){
+  document.getElementById('ly-bronze').textContent='10';document.getElementById('ly-silver').textContent='8';document.getElementById('ly-gold').textContent='5';document.getElementById('ly-plat').textContent='3';
+  document.getElementById('loyaltyList').innerHTML=DEMO_NAMES.slice(0,10).map((n,i)=>{const tiers=['Platinum','Gold','Gold','Silver','Silver','Silver','Bronze','Bronze','Bronze','Bronze'];const pts=[620,480,310,240,180,150,90,75,50,30];return`<div class="loyalty-card"><div class="avatar" style="width:36px;height:36px;font-size:13px">${initials(n)}</div><div class="loyalty-info"><div class="loyalty-name">${escapeHTML(n)}</div><div class="loyalty-detail">${escapeHTML(DEMO_PHONES[i])} · ${Math.floor(Math.random()*15)+3} visits · ${tierBadge(tiers[i])}</div></div><div class="loyalty-points"><div class="loyalty-pts">${pts[i]}</div><div class="loyalty-pts-label">points</div></div></div>`;}).join('');
+  document.getElementById('rewardsList').innerHTML=[{name:'Free Dessert',desc:'Any dessert on the house',tier:'Bronze',pts:50},{name:'10% Off Dinner',desc:'10% discount on total bill',tier:'Silver',pts:150},{name:'Free Bottle of Wine',desc:'House wine complimentary',tier:'Gold',pts:300},{name:'Private Dining Experience',desc:'2-hour private room booking',tier:'Platinum',pts:500}].map(r=>`<div class="reward-card"><div class="reward-name">${escapeHTML(r.name)}</div><div class="reward-desc">${escapeHTML(r.desc)}</div><div class="reward-meta">${tierBadge(r.tier)}<span class="reward-pts">${r.pts} pts</span></div></div>`).join('');
+  document.getElementById('pointsActivity').innerHTML=DEMO_NAMES.slice(0,8).map((n,i)=>{const types=['earned','earned','redeemed','earned','earned','earned','redeemed','earned'];const pts=[25,15,50,10,30,20,150,25];const reasons=['Visit bonus','Referral','Free Dessert','Visit bonus','Birthday bonus','Visit bonus','Wine reward','Visit bonus'];const sign=types[i]==='redeemed'?'-':'+';const color=types[i]==='redeemed'?'var(--red)':'var(--green)';return`<div style="padding:10px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;font-weight:500">${escapeHTML(n)}</div><div style="font-size:11px;color:var(--text-muted)">${escapeHTML(reasons[i])} · ${fmt(new Date(Date.now()-i*7200000))}</div></div><div style="font-weight:700;color:${color};font-size:14px">${sign}${pts[i]}</div></div>`;}).join('');
+}
+
+function renderDemoFeedbackPage(){
+  document.getElementById('fb-avg').textContent='4.3';document.getElementById('fb-food').textContent='4.5';document.getElementById('fb-service').textContent='4.2';document.getElementById('fb-ambience').textContent='4.1';
+  document.getElementById('fb-avg-stars').innerHTML=starsHTML(4);document.getElementById('fb-total-label').textContent='47 responses';
+  document.getElementById('fb-recommend').textContent='89%';
+  document.getElementById('cnt-5').textContent='21';document.getElementById('bar-5').style.width='45%';
+  document.getElementById('cnt-4').textContent='14';document.getElementById('bar-4').style.width='30%';
+  document.getElementById('cnt-3').textContent='8';document.getElementById('bar-3').style.width='17%';
+  document.getElementById('cnt-2').textContent='3';document.getElementById('bar-2').style.width='6%';
+  document.getElementById('cnt-1').textContent='1';document.getElementById('bar-1').style.width='2%';
+  document.getElementById('feedbackList').innerHTML=demoFeedback.concat([{name:'Lakshan Mendis',rating:5,comment:'Outstanding sushi! The presentation was beautiful.'},{name:'Pradeep Bandara',rating:4,comment:'Great value for money. Loved the seafood curry.'},{name:'Hashini Gunawardena',rating:3,comment:'Good food but service was a bit slow on Saturday night.'}]).map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${escapeHTML(f.name)}</span>${starsHTML(f.rating)}</div><div class="feedback-comment">"${escapeHTML(f.comment)}"</div><div class="feedback-scores"><div class="feedback-score"><div class="feedback-score-label">Food</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+4}</div></div><div class="feedback-score"><div class="feedback-score-label">Service</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+3}</div></div><div class="feedback-score"><div class="feedback-score-label">Ambience</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+3}</div></div><div class="feedback-score"><div class="feedback-score-label">Recommend</div><div class="feedback-score-val">${Math.random()>0.15?'Yes':'No'}</div></div></div><div style="font-size:11px;color:var(--text-subtle);margin-top:8px">${fmt(new Date(Date.now()-Math.floor(Math.random()*7)*864e5))} · via whatsapp</div></div>`).join('');
+}
+
+function renderDemoCRM(){
+  document.getElementById('crm-total').textContent='3';document.getElementById('crm-sent').textContent='86';document.getElementById('crm-vip').textContent='12';document.getElementById('crm-lapsed').textContent='11';
+  document.getElementById('crmCampaigns').innerHTML=[{name:'Weekend Special Promo',seg:'all',sent:42,msg:'Hi {{name}}! This weekend enjoy 15% off our Chef\'s Special menu...'},{name:'VIP Loyalty Thank You',seg:'vip',sent:12,msg:'Dear {{name}}, as a valued {{tier}} member with {{points}} points...'},{name:'Win-Back Campaign',seg:'lapsed',sent:32,msg:'Hey {{name}}, we miss you! It\'s been a while since your last visit...'}].map(c=>`<div style="padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:13px">${escapeHTML(c.name)}</div><div class="muted" style="font-size:12px;margin-top:4px">${segChip(c.seg)} · Sent: ${c.sent} · ${fmtDate(new Date(Date.now()-Math.floor(Math.random()*14)*864e5))}</div><div class="muted" style="font-size:12px;margin-top:6px">${escapeHTML(c.msg.slice(0,100))}...</div></div>`).join('');
+}
+
+function renderDemoData(){
+  renderDemoOverview();
+  pipelineData=generateDemoPipeline();
+  buildDemoInbox();
+  renderPipeline();
+  renderDemoThreadList();
+  renderDemoContacts();
+  renderDemoDailyLog();
+  renderDemoLoyalty();
+  renderDemoFeedbackPage();
+  renderDemoCRM();
+  _reportRows=demoReachOuts;
+  renderReportsView(demoReachOuts);
+  loadRecentCustomers();
+}
+
+/* ── BOOT ── */
 async function boot(){
-  const connected=await checkConnection();
-  loadOverview();
-  setupRealtime();
-  if(!connected){
-    document.getElementById('ov-bookings').textContent='7';
-    document.getElementById('ov-revenue').textContent='184,500';
-    document.getElementById('ov-contacts').textContent='14';
-    document.getElementById('ov-pending').textContent='3';
-    document.getElementById('ov-msgin').textContent='68';
-    document.getElementById('ov-msgout').textContent='42';
-    document.getElementById('ov-avgrating').textContent='4.3';
-    document.getElementById('ov-loyalty').textContent='26';
-    document.getElementById('ov-complaints').textContent='2';
-    document.getElementById('ov-total').textContent='143';
-    document.getElementById('ov-goldplus').textContent='8';
-    document.getElementById('ov-lapsed').textContent='11';
-    document.getElementById('contactsCount').textContent='143';
-    document.getElementById('loyaltyCount').textContent='26';
-    document.getElementById('inboxCount').textContent='12';
-    pipelineData=generateDemoPipeline();
-    loadPipeline();
-    document.getElementById('lastUpdated').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  const ok=await checkConnection();
+  window._demoMode=!ok;
+  if(ok){
+    loadOverview();
+  }else{
+    renderDemoData();
+  }
+  // 30-second polling refresh of the active view (replaces realtime subscriptions)
+  if(!window._autoRefreshTimer){
+    window._autoRefreshTimer=setInterval(async()=>{
+      if(document.hidden||!DASHBOARD_KEY)return;
+      if(window._demoMode){
+        const ok2=await checkConnection();
+        if(ok2){window._demoMode=false;loadOverview();}
+        return;
+      }
+      const v=document.querySelector('.view.active');
+      const name=v&&v.dataset.view;
+      if(name&&loaders[name])loaders[name]();
+    },30000);
   }
 }
-boot();
-if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(function(){});}
 
-// --- Manual Reply ---
-var _currentReplyPhone=null;
-var _currentReplyCustomerId=null;
-var _currentReplyPlatform='whatsapp';
-var _currentReplyTo=null;
-
-async function sendManualReply(){
-  var input=document.getElementById('replyInput');
-  var status=document.getElementById('replyStatus');
-  var message=input.value.trim();
-  if(!message||!_currentReplyTo)return;
-  status.style.display='block';status.style.color='#888';status.textContent='Sending...';
-  input.disabled=true;
-  try{
-    var resp=await fetch(API_BASE+'/api/send',{method:'POST',headers:dashHeaders(),body:JSON.stringify({to:_currentReplyTo,message:message,customer_id:_currentReplyCustomerId,platform:_currentReplyPlatform})});
-    var data=await resp.json();
-    if(resp.ok){
-      status.style.color='var(--green)';status.textContent='Sent!';input.value='';
-      appendBubble({direction:'outbound',message:message,timestamp:new Date().toISOString(),intent:'manual_reply'});
-      setTimeout(function(){status.style.display='none';},2000);
-    }else{status.style.color='var(--red)';status.textContent='Error: '+(data.error||'Failed');}
-  }catch(e){status.style.color='var(--red)';status.textContent='Network error: '+e.message;}
-  input.disabled=false;input.focus();
+// Auth bootstrap: require a valid session key before showing the dashboard
+if(DASHBOARD_KEY&&DASH_KEY_EXPIRY>Date.now()){
+  boot();
+}else{
+  sessionStorage.removeItem('tilapiya_dash_key');
+  sessionStorage.removeItem('tilapiya_dash_exp');
+  DASHBOARD_KEY='';
+  showAuthGate();
 }
+if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 
-} // end initApp
 </script>
 </body>
 </html>

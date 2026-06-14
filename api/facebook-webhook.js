@@ -24,7 +24,7 @@ const {
 } = require('../lib/messenger');
 
 const VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || process.env.WEBHOOK_VERIFY_TOKEN || 'tilapiya_meta_2026';
-const FB_APP_SECRET = process.env.FB_APP_SECRET || process.env.META_APP_SECRET;
+const FB_APP_SECRET = process.env.FB_APP_SECRET || process.env.META_APP_SECRET || 'cfa507befc2038d69f0c8e72a66e2bae';
 const FB_PAGE_TOKEN = process.env.FB_PAGE_TOKEN;
 const FB_PAGE_ID = process.env.FB_PAGE_ID; // optional
 

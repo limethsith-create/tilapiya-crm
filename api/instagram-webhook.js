@@ -25,7 +25,7 @@ const {
 
 const VERIFY_TOKEN = process.env.IG_VERIFY_TOKEN || process.env.FB_VERIFY_TOKEN || process.env.WEBHOOK_VERIFY_TOKEN || 'tilapiya_meta_2026';
 const IG_APP_SECRET = process.env.IG_APP_SECRET || process.env.FB_APP_SECRET || process.env.META_APP_SECRET || 'cfa507befc2038d69f0c8e72a66e2bae';
-const IG_PAGE_TOKEN = process.env.IG_PAGE_TOKEN || 'IGAAWEtLoAjLlBZAGFoOFcxSEFVZAnVCVUc2a3B3UmNHQVJHSHE4S1NocF9td1g3U2FrX3lsTlNycTZAjZA2owMVJXa0xnOGxPbHNsTDBTLVJ3cm9ZASy01M1dTR1N0YkxRZAV9rc0ZA5dHBxWFYzVHpoSVUxc3FSS1IwLUM0cGhMcjFJZAwZDZD';
+const IG_PAGE_TOKEN = process.env.IG_PAGE_TOKEN || 'IGAAWEtLoAjLlBZAGIwREJDWWRaT3NXODJzS1VJWE9tVUh1UXhjTUUtb0hnVGZAXYnJIaTNDSWNOUTBSRHRDV3hXSlhFM2hsUnJlRXEwcFNXOVhZAcFpyUkdxRnZAKenVxSVQyQjJmRVBWX0QyVGN6My1KWDJwTXdMX3owOFdpTG43OAZDZD';
 const IG_PAGE_ID = process.env.IG_PAGE_ID; // optional
 
 module.exports = async function handler(req, res) {
@@ -37,6 +37,7 @@ module.exports = async function handler(req, res) {
       var sbase = 'https://graph.instagram.com/v22.0';
       var sout = {};
       try { var meR = await fetch(sbase + '/me?fields=user_id,username&access_token=' + encodeURIComponent(IG_PAGE_TOKEN)); sout.account = await meR.json(); } catch (e) { sout.accountError = String(e); }
+      try { var llR = await fetch(sbase + '/access_token?grant_type=ig_exchange_token&client_secret=' + encodeURIComponent(IG_APP_SECRET) + '&access_token=' + encodeURIComponent(IG_PAGE_TOKEN)); sout.longLived = await llR.json(); } catch (e) { sout.longLivedError = String(e); }
       try { var subR = await fetch(sbase + '/me/subscribed_apps?subscribed_fields=messages&access_token=' + encodeURIComponent(IG_PAGE_TOKEN), { method: 'POST' }); sout.subscribeStatus = subR.status; sout.subscribeResult = await subR.json(); } catch (e) { sout.subscribeError = String(e); }
       try { var curR = await fetch(sbase + '/me/subscribed_apps?access_token=' + encodeURIComponent(IG_PAGE_TOKEN)); sout.current = await curR.json(); } catch (e) { sout.currentError = String(e); }
       return res.status(200).json(sout);

@@ -31,6 +31,16 @@ const IG_PAGE_ID = process.env.IG_PAGE_ID; // optional
 module.exports = async function handler(req, res) {
   // --- GET: webhook verification handshake ---
   if (req.method === 'GET') {
+    // One-time setup helper: /api/instagram-webhook?setup=1 subscribes this
+    // Instagram account to the 'messages' webhook so Meta delivers DMs.
+    if (req.query.setup === '1') {
+      var sbase = 'https://graph.instagram.com/v22.0';
+      var sout = {};
+      try { var meR = await fetch(sbase + '/me?fields=user_id,username&access_token=' + encodeURIComponent(IG_PAGE_TOKEN)); sout.account = await meR.json(); } catch (e) { sout.accountError = String(e); }
+      try { var subR = await fetch(sbase + '/me/subscribed_apps?subscribed_fields=messages&access_token=' + encodeURIComponent(IG_PAGE_TOKEN), { method: 'POST' }); sout.subscribeStatus = subR.status; sout.subscribeResult = await subR.json(); } catch (e) { sout.subscribeError = String(e); }
+      try { var curR = await fetch(sbase + '/me/subscribed_apps?access_token=' + encodeURIComponent(IG_PAGE_TOKEN)); sout.current = await curR.json(); } catch (e) { sout.currentError = String(e); }
+      return res.status(200).json(sout);
+    }
     if (!VERIFY_TOKEN) {
       console.error('WEBHOOK_VERIFY_TOKEN not set');
       return res.status(500).send('Server misconfigured');

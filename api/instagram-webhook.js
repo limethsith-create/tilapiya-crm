@@ -25,7 +25,7 @@ const {
 
 const VERIFY_TOKEN = process.env.IG_VERIFY_TOKEN || process.env.FB_VERIFY_TOKEN || process.env.WEBHOOK_VERIFY_TOKEN || 'tilapiya_meta_2026';
 const IG_APP_SECRET = process.env.IG_APP_SECRET || process.env.FB_APP_SECRET || process.env.META_APP_SECRET || 'cfa507befc2038d69f0c8e72a66e2bae';
-const IG_PAGE_TOKEN = process.env.IG_PAGE_TOKEN || 'IGAAWEtLoAjLlBZAGI4QkdsRTZAzY0gwYzJGbkE0dl9nSmd0NE5WRUIyM3YtUU1pWW1oUjZAPRkt1NlZAld1R0NVZAValNmdnJpblVWRUVYMlo2ZA0I0d1MtZAWM4V05GVER3MlcwYUVEV21XcmFka0dsM3VFQ0VQOWlpOHNWR3EwLTZAlYwZDZD';
+const IG_PAGE_TOKEN = process.env.IG_PAGE_TOKEN || 'IGAAWEtLoAjLlBZAFoteks1WXJIdU1NRlBRTUlvdDlyR05sTjBNUzJfYWQ4SUpOMVY0dGMxd3JZAWl9ON3Q5MHZAhUjlXb3hoRFp3ZAWNJbjQtSEdTLW5mXzJvNlI5blJ2QUhTMHpOV2xLczZAZAc2tRY1hNdUt3ek9EVUREUnQ5dUJwZAwZDZD';
 const IG_PAGE_ID = process.env.IG_PAGE_ID; // optional
 
 module.exports = async function handler(req, res) {

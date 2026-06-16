@@ -492,13 +492,7 @@
           <span style="font-size:12.5px"><span style="font-weight:600">All channels in one inbox</span> <span class="muted">· WhatsApp · Messenger · Instagram</span><span id="waNumber" style="display:none"></span></span>
           <span class="chip green" id="waLiveChip" style="margin-left:4px">Live</span>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          <span class="chip" id="inboxBookingCount">Bookings: 0</span>
-          <span class="chip" id="inboxInquiryCount">Inquiries: 0</span>
-          <span class="chip" id="inboxComplaintCount">Complaints: 0</span>
-          <span class="chip" id="inboxFeedbackCount">Feedback: 0</span>
-          <button class="btn sm secondary" onclick="show('pipeline')" style="margin-left:6px">View Pipeline</button>
-        </div>
+        <div style="display:none"><span id="inboxBookingCount"></span><span id="inboxInquiryCount"></span><span id="inboxComplaintCount"></span><span id="inboxFeedbackCount"></span></div>
       </div>
       <div class="inbox">
       <div class="inbox-col">
@@ -509,7 +503,7 @@
           <div class="filter-pill" data-channel="facebook"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#0084ff;margin-right:5px;vertical-align:middle"></span>Messenger <span id="fcFacebook" style="font-size:10px;opacity:.7"></span></div>
           <div class="filter-pill" data-channel="instagram"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#d6249f;margin-right:5px;vertical-align:middle"></span>Instagram <span id="fcInstagram" style="font-size:10px;opacity:.7"></span></div>
         </div>
-        <div class="inbox-filters">
+        <div class="inbox-filters" style="display:none">
           <div class="filter-pill active" data-filter="all">All <span id="fpAll" style="font-size:10px;opacity:.7"></span></div>
           <div class="filter-pill" data-filter="BOOKING">Booking <span id="fpBooking" style="font-size:10px;opacity:.7"></span></div>
           <div class="filter-pill" data-filter="INQUIRY">Inquiry <span id="fpInquiry" style="font-size:10px;opacity:.7"></span></div>

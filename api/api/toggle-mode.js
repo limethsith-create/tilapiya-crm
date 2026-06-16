@@ -1,0 +1,71 @@
+// Vercel Serverless Function - Toggle bot reply mode per customer
+// POST { customer_id, reply_mode } - sets reply_mode to 'bot' or 'manual'
+// GET ?customer_id=xxx - returns current reply_mode
+// Auth via lib/auth.js (X-Dashboard-Key token or secret).
+
+const { isAuthorized } = require('../lib/auth');
+const { supabaseRequest } = require('../lib/supabase');
+
+const DASHBOARD_ORIGIN = process.env.DASHBOARD_ORIGIN || '';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function setCorsHeaders(res, req) {
+  var allowed = [DASHBOARD_ORIGIN, 'https://tilapiya-crm.vercel.app', 'https://tilapiya-crm.netlify.app'].filter(Boolean);
+  var reqOrigin = req && req.headers ? req.headers.origin || '' : '';
+  var origin = allowed.includes(reqOrigin) ? reqOrigin : (allowed[0] || '*');
+  res.setHeader('Access-Control-Allow-Origin', origin);
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Dashboard-Key');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+}
+
+module.exports = async function handler(req, res) {
+  setCorsHeaders(res, req);
+  if (req.method === 'OPTIONS') return res.status(200).end();
+
+  if (!isAuthorized(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  if (req.method === 'GET') {
+    var customerId = req.query && req.query.customer_id;
+    if (!customerId) return res.status(400).json({ error: 'customer_id required' });
+    if (!UUID_RE.test(String(customerId))) {
+      return res.status(400).json({ error: 'customer_id must be a valid UUID' });
+    }
+    var rows = await supabaseRequest(
+      'customers?id=eq.' + encodeURIComponent(customerId) + '&select=id,reply_mode', 'GET'
+    );
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+    return res.status(200).json({ customer_id: customerId, reply_mode: rows[0].reply_mode || 'bot' });
+  }
+
+  if (req.method === 'POST') {
+    if (!req.body || typeof req.body !== 'object') {
+      return res.status(400).json({ error: 'Missing JSON body' });
+    }
+    var cid = req.body.customer_id;
+    var mode = req.body.reply_mode;
+    if (!cid) return res.status(400).json({ error: 'customer_id required' });
+    if (!UUID_RE.test(String(cid))) {
+      return res.status(400).json({ error: 'customer_id must be a valid UUID' });
+    }
+    if (mode !== 'bot' && mode !== 'manual') {
+      return res.status(400).json({ error: 'reply_mode must be "bot" or "manual"' });
+    }
+    var updated = await supabaseRequest(
+      'customers?id=eq.' + encodeURIComponent(cid), 'PATCH', { reply_mode: mode }
+    );
+    if (!updated) {
+      return res.status(500).json({ error: 'Failed to update' });
+    }
+    if (updated.length === 0) {
+      return res.status(404).json({ error: 'Customer not found' });
+    }
+    return res.status(200).json({ status: 'ok', customer_id: cid, reply_mode: mode });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
+};

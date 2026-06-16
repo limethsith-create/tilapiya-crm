@@ -458,32 +458,24 @@
     <!-- OVERVIEW -->
     <section class="view" data-view="overview"><div class="page">
       <div class="page-head"><div><h1>Overview</h1><div class="subtitle">Real-time metrics across WhatsApp, Messenger &amp; Instagram.</div></div><button class="btn secondary sm" onclick="loadOverview()">Refresh</button></div>
-      <div class="hero"><img class="hero-img" data-try="0" src="https://commons.wikimedia.org/wiki/Special:FilePath/Oreochromis_niloticus.jpg?width=1200" onerror="tilapiaImgError(this)" alt="Tilapia"><div class="hero-content"><h2>Tilapiya CRM</h2><p>One black command center for every guest conversation — WhatsApp, Messenger &amp; Instagram — with bookings, loyalty and feedback in one place.</p></div></div>
+      <div class="hero"><img class="hero-img" data-try="0" src="https://commons.wikimedia.org/wiki/Special:FilePath/Oreochromis_niloticus.jpg?width=1200" onerror="tilapiaImgError(this)" alt=""><div class="hero-content"><h2>Command Center</h2><p>Every customer conversation across WhatsApp, Messenger &amp; Instagram — answered, tracked, and in one place.</p></div></div>
       <section class="stats">
-        <div class="card stat"><div class="stat-label">Today's Bookings</div><div class="stat-value" id="ov-bookings">0</div><div class="stat-delta">reservations</div></div>
-        <div class="card stat"><div class="stat-label">Week Revenue</div><div class="stat-value" id="ov-revenue">0</div><div class="stat-delta">LKR collected</div></div>
+        <div class="card stat"><div class="stat-label">Total Customers</div><div class="stat-value" id="ov-total">0</div><div class="stat-delta">in database</div></div>
         <div class="card stat"><div class="stat-label">New Contacts</div><div class="stat-value" id="ov-contacts">0</div><div class="stat-delta">this week</div></div>
-        <div class="card stat"><div class="stat-label">Pending Payment</div><div class="stat-value" id="ov-pending">0</div><div class="stat-delta">bookings awaiting</div></div>
-      </section>
-      <section class="stats">
         <div class="card stat"><div class="stat-label">Messages In</div><div class="stat-value" id="ov-msgin">0</div><div class="stat-delta">received this week</div></div>
         <div class="card stat"><div class="stat-label">Messages Out</div><div class="stat-value" id="ov-msgout">0</div><div class="stat-delta">sent this week</div></div>
-        <div class="card stat"><div class="stat-label">Avg Rating</div><div class="stat-value" id="ov-avgrating">—</div><div class="stat-delta">from feedback</div></div>
+        <div class="card stat"><div class="stat-label"><span class="channel-dot" style="background:#25D366"></span>WhatsApp</div><div class="stat-value" id="ov-wamsgs">0</div><div class="stat-delta">messages this week</div></div>
+        <div class="card stat"><div class="stat-label"><span class="channel-dot" style="background:#0084ff"></span>Messenger</div><div class="stat-value" id="ov-fbmsgs">0</div><div class="stat-delta">messages this week</div></div>
+        <div class="card stat"><div class="stat-label"><span class="channel-dot" style="background:#d6249f"></span>Instagram</div><div class="stat-value" id="ov-igmsgs">0</div><div class="stat-delta">messages this week</div></div>
+        <div class="card stat"><div class="stat-label">Needs Attention</div><div class="stat-value" id="ov-complaints">0</div><div class="stat-delta">open complaints</div></div>
+        <div class="card stat"><div class="stat-label">Today's Bookings</div><div class="stat-value" id="ov-bookings">0</div><div class="stat-delta">reservations</div></div>
+        <div class="card stat"><div class="stat-label">Week Revenue</div><div class="stat-value" id="ov-revenue">0</div><div class="stat-delta">collected</div></div>
         <div class="card stat"><div class="stat-label">Loyalty Members</div><div class="stat-value" id="ov-loyalty">0</div><div class="stat-delta">enrolled</div></div>
+        <div class="card stat"><div class="stat-label">Avg Rating</div><div class="stat-value" id="ov-avgrating">—</div><div class="stat-delta">from feedback</div></div>
       </section>
-      <section class="stats" style="grid-template-columns:repeat(3,1fr)">
-        <div class="card stat"><div class="stat-label"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#25D366;margin-right:5px;vertical-align:middle"></span>WhatsApp Messages</div><div class="stat-value" id="ov-wamsgs">0</div><div class="stat-delta">this week</div></div>
-        <div class="card stat"><div class="stat-label"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#0084ff;margin-right:5px;vertical-align:middle"></span>Messenger Messages</div><div class="stat-value" id="ov-fbmsgs">0</div><div class="stat-delta">this week</div></div>
-        <div class="card stat"><div class="stat-label"><span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#d6249f;margin-right:5px;vertical-align:middle"></span>Instagram Messages</div><div class="stat-value" id="ov-igmsgs">0</div><div class="stat-delta">this week</div></div>
-      </section>
-      <section class="stats">
-        <div class="card stat"><div class="stat-label">Open Complaints</div><div class="stat-value" id="ov-complaints">0</div><div class="stat-delta">need attention</div></div>
-        <div class="card stat"><div class="stat-label">Total Customers</div><div class="stat-value" id="ov-total">0</div><div class="stat-delta">in database</div></div>
-        <div class="card stat"><div class="stat-label">Gold+ Members</div><div class="stat-value" id="ov-goldplus">0</div><div class="stat-delta">top tier</div></div>
-        <div class="card stat"><div class="stat-label">Lapsed (30d+)</div><div class="stat-value" id="ov-lapsed">0</div><div class="stat-delta">haven't returned</div></div>
-      </section>
+      <div style="display:none" aria-hidden="true"><span id="ov-pending"></span><span id="ov-goldplus"></span><span id="ov-lapsed"></span></div>
       <div class="card" style="margin-bottom:14px;padding:18px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="panel-title">Bookings — Last 7 Days</div></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="panel-title">Daily Activity — Last 7 Days</div></div>
         <div style="height:220px;position:relative"><canvas id="bookingsChart"></canvas></div>
       </div>
       <div class="grid-2-eq">

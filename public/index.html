@@ -183,6 +183,8 @@
   .rating-bar-fill { height: 100%; background: linear-gradient(90deg, var(--gold), #f0d27a); border-radius: 4px; transition: width .4s ease; }
   .rating-bar-count { font-size: 11px; color: var(--text-subtle); width: 24px; }
   .inbox { display: grid; grid-template-columns: 330px 1fr 320px; height: 100%; }
+  .inbox-page { height: auto; }
+  .inbox-page .inbox { height: 70vh; min-height: 520px; border-top: 1px solid var(--border); }
   .inbox-col { border-right: 1px solid var(--border); background: var(--surface); display: flex; flex-direction: column; min-height: 0; }
   .inbox-col:last-child { border-right: 0; }
   .inbox-col-head { padding: 13px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
@@ -420,7 +422,7 @@
 <div class="offline-bar" id="offlineBar">You're offline — showing cached data.</div>
 <header class="topbar">
   <div class="brand">
-    <div class="brand-mark" style="background:none;box-shadow:none;border:none"><img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20200%22%20role%3D%22img%22%20aria-label%3D%22Tilapiya%20Fish%20%27N%20Dine%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3Cpath%20id%3D%22arcTop%22%20d%3D%22M26%2C100%20a74%2C74%200%201%2C1%20148%2C0%22%20fill%3D%22none%22%2F%3E%0A%20%20%20%20%3Cpath%20id%3D%22arcBot%22%20d%3D%22M36%2C100%20a64%2C64%200%201%2C0%20128%2C0%22%20fill%3D%22none%22%2F%3E%0A%20%20%3C%2Fdefs%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2299%22%20fill%3D%22%231c6f88%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2290%22%20fill%3D%22none%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222.5%22%20opacity%3D%220.92%22%2F%3E%0A%20%20%3Ctext%20fill%3D%22%23ffffff%22%20font-family%3D%22Georgia%2C%27Times%20New%20Roman%27%2Cserif%22%20font-size%3D%2223%22%20font-weight%3D%22700%22%20letter-spacing%3D%226%22%3E%0A%20%20%20%20%3CtextPath%20href%3D%22%23arcTop%22%20startOffset%3D%2250%25%22%20text-anchor%3D%22middle%22%3ETILAPIYA%3C%2FtextPath%3E%0A%20%20%3C%2Ftext%3E%0A%20%20%3Ctext%20fill%3D%22%23ffffff%22%20font-family%3D%22Georgia%2C%27Times%20New%20Roman%27%2Cserif%22%20font-size%3D%2217%22%20font-weight%3D%22700%22%20letter-spacing%3D%224%22%3E%0A%20%20%20%20%3CtextPath%20href%3D%22%23arcBot%22%20startOffset%3D%2250%25%22%20text-anchor%3D%22middle%22%3EFISH%20%27N%20DINE%3C%2FtextPath%3E%0A%20%20%3C%2Ftext%3E%0A%20%20%3Ccircle%20cx%3D%2218%22%20cy%3D%22100%22%20r%3D%223%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22182%22%20cy%3D%22100%22%20r%3D%223%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2255%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%3Cg%20stroke%3D%22%231c6f88%22%20stroke-width%3D%223.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%0A%20%20%20%20%3Cpath%20d%3D%22M83%2084%20a16%2016%200%201%200%200%2032%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%2286%22%20y1%3D%22100%22%20x2%3D%22128%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%2292%22%20y1%3D%2286%22%20x2%3D%2292%22%20y2%3D%22114%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22100%22%20y1%3D%2284%22%20x2%3D%2296%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22100%22%20y1%3D%2284%22%20x2%3D%22100%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22100%22%20y1%3D%2284%22%20x2%3D%22104%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22118%22%20y1%3D%2290%22%20x2%3D%22118%22%20y2%3D%22114%22%2F%3E%0A%20%20%20%20%3Cellipse%20cx%3D%22118%22%20cy%3D%2286%22%20rx%3D%225%22%20ry%3D%226.5%22%2F%3E%0A%20%20%3C%2Fg%3E%0A%20%20%3Cpath%20d%3D%22M128%20100%20L142%2087%20L139%20100%20L142%20113%20Z%22%20fill%3D%22%231c6f88%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2280%22%20cy%3D%2293%22%20r%3D%223%22%20fill%3D%22%231c6f88%22%2F%3E%0A%3C%2Fsvg%3E%0A" alt="Tilapiya Colombo" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain"></div>
+    <div class="brand-mark" style="background:none;box-shadow:none;border:none"><img src="logo.png" alt="Tilapiya Colombo" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain"></div>
     <div class="brand-text">
       <div class="brand-title">Tilapiya CRM</div>
       <div class="brand-sub">WhatsApp · Messenger · Instagram</div>
@@ -432,7 +434,7 @@
   </div>
   <div class="top-actions">
     <div class="status-pill"><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting...</span></div>
-    <div class="avatar" id="userAvatar">T</div>
+    <div class="avatar" id="userAvatar" style="background:none;overflow:hidden;padding:0"><img src="logo.png" alt="Tilapiya" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>
   </div>
 </header>
 <div class="shell">
@@ -443,39 +445,76 @@
     <div class="nav-item" data-view="inbox-messenger"><span class="channel-dot" style="background:#0084ff"></span><span class="lbl">Messenger</span></div>
     <div class="nav-item" data-view="inbox-instagram"><span class="channel-dot" style="background:#d6249f"></span><span class="lbl">Instagram</span></div>
     <div class="nav-section" style="margin-top:14px">Workspace</div>
-    <div class="nav-item" data-view="overview"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg><span class="lbl">Overview</span></div>
     <div class="nav-item" data-view="contacts"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21v-1a7 7 0 0 1 14 0v1"/></svg><span class="lbl">Contacts</span><span class="count" id="contactsCount">0</span></div>
     <div class="nav-item" data-view="pipeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg><span class="lbl">Pipeline</span><span class="count" id="pipelineCount">0</span></div>
-    <div class="nav-item" data-view="crm"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 12a9 9 0 1 1 3.6 7.2L3 21l1.8-3.6A9 9 0 0 1 3 12z"/><path d="M8 12h.01M12 12h.01M16 12h.01"/></svg><span class="lbl">Broadcast</span></div>
+    <div class="nav-item" data-view="help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span class="lbl">Help</span></div>
     <div style="display:none" aria-hidden="true"><span id="loyaltyCount"></span><span id="feedbackCount"></span></div>
     <div class="sidebar-footer">
-      <div class="avatar">T</div>
+      <div class="avatar" style="background:none;overflow:hidden;padding:0"><img src="logo.png" alt="Tilapiya" style="width:100%;height:100%;object-fit:cover;border-radius:50%"></div>
       <div class="who"><b id="sidebarName">Owner</b><span>Last updated <span id="lastUpdated">—</span></span></div>
     </div>
   </aside>
   <main class="main">
 
-    <!-- OVERVIEW -->
-    <section class="view" data-view="overview"><div class="page">
-      <div class="page-head"><div><h1>Overview</h1><div class="subtitle">Real-time metrics across WhatsApp, Messenger &amp; Instagram.</div></div><button class="btn secondary sm" onclick="loadOverview()">Refresh</button></div>
-      <div class="hero"><img class="hero-img" data-try="0" src="https://commons.wikimedia.org/wiki/Special:FilePath/Oreochromis_niloticus.jpg?width=1200" onerror="tilapiaImgError(this)" alt=""><div class="hero-content"><h2>Command Center</h2><p>Every customer conversation across WhatsApp, Messenger &amp; Instagram — answered, tracked, and in one place.</p></div></div>
-      <section class="stats">
+    <!-- ALL MESSAGES (full activity dashboard) -->
+    <section class="view active" data-view="inbox-all"><div class="page">
+      <div class="page-head">
+        <div><h1>All Messages</h1><div class="subtitle">Your full activity dashboard across WhatsApp, Messenger &amp; Instagram</div></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div style="display:flex;gap:3px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:3px">
+            <button class="ms-period" data-period="day" onclick="setMsgPeriod('day',this)" style="background:transparent;color:var(--text-muted);border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Day</button>
+            <button class="ms-period" data-period="week" onclick="setMsgPeriod('week',this)" style="background:var(--accent);color:var(--accent-ink);border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Week</button>
+            <button class="ms-period" data-period="month" onclick="setMsgPeriod('month',this)" style="background:transparent;color:var(--text-muted);border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Month</button>
+          </div>
+          <button class="btn secondary sm" onclick="loadAllMessages()">Refresh</button>
+        </div>
+      </div>
+      <section class="stats" style="grid-template-columns:repeat(4,1fr)">
+        <div class="card stat"><div class="stat-label">Messages Received</div><div class="stat-value" id="ms-total-in">0</div><div class="stat-delta" id="ms-period-label">this week</div></div>
+        <div class="card stat"><div class="stat-label">Messages Replied</div><div class="stat-value" id="ms-total-out">0</div><div class="stat-delta">sent back to customers</div></div>
+        <div class="card stat"><div class="stat-label">Reply Rate</div><div class="stat-value" id="ms-rate">&mdash;</div><div class="stat-delta">replied vs received</div></div>
+        <div class="card stat"><div class="stat-label">Unanswered</div><div class="stat-value" id="ms-unanswered" style="color:var(--amber)">0</div><div class="stat-delta">still need a reply</div></div>
+      </section>
+      <div class="panel-title" style="margin:20px 2px 11px">Customers &amp; activity</div>
+      <section class="stats" style="grid-template-columns:repeat(3,1fr)">
         <div class="card stat"><div class="stat-label">Total Customers</div><div class="stat-value" id="ov-total">0</div><div class="stat-delta">in database</div></div>
         <div class="card stat"><div class="stat-label">New Contacts</div><div class="stat-value" id="ov-contacts">0</div><div class="stat-delta">this week</div></div>
-        <div class="card stat"><div class="stat-label">Messages In</div><div class="stat-value" id="ov-msgin">0</div><div class="stat-delta">received this week</div></div>
-        <div class="card stat"><div class="stat-label">Messages Out</div><div class="stat-value" id="ov-msgout">0</div><div class="stat-delta">sent this week</div></div>
-        <div class="card stat"><div class="stat-label"><span class="channel-dot" style="background:#25D366"></span>WhatsApp</div><div class="stat-value" id="ov-wamsgs">0</div><div class="stat-delta">messages this week</div></div>
-        <div class="card stat"><div class="stat-label"><span class="channel-dot" style="background:#0084ff"></span>Messenger</div><div class="stat-value" id="ov-fbmsgs">0</div><div class="stat-delta">messages this week</div></div>
-        <div class="card stat"><div class="stat-label"><span class="channel-dot" style="background:#d6249f"></span>Instagram</div><div class="stat-value" id="ov-igmsgs">0</div><div class="stat-delta">messages this week</div></div>
-        <div class="card stat"><div class="stat-label">Needs Attention</div><div class="stat-value" id="ov-complaints">0</div><div class="stat-delta">open / unanswered</div></div>
+        <div class="card stat"><div class="stat-label">Needs Attention</div><div class="stat-value" id="ov-complaints" style="color:var(--amber)">0</div><div class="stat-delta">open / unanswered</div></div>
       </section>
-      <div style="display:none" aria-hidden="true"><span id="ov-bookings"></span><span id="ov-revenue"></span><span id="ov-loyalty"></span><span id="ov-avgrating"></span><span id="ov-pending"></span><span id="ov-goldplus"></span><span id="ov-lapsed"></span></div>
-      <div class="card" style="margin-bottom:14px;padding:18px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="panel-title">Daily Activity — Last 7 Days</div></div>
+      <div class="panel-title" style="margin:20px 2px 11px">Messages by channel</div>
+      <section class="stats" style="grid-template-columns:repeat(3,1fr)">
+        <div class="card" style="padding:16px 18px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><span class="channel-dot" style="background:#25D366"></span><span style="font-weight:700;font-size:13.5px">WhatsApp</span></div>
+          <div style="display:flex;gap:26px;margin-bottom:13px">
+            <div><div class="stat-label">Received</div><div class="stat-value" id="ms-wa-in" style="font-size:24px">0</div></div>
+            <div><div class="stat-label">Replied</div><div class="stat-value" id="ms-wa-out" style="font-size:24px">0</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden"><div id="ms-wa-bar" style="height:100%;width:0%;background:#25D366;border-radius:3px;transition:width .4s"></div></div><span class="stat-label" id="ms-wa-rate" style="font-size:11px;width:34px;text-align:right">0%</span></div>
+        </div>
+        <div class="card" style="padding:16px 18px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><span class="channel-dot" style="background:#0084ff"></span><span style="font-weight:700;font-size:13.5px">Messenger</span></div>
+          <div style="display:flex;gap:26px;margin-bottom:13px">
+            <div><div class="stat-label">Received</div><div class="stat-value" id="ms-fb-in" style="font-size:24px">0</div></div>
+            <div><div class="stat-label">Replied</div><div class="stat-value" id="ms-fb-out" style="font-size:24px">0</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden"><div id="ms-fb-bar" style="height:100%;width:0%;background:#0084ff;border-radius:3px;transition:width .4s"></div></div><span class="stat-label" id="ms-fb-rate" style="font-size:11px;width:34px;text-align:right">0%</span></div>
+        </div>
+        <div class="card" style="padding:16px 18px">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px"><span class="channel-dot" style="background:#d6249f"></span><span style="font-weight:700;font-size:13.5px">Instagram</span></div>
+          <div style="display:flex;gap:26px;margin-bottom:13px">
+            <div><div class="stat-label">Received</div><div class="stat-value" id="ms-ig-in" style="font-size:24px">0</div></div>
+            <div><div class="stat-label">Replied</div><div class="stat-value" id="ms-ig-out" style="font-size:24px">0</div></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px"><div style="flex:1;height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden"><div id="ms-ig-bar" style="height:100%;width:0%;background:#d6249f;border-radius:3px;transition:width .4s"></div></div><span class="stat-label" id="ms-ig-rate" style="font-size:11px;width:34px;text-align:right">0%</span></div>
+        </div>
+      </section>
+      <div style="display:none" aria-hidden="true"><span id="ov-bookings"></span><span id="ov-revenue"></span><span id="ov-loyalty"></span><span id="ov-avgrating"></span><span id="ov-pending"></span><span id="ov-goldplus"></span><span id="ov-lapsed"></span><span id="ov-msgin"></span><span id="ov-msgout"></span><span id="ov-wamsgs"></span><span id="ov-fbmsgs"></span><span id="ov-igmsgs"></span></div>
+      <div class="card" style="margin:18px 0 14px;padding:18px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div class="panel-title">Daily Activity &mdash; Last 7 Days</div></div>
         <div style="height:220px;position:relative"><canvas id="bookingsChart"></canvas></div>
       </div>
       <div class="grid-2-eq">
-        <section class="card"><div class="panel-head"><div><div class="panel-title">Recent Conversations</div><div class="panel-sub">Latest messages</div></div></div>
+        <section class="card"><div class="panel-head"><div><div class="panel-title">Recent Conversations</div><div class="panel-sub">Latest messages across all channels</div></div></div>
           <table><thead><tr><th>Dir</th><th>Customer</th><th>Message</th><th>Time</th></tr></thead><tbody id="ov-feed"><tr><td colspan="4" class="empty-inline">Loading...</td></tr></tbody></table>
         </section>
         <section class="card"><div class="panel-head"><div><div class="panel-title">Latest Feedback</div><div class="panel-sub">Recent ratings</div></div></div>
@@ -485,7 +524,7 @@
     </div></section>
 
     <!-- INBOX -->
-    <section class="view active" data-view="inbox"><div class="page wide">
+    <section class="view" data-view="inbox"><div class="page wide inbox-page">
       <div id="waStatusBar" style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;background:var(--surface);border-bottom:1px solid var(--border)">
         <div style="display:flex;align-items:center;gap:10px">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
@@ -493,6 +532,24 @@
           <span class="chip green" id="waLiveChip" style="margin-left:4px">Live</span>
         </div>
         <div style="display:none"><span id="inboxBookingCount"></span><span id="inboxInquiryCount"></span><span id="inboxComplaintCount"></span><span id="inboxFeedbackCount"></span></div>
+      </div>
+      <div style="padding:20px 24px 4px">
+        <div class="page-head" style="margin-bottom:14px">
+          <div><h1 style="display:flex;align-items:center;gap:9px;font-size:21px"><span id="coDot" class="channel-dot" style="width:12px;height:12px;background:#25D366"></span><span id="coName">WhatsApp</span></h1><div class="subtitle" id="coSub">Activity on this channel \u00b7 this week</div></div>
+          <div style="display:flex;gap:3px;background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:3px">
+            <button class="cp-period" onclick="setChanPeriod('day',this)" style="background:transparent;color:var(--text-muted);border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Day</button>
+            <button class="cp-period" onclick="setChanPeriod('week',this)" style="background:var(--accent);color:var(--accent-ink);border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Week</button>
+            <button class="cp-period" onclick="setChanPeriod('month',this)" style="background:transparent;color:var(--text-muted);border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Month</button>
+          </div>
+        </div>
+        <section class="stats" style="grid-template-columns:repeat(4,1fr)">
+          <div class="card stat"><div class="stat-label">Messages Received</div><div class="stat-value" id="ci-in">0</div><div class="stat-delta">on this channel</div></div>
+          <div class="card stat"><div class="stat-label">Messages Replied</div><div class="stat-value" id="ci-out">0</div><div class="stat-delta">sent back</div></div>
+          <div class="card stat"><div class="stat-label">Unanswered</div><div class="stat-value" id="ci-un" style="color:var(--amber)">0</div><div class="stat-delta">need a reply</div></div>
+          <div class="card stat"><div class="stat-label">Active Chats</div><div class="stat-value" id="ci-active">0</div><div class="stat-delta">open conversations</div></div>
+        </section>
+        <div class="panel-title" style="margin:22px 2px 2px">Live chats</div>
+        <div class="subtitle" style="font-size:11.5px;margin-bottom:2px">Scroll to read &amp; reply to the conversations happening now.</div>
       </div>
       <div class="inbox">
       <div class="inbox-col">
@@ -567,11 +624,11 @@
 
     <!-- PIPELINE -->
     <section class="view" data-view="pipeline"><div class="page">
-      <div class="page-head"><div><h1>Booking Pipeline</h1><div class="subtitle">Track every booking through its stages. Approve or reject payments.</div></div><div style="display:flex;gap:8px"><button class="btn secondary sm" onclick="show('inbox')">Go to Inbox</button><button class="btn secondary sm" onclick="loadPipeline()">Refresh</button></div></div>
+      <div class="page-head"><div><h1>Pipeline</h1><div class="subtitle">Track every enquiry from first message to confirmed — and move customers along.</div></div><div style="display:flex;gap:8px"><button class="btn secondary sm" onclick="show('inbox')">Go to Inbox</button><button class="btn secondary sm" onclick="loadPipeline()">Refresh</button></div></div>
       <section class="stats">
-        <div class="card stat"><div class="stat-label">New Inquiry</div><div class="stat-value" id="pp-inquiry">0</div><div class="stat-delta">just came in</div></div>
-        <div class="card stat"><div class="stat-label">Awaiting Payment</div><div class="stat-value" id="pp-awaiting">0</div><div class="stat-delta">customer said yes</div></div>
-        <div class="card stat"><div class="stat-label">Payment Review</div><div class="stat-value" id="pp-review">0</div><div class="stat-delta">needs your approval</div></div>
+        <div class="card stat"><div class="stat-label">New Leads</div><div class="stat-value" id="pp-inquiry">0</div><div class="stat-delta">just came in</div></div>
+        <div class="card stat"><div class="stat-label">Awaiting Confirmation</div><div class="stat-value" id="pp-awaiting">0</div><div class="stat-delta">customer said yes</div></div>
+        <div class="card stat"><div class="stat-label">In Review</div><div class="stat-value" id="pp-review">0</div><div class="stat-delta">needs your approval</div></div>
         <div class="card stat"><div class="stat-label">Confirmed</div><div class="stat-value" id="pp-confirmed">0</div><div class="stat-delta">all good</div></div>
       </section>
       <section class="stats" style="margin-bottom:14px">
@@ -582,15 +639,15 @@
       </section>
       <div class="pipeline-board" id="pipelineBoard">
         <div class="pipeline-col">
-          <div class="pipeline-col-head"><span class="col-title" style="color:var(--blue)">New Inquiry</span><span class="col-count" id="pp-col-inquiry">0</span></div>
+          <div class="pipeline-col-head"><span class="col-title" style="color:var(--blue)">New Leads</span><span class="col-count" id="pp-col-inquiry">0</span></div>
           <div class="pipeline-col-body" id="pp-body-inquiry"></div>
         </div>
         <div class="pipeline-col">
-          <div class="pipeline-col-head"><span class="col-title" style="color:var(--amber)">Awaiting Payment</span><span class="col-count" id="pp-col-awaiting">0</span></div>
+          <div class="pipeline-col-head"><span class="col-title" style="color:var(--amber)">Awaiting Confirmation</span><span class="col-count" id="pp-col-awaiting">0</span></div>
           <div class="pipeline-col-body" id="pp-body-awaiting"></div>
         </div>
         <div class="pipeline-col">
-          <div class="pipeline-col-head"><span class="col-title" style="color:var(--purple)">Payment Review</span><span class="col-count" id="pp-col-review">0</span></div>
+          <div class="pipeline-col-head"><span class="col-title" style="color:var(--purple)">In Review</span><span class="col-count" id="pp-col-review">0</span></div>
           <div class="pipeline-col-body" id="pp-body-review"></div>
         </div>
         <div class="pipeline-col">
@@ -598,7 +655,7 @@
           <div class="pipeline-col-body" id="pp-body-confirmed"></div>
         </div>
         <div class="pipeline-col">
-          <div class="pipeline-col-head"><span class="col-title" style="color:var(--red)">Rejected</span><span class="col-count" id="pp-col-rejected">0</span></div>
+          <div class="pipeline-col-head"><span class="col-title" style="color:var(--red)">Closed / Lost</span><span class="col-count" id="pp-col-rejected">0</span></div>
           <div class="pipeline-col-body" id="pp-body-rejected"></div>
         </div>
       </div>
@@ -706,6 +763,23 @@
       </div>
     </div></section>
 
+    <!-- HELP / SYSTEM ASSISTANT -->
+    <section class="view" data-view="help"><div class="page" style="max-width:800px">
+      <div class="page-head"><div><h1>System Assistant</h1><div class="subtitle">Ask how anything in this dashboard works.</div></div></div>
+      <div class="card" style="display:flex;flex-direction:column;height:540px">
+        <div id="helpMessages" style="flex:1;overflow-y:auto;padding:18px;display:flex;flex-direction:column;gap:11px"></div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 6px">
+          <span class="filter-pill" style="cursor:pointer" onclick="helpAsk('How do I reply to a customer?')">Reply to a customer</span>
+          <span class="filter-pill" style="cursor:pointer" onclick="helpAsk('What is the All Messages tab?')">All Messages tab</span>
+          <span class="filter-pill" style="cursor:pointer" onclick="helpAsk('How do I connect WhatsApp?')">Connect WhatsApp</span>
+          <span class="filter-pill" style="cursor:pointer" onclick="helpAsk('How do I add a tester?')">Add a tester</span>
+        </div>
+        <div style="padding:10px 14px;border-top:1px solid var(--border);display:flex;gap:8px">
+          <input id="helpInput" placeholder="Ask a question…" style="flex:1;background:var(--surface-2);border:1px solid var(--border-strong);border-radius:20px;padding:10px 15px;font-size:13px;color:var(--text);outline:none" onkeydown="if(event.key==='Enter')helpSend()">
+          <button class="btn" onclick="helpSend()">Send</button>
+        </div>
+      </div>
+    </div></section>
   </main>
 </div>
 
@@ -722,7 +796,7 @@ window._tilapiaSrcs=[
   'https://commons.wikimedia.org/wiki/Special:FilePath/Tilapia_nilotica.jpg?width=1000',
   'https://commons.wikimedia.org/wiki/Special:FilePath/Tilapia.jpg?width=1000'
 ];
-window.tilapiaFallbackSVG="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20200%22%20role%3D%22img%22%20aria-label%3D%22Tilapiya%20Fish%20%27N%20Dine%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3Cpath%20id%3D%22arcTop%22%20d%3D%22M26%2C100%20a74%2C74%200%201%2C1%20148%2C0%22%20fill%3D%22none%22%2F%3E%0A%20%20%20%20%3Cpath%20id%3D%22arcBot%22%20d%3D%22M36%2C100%20a64%2C64%200%201%2C0%20128%2C0%22%20fill%3D%22none%22%2F%3E%0A%20%20%3C%2Fdefs%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2299%22%20fill%3D%22%231c6f88%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2290%22%20fill%3D%22none%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222.5%22%20opacity%3D%220.92%22%2F%3E%0A%20%20%3Ctext%20fill%3D%22%23ffffff%22%20font-family%3D%22Georgia%2C%27Times%20New%20Roman%27%2Cserif%22%20font-size%3D%2223%22%20font-weight%3D%22700%22%20letter-spacing%3D%226%22%3E%0A%20%20%20%20%3CtextPath%20href%3D%22%23arcTop%22%20startOffset%3D%2250%25%22%20text-anchor%3D%22middle%22%3ETILAPIYA%3C%2FtextPath%3E%0A%20%20%3C%2Ftext%3E%0A%20%20%3Ctext%20fill%3D%22%23ffffff%22%20font-family%3D%22Georgia%2C%27Times%20New%20Roman%27%2Cserif%22%20font-size%3D%2217%22%20font-weight%3D%22700%22%20letter-spacing%3D%224%22%3E%0A%20%20%20%20%3CtextPath%20href%3D%22%23arcBot%22%20startOffset%3D%2250%25%22%20text-anchor%3D%22middle%22%3EFISH%20%27N%20DINE%3C%2FtextPath%3E%0A%20%20%3C%2Ftext%3E%0A%20%20%3Ccircle%20cx%3D%2218%22%20cy%3D%22100%22%20r%3D%223%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22182%22%20cy%3D%22100%22%20r%3D%223%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2255%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%3Cg%20stroke%3D%22%231c6f88%22%20stroke-width%3D%223.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%0A%20%20%20%20%3Cpath%20d%3D%22M83%2084%20a16%2016%200%201%200%200%2032%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%2286%22%20y1%3D%22100%22%20x2%3D%22128%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%2292%22%20y1%3D%2286%22%20x2%3D%2292%22%20y2%3D%22114%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22100%22%20y1%3D%2284%22%20x2%3D%2296%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22100%22%20y1%3D%2284%22%20x2%3D%22100%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22100%22%20y1%3D%2284%22%20x2%3D%22104%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22118%22%20y1%3D%2290%22%20x2%3D%22118%22%20y2%3D%22114%22%2F%3E%0A%20%20%20%20%3Cellipse%20cx%3D%22118%22%20cy%3D%2286%22%20rx%3D%225%22%20ry%3D%226.5%22%2F%3E%0A%20%20%3C%2Fg%3E%0A%20%20%3Cpath%20d%3D%22M128%20100%20L142%2087%20L139%20100%20L142%20113%20Z%22%20fill%3D%22%231c6f88%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2280%22%20cy%3D%2293%22%20r%3D%223%22%20fill%3D%22%231c6f88%22%2F%3E%0A%3C%2Fsvg%3E%0A";
+window.tilapiaFallbackSVG="logo.png";
 window.tilapiaImgError=function(img){var n=parseInt(img.getAttribute('data-try')||'0',10)+1;if(n<window._tilapiaSrcs.length){img.setAttribute('data-try',n);img.src=window._tilapiaSrcs[n];}else{img.onerror=null;if(img.classList.contains('brand-photo')){img.remove();}else{img.src=window.tilapiaFallbackSVG;}}};
 
 /* ── AUTH GATE ── */
@@ -741,7 +815,7 @@ function showAuthGate(){
   gate.innerHTML=`
     <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg);">
       <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:40px;max-width:360px;width:100%;text-align:center;">
-        <img src="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20200%20200%22%20role%3D%22img%22%20aria-label%3D%22Tilapiya%20Fish%20%27N%20Dine%22%3E%0A%20%20%3Cdefs%3E%0A%20%20%20%20%3Cpath%20id%3D%22arcTop%22%20d%3D%22M26%2C100%20a74%2C74%200%201%2C1%20148%2C0%22%20fill%3D%22none%22%2F%3E%0A%20%20%20%20%3Cpath%20id%3D%22arcBot%22%20d%3D%22M36%2C100%20a64%2C64%200%201%2C0%20128%2C0%22%20fill%3D%22none%22%2F%3E%0A%20%20%3C%2Fdefs%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2299%22%20fill%3D%22%231c6f88%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2290%22%20fill%3D%22none%22%20stroke%3D%22%23ffffff%22%20stroke-width%3D%222.5%22%20opacity%3D%220.92%22%2F%3E%0A%20%20%3Ctext%20fill%3D%22%23ffffff%22%20font-family%3D%22Georgia%2C%27Times%20New%20Roman%27%2Cserif%22%20font-size%3D%2223%22%20font-weight%3D%22700%22%20letter-spacing%3D%226%22%3E%0A%20%20%20%20%3CtextPath%20href%3D%22%23arcTop%22%20startOffset%3D%2250%25%22%20text-anchor%3D%22middle%22%3ETILAPIYA%3C%2FtextPath%3E%0A%20%20%3C%2Ftext%3E%0A%20%20%3Ctext%20fill%3D%22%23ffffff%22%20font-family%3D%22Georgia%2C%27Times%20New%20Roman%27%2Cserif%22%20font-size%3D%2217%22%20font-weight%3D%22700%22%20letter-spacing%3D%224%22%3E%0A%20%20%20%20%3CtextPath%20href%3D%22%23arcBot%22%20startOffset%3D%2250%25%22%20text-anchor%3D%22middle%22%3EFISH%20%27N%20DINE%3C%2FtextPath%3E%0A%20%20%3C%2Ftext%3E%0A%20%20%3Ccircle%20cx%3D%2218%22%20cy%3D%22100%22%20r%3D%223%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22182%22%20cy%3D%22100%22%20r%3D%223%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%22100%22%20cy%3D%22100%22%20r%3D%2255%22%20fill%3D%22%23ffffff%22%2F%3E%0A%20%20%3Cg%20stroke%3D%22%231c6f88%22%20stroke-width%3D%223.2%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20fill%3D%22none%22%3E%0A%20%20%20%20%3Cpath%20d%3D%22M83%2084%20a16%2016%200%201%200%200%2032%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%2286%22%20y1%3D%22100%22%20x2%3D%22128%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%2292%22%20y1%3D%2286%22%20x2%3D%2292%22%20y2%3D%22114%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22100%22%20y1%3D%2284%22%20x2%3D%2296%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22100%22%20y1%3D%2284%22%20x2%3D%22100%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22100%22%20y1%3D%2284%22%20x2%3D%22104%22%20y2%3D%22100%22%2F%3E%0A%20%20%20%20%3Cline%20x1%3D%22118%22%20y1%3D%2290%22%20x2%3D%22118%22%20y2%3D%22114%22%2F%3E%0A%20%20%20%20%3Cellipse%20cx%3D%22118%22%20cy%3D%2286%22%20rx%3D%225%22%20ry%3D%226.5%22%2F%3E%0A%20%20%3C%2Fg%3E%0A%20%20%3Cpath%20d%3D%22M128%20100%20L142%2087%20L139%20100%20L142%20113%20Z%22%20fill%3D%22%231c6f88%22%2F%3E%0A%20%20%3Ccircle%20cx%3D%2280%22%20cy%3D%2293%22%20r%3D%223%22%20fill%3D%22%231c6f88%22%2F%3E%0A%3C%2Fsvg%3E%0A" alt="Tilapiya Fish 'N Dine" style="width:164px;height:164px;display:block;margin:2px auto 20px;">
+        <img src="logo.png" alt="Tilapiya Fish 'N Dine" style="width:164px;height:164px;display:block;margin:2px auto 20px;">
         <h2 style="font-size:18px;font-weight:600;margin-bottom:4px;color:var(--text);">Tilapiya CRM</h2>
         <p style="font-size:12px;color:var(--text-muted);margin-bottom:24px;">Enter your dashboard password</p>
         <input id="authPass" type="password" placeholder="Password" style="width:100%;padding:10px 14px;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;font-size:13px;color:var(--text);outline:none;margin-bottom:12px;">
@@ -827,9 +901,9 @@ function avg(arr,key){const v=arr.map(a=>a[key]).filter(x=>x!=null);if(!v.length
 
 const navItems=document.querySelectorAll('.nav-item');
 const views=document.querySelectorAll('.view');
-const CHANNEL_VIEWS={'inbox-all':'all','inbox-whatsapp':'whatsapp','inbox-messenger':'facebook','inbox-instagram':'instagram'};
+const CHANNEL_VIEWS={'inbox-whatsapp':'whatsapp','inbox-messenger':'facebook','inbox-instagram':'instagram'};
 const CHANNEL_TITLES={all:'All Messages',whatsapp:'WhatsApp',facebook:'Messenger',instagram:'Instagram'};
-const loaders={overview:loadOverview,'add-customer':loadRecentCustomers,inbox:loadInbox,contacts:loadContacts,pipeline:loadPipeline,'daily-log':loadDailyLog,crm:loadCRM,loyalty:loadLoyalty,feedback:loadFeedback,reports:loadReports};
+const loaders={overview:loadOverview,'inbox-all':loadAllMessages,help:initHelp,'add-customer':loadRecentCustomers,inbox:loadInbox,contacts:loadContacts,pipeline:loadPipeline,'daily-log':loadDailyLog,crm:loadCRM,loyalty:loadLoyalty,feedback:loadFeedback,reports:loadReports};
 function show(v){
   if(v==='inbox')v='inbox-whatsapp';
   const section=CHANNEL_VIEWS[v]?'inbox':v;
@@ -841,11 +915,73 @@ function show(v){
     var ct=document.getElementById('channelTabs');if(ct)ct.style.display=(_channelFilter==='all')?'flex':'none';
     document.querySelectorAll('.channel-tabs .filter-pill[data-channel]').forEach(x=>x.classList.toggle('active',x.dataset.channel===_channelFilter));
     document.querySelectorAll('.inbox-filters .filter-pill[data-filter]').forEach(x=>x.classList.toggle('active',x.dataset.filter==='all'));
-    loadInbox();
+    loadInbox();loadChannelStats();
   }else if(loaders[v])loaders[v]();
 }
 navItems.forEach(n=>n.addEventListener('click',()=>show(n.dataset.view)));
 
+var _chanPeriod='week';
+var CHAN_DEMO={whatsapp:{day:{i:10,o:8},week:{i:51,o:33},month:{i:198,o:142}},facebook:{day:{i:3,o:2},week:{i:11,o:7},month:{i:41,o:29}},instagram:{day:{i:1,o:1},week:{i:6,o:4},month:{i:24,o:17}}};
+var CHAN_META={whatsapp:{name:'WhatsApp',dot:'#25D366'},facebook:{name:'Messenger',dot:'#0084ff'},instagram:{name:'Instagram',dot:'#d6249f'}};
+function setChanPeriod(p,btn){_chanPeriod=p;document.querySelectorAll('.cp-period').forEach(function(b){b.style.background='transparent';b.style.color='var(--text-muted)';});if(btn){btn.style.background='var(--accent)';btn.style.color='var(--accent-ink)';}loadChannelStats();}
+function _chanActive(ch){try{return (convoGroups||[]).filter(function(g){return threadPlatform(g)===ch;}).length;}catch(e){return 0;}}
+function _renderChan(inN,outN,active){_setMs('ci-in',inN);_setMs('ci-out',outN);_setMs('ci-un',Math.max(0,inN-outN));_setMs('ci-active',active);}
+async function loadChannelStats(){
+  var ch=_channelFilter;var m=CHAN_META[ch];if(!m)return;
+  var nm=document.getElementById('coName');if(nm)nm.textContent=m.name;
+  var dot=document.getElementById('coDot');if(dot)dot.style.background=m.dot;
+  var sub=document.getElementById('coSub');if(sub)sub.textContent='Activity on '+m.name+' \u00b7 '+{day:'today',week:'this week',month:'this month'}[_chanPeriod];
+  if(window._demoMode){var d=CHAN_DEMO[ch][_chanPeriod];_renderChan(d.i,d.o,_chanActive(ch));return;}
+  var days={day:1,week:7,month:30}[_chanPeriod]||7;var since=new Date(Date.now()-days*864e5).toISOString();
+  try{var res=await dbQuery({table:'conversations',action:'select',select:'direction',filters:[{column:'timestamp',op:'gte',value:since},{column:'platform',op:'eq',value:ch}],limit:5000});var rows=res.data||[];var i=0,o=0;rows.forEach(function(r){if(r.direction==='inbound')i++;else o++;});_renderChan(i,o,_chanActive(ch));}catch(e){console.warn('chanstats',e);}
+}
+var _msgPeriod='week';
+function setMsgPeriod(p,btn){_msgPeriod=p;document.querySelectorAll('.ms-period').forEach(function(b){b.style.background='transparent';b.style.color='var(--text-muted)';});if(btn){btn.style.background='var(--accent)';btn.style.color='var(--accent-ink)';}loadMsgStats();}
+function _setMs(id,v){var e=document.getElementById(id);if(e)e.textContent=v;}
+function _renderMs(o){
+  _setMs('ms-period-label',{day:'today',week:'this week',month:'this month'}[_msgPeriod]);
+  _setMs('ms-total-in',o.totIn);_setMs('ms-total-out',o.totOut);
+  _setMs('ms-rate',o.totIn?Math.round(o.totOut/o.totIn*100)+'%':'\u2014');
+  _setMs('ms-unanswered',Math.max(0,o.totIn-o.totOut));
+  [['wa',o.wa],['fb',o.fb],['ig',o.ig]].forEach(function(p){
+    var key=p[0],c=p[1];_setMs('ms-'+key+'-in',c.in);_setMs('ms-'+key+'-out',c.out);
+    var r=c.in?Math.round(c.out/c.in*100):0;var b=document.getElementById('ms-'+key+'-bar');if(b)b.style.width=Math.min(100,r)+'%';_setMs('ms-'+key+'-rate',r+'%');
+  });
+}
+function renderMsgStatsDemo(){
+  var d={day:{wa:{in:10,out:8},fb:{in:3,out:2},ig:{in:1,out:1}},week:{wa:{in:51,out:33},fb:{in:11,out:7},ig:{in:6,out:4}},month:{wa:{in:198,out:142},fb:{in:41,out:29},ig:{in:24,out:17}}}[_msgPeriod];
+  _renderMs({wa:d.wa,fb:d.fb,ig:d.ig,totIn:d.wa.in+d.fb.in+d.ig.in,totOut:d.wa.out+d.fb.out+d.ig.out});
+}
+function loadAllMessages(){try{loadMsgStats();}catch(e){console.warn(e);} try{loadOverview();}catch(e){console.warn(e);}}
+async function loadMsgStats(){
+  if(window._demoMode){renderMsgStatsDemo();return;}
+  var days={day:1,week:7,month:30}[_msgPeriod]||7;
+  var since=new Date(Date.now()-days*864e5).toISOString();
+  try{
+    var res=await dbQuery({table:'conversations',action:'select',select:'direction,platform',filters:[{column:'timestamp',op:'gte',value:since}],limit:5000});
+    var rows=res.data||[];var ch={whatsapp:{in:0,out:0},facebook:{in:0,out:0},instagram:{in:0,out:0}};
+    rows.forEach(function(r){var p=ch[r.platform||'whatsapp']||ch.whatsapp;if(r.direction==='inbound')p.in++;else p.out++;});
+    _renderMs({wa:ch.whatsapp,fb:ch.facebook,ig:ch.instagram,totIn:ch.whatsapp.in+ch.facebook.in+ch.instagram.in,totOut:ch.whatsapp.out+ch.facebook.out+ch.instagram.out});
+  }catch(e){console.warn('msgstats error',e);}
+}
+var HELP_KB=[
+  {k:['reply','respond','answer','message back','send message','talk to'],a:"To reply to a customer: click WhatsApp, Messenger, or Instagram in the sidebar, open a conversation, type in the box at the bottom and press Send \u2014 it goes back on the same channel they messaged you from."},
+  {k:['all messages','message analytics','message stats','volume'],a:"The All Messages tab is your messaging overview \u2014 how many messages came in and were replied to across every channel, with a Day/Week/Month toggle and a per-channel breakdown. The real conversations live under each channel tab."},
+  {k:['connect whatsapp','whatsapp setup','setup whatsapp','add whatsapp'],a:"WhatsApp runs through your Meta app: set the webhook to /api/webhook with your verify token, then add META_WHATSAPP_TOKEN, META_PHONE_NUMBER_ID and META_APP_SECRET in Vercel. Use a permanent / system-user token so it never expires."},
+  {k:['connect instagram','instagram setup','add instagram'],a:"Instagram uses the Instagram API with Instagram Login: point the webhook to /api/instagram-webhook, subscribe the 'messages' field, and add IG_PAGE_TOKEN + IG_APP_SECRET in Vercel. While the app is unpublished, only added testers can message it."},
+  {k:['connect messenger','facebook setup','connect facebook','add messenger'],a:"Messenger points to /api/facebook-webhook. Add your Facebook Page token (FB_PAGE_TOKEN) and the app's FB_APP_SECRET in Vercel, then subscribe the Page to the 'messages' field."},
+  {k:['tester','add tester','test account','app review','publish'],a:"While your Meta app is unpublished, only accounts with a role can message it. Add an Instagram/Facebook Tester in Meta \u2192 App roles \u2192 Roles, accept the invite on that account, then message from it. For all real customers, complete App Review."},
+  {k:['pipeline','stages','lead','funnel'],a:"The Pipeline tracks each enquiry through stages \u2014 New Leads, Awaiting Confirmation, In Review, Confirmed and Closed/Lost \u2014 so you can see where every customer is and move them forward."},
+  {k:['bot','ai','auto reply','automatic','chatbot'],a:"The AI bot reads each incoming message and replies automatically in the customer's own language, using a free Groq model. You can always jump into a conversation and reply by hand."},
+  {k:['password','login','log in','sign in'],a:"You log in with the dashboard password, set in Vercel as DASHBOARD_PASSWORD. To change it, update that environment variable in your Vercel project settings and redeploy."},
+  {k:['contacts','customers','customer list'],a:"The Contacts tab lists every customer who has messaged you \u2014 with their channel, segment and last contact. Click anyone to see their full history."},
+  {k:['deploy','update','go live','publish changes','push'],a:"Changes go live by updating the files in your GitHub repo; Vercel automatically rebuilds and deploys within about a minute."}
+];
+function _helpBubble(text,who){var box=document.getElementById('helpMessages');if(!box)return;var d=document.createElement('div');d.style.cssText='max-width:84%;padding:10px 13px;font-size:13px;line-height:1.5;border-radius:14px;white-space:pre-wrap;word-wrap:break-word;'+(who==='you'?'align-self:flex-end;background:var(--accent);color:var(--accent-ink);border-bottom-right-radius:4px':'align-self:flex-start;background:var(--surface-2);border:1px solid var(--border);border-bottom-left-radius:4px');d.textContent=text;box.appendChild(d);box.scrollTop=99999;}
+function helpAnswer(q){var t=(q||'').toLowerCase();var best=null,score=0;HELP_KB.forEach(function(e){var sc=0;e.k.forEach(function(k){if(t.indexOf(k)!==-1)sc+=k.length;});if(sc>score){score=sc;best=e;}});return best?best.a:"I can help with: replying to customers, the All Messages analytics, connecting WhatsApp / Messenger / Instagram, testers & app review, the Pipeline, the AI bot, contacts, your password, and deploying updates. Try asking about one of those.";}
+function helpSend(){var i=document.getElementById('helpInput');var q=(i.value||'').trim();if(!q)return;_helpBubble(q,'you');i.value='';setTimeout(function(){_helpBubble(helpAnswer(q),'bot');},220);}
+function helpAsk(q){_helpBubble(q,'you');setTimeout(function(){_helpBubble(helpAnswer(q),'bot');},220);}
+function initHelp(){var box=document.getElementById('helpMessages');if(box&&!box.dataset.init){box.dataset.init='1';_helpBubble("Hi! I'm your system assistant. Ask me how anything here works \u2014 for example: How do I reply to a customer? What is the All Messages tab? How do I connect WhatsApp? How do I add a tester?",'bot');}}
 function setChannelStatus(ok){
   const chip=document.getElementById('waLiveChip');
   if(chip){chip.textContent=ok?'Live':'Offline';chip.className='chip '+(ok?'green':'red');}

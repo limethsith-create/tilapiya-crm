@@ -1,6 +1,6 @@
 // Tilapiya CRM Service Worker
 // Version-stamped cache: bump the date suffix on each deploy to invalidate old caches.
-const CACHE_NAME = 'tilapiya-crm-v2-20260612';
+const CACHE_NAME = 'tilapiya-crm-v4-20260617';
 const SHELL_FILES = [
   './', './index.html', './manifest.json',
   'https://cdn.jsdelivr.net/npm/chart.js@4'

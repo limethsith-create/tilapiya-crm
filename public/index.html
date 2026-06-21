@@ -419,7 +419,7 @@
 </style>
 </head>
 <body>
-<div class="offline-bar" id="offlineBar">You're offline — showing cached data.</div>
+<div class="offline-bar" id="offlineBar">You're offline — can't reach the server.</div>
 <header class="topbar">
   <div class="brand">
     <div class="brand-mark" style="background:none;box-shadow:none;border:none"><img src="logo.png" alt="Tilapiya Colombo" style="position:absolute;inset:0;width:100%;height:100%;object-fit:contain"></div>
@@ -921,7 +921,6 @@ function show(v){
 navItems.forEach(n=>n.addEventListener('click',()=>show(n.dataset.view)));
 
 var _chanPeriod='week';
-var CHAN_DEMO={whatsapp:{day:{i:10,o:8},week:{i:51,o:33},month:{i:198,o:142}},facebook:{day:{i:3,o:2},week:{i:11,o:7},month:{i:41,o:29}},instagram:{day:{i:1,o:1},week:{i:6,o:4},month:{i:24,o:17}}};
 var CHAN_META={whatsapp:{name:'WhatsApp',dot:'#25D366'},facebook:{name:'Messenger',dot:'#0084ff'},instagram:{name:'Instagram',dot:'#d6249f'}};
 function setChanPeriod(p,btn){_chanPeriod=p;document.querySelectorAll('.cp-period').forEach(function(b){b.style.background='transparent';b.style.color='var(--text-muted)';});if(btn){btn.style.background='var(--accent)';btn.style.color='var(--accent-ink)';}loadChannelStats();}
 function _chanActive(ch){try{return (convoGroups||[]).filter(function(g){return threadPlatform(g)===ch;}).length;}catch(e){return 0;}}
@@ -931,7 +930,6 @@ async function loadChannelStats(){
   var nm=document.getElementById('coName');if(nm)nm.textContent=m.name;
   var dot=document.getElementById('coDot');if(dot)dot.style.background=m.dot;
   var sub=document.getElementById('coSub');if(sub)sub.textContent='Activity on '+m.name+' \u00b7 '+{day:'today',week:'this week',month:'this month'}[_chanPeriod];
-  if(window._demoMode){var d=CHAN_DEMO[ch][_chanPeriod];_renderChan(d.i,d.o,_chanActive(ch));return;}
   var days={day:1,week:7,month:30}[_chanPeriod]||7;var since=new Date(Date.now()-days*864e5).toISOString();
   try{var res=await dbQuery({table:'conversations',action:'select',select:'direction',filters:[{column:'timestamp',op:'gte',value:since},{column:'platform',op:'eq',value:ch}],limit:5000});var rows=res.data||[];var i=0,o=0;rows.forEach(function(r){if(r.direction==='inbound')i++;else o++;});_renderChan(i,o,_chanActive(ch));}catch(e){console.warn('chanstats',e);}
 }
@@ -948,13 +946,8 @@ function _renderMs(o){
     var r=c.in?Math.round(c.out/c.in*100):0;var b=document.getElementById('ms-'+key+'-bar');if(b)b.style.width=Math.min(100,r)+'%';_setMs('ms-'+key+'-rate',r+'%');
   });
 }
-function renderMsgStatsDemo(){
-  var d={day:{wa:{in:10,out:8},fb:{in:3,out:2},ig:{in:1,out:1}},week:{wa:{in:51,out:33},fb:{in:11,out:7},ig:{in:6,out:4}},month:{wa:{in:198,out:142},fb:{in:41,out:29},ig:{in:24,out:17}}}[_msgPeriod];
-  _renderMs({wa:d.wa,fb:d.fb,ig:d.ig,totIn:d.wa.in+d.fb.in+d.ig.in,totOut:d.wa.out+d.fb.out+d.ig.out});
-}
 function loadAllMessages(){try{loadMsgStats();}catch(e){console.warn(e);} try{loadOverview();}catch(e){console.warn(e);}}
 async function loadMsgStats(){
-  if(window._demoMode){renderMsgStatsDemo();return;}
   var days={day:1,week:7,month:30}[_msgPeriod]||7;
   var since=new Date(Date.now()-days*864e5).toISOString();
   try{
@@ -1003,7 +996,7 @@ async function checkConnection(){
   }
 }
 window.addEventListener('offline',()=>document.getElementById('offlineBar').classList.add('show'));
-window.addEventListener('online',()=>{document.getElementById('offlineBar').classList.remove('show');if(!window._demoMode)loadOverview();});
+window.addEventListener('online',()=>{document.getElementById('offlineBar').classList.remove('show');loadOverview();});
 
 function drawBookingsChart(labels,counts){
   const ctx=document.getElementById('bookingsChart');
@@ -1020,7 +1013,6 @@ function drawBookingsChart(labels,counts){
 }
 
 async function loadOverview(){
-  if(window._demoMode){renderDemoOverview();return;}
   const today=new Date().toISOString().slice(0,10),weekAgo=new Date(Date.now()-7*864e5).toISOString(),thirtyAgo=new Date(Date.now()-30*864e5).toISOString();
   try{
     const cq=(table,filters)=>dbQuery({table,action:'select',select:'id',filters,limit:1,count:true});
@@ -1101,7 +1093,6 @@ function replyTargetId(c){return (c&&c.platform&&c.platform!=='whatsapp')?(c.pla
 const INBOX_SELECT_FULL='*,customers(name,phone,platform,platform_user_id,segment,visit_count,first_contact,last_contact,notes,reply_mode)';
 const INBOX_SELECT_BASIC='*,customers(name,phone,segment,visit_count,first_contact,last_contact,notes,reply_mode)';
 async function loadInbox(){
-  if(window._demoMode){renderDemoThreadList();return;}
   try{
     let res;
     try{res=await dbQuery({table:'conversations',action:'select',select:INBOX_SELECT_FULL,order:{column:'timestamp',ascending:false},limit:300});}
@@ -1151,7 +1142,7 @@ function updateBotModeBtn(){
 }
 async function fetchBotMode(customerId,knownMode){
   const btn=document.getElementById('botModeBtn');if(!btn)return;
-  if(window._demoMode||!customerId){btn.style.display='none';_botModeCustomer=null;return;}
+  if(!customerId){btn.style.display='none';_botModeCustomer=null;return;}
   _botModeCustomer=customerId;btn.style.display='';
   if(knownMode){_botMode=knownMode;updateBotModeBtn();return;}
   btn.textContent='Bot: …';
@@ -1164,7 +1155,7 @@ async function fetchBotMode(customerId,knownMode){
   updateBotModeBtn();
 }
 async function toggleBotMode(){
-  if(!_botModeCustomer||window._demoMode)return;
+  if(!_botModeCustomer)return;
   const next=_botMode==='manual'?'bot':'manual';
   const btn=document.getElementById('botModeBtn');if(btn)btn.disabled=true;
   try{
@@ -1179,7 +1170,7 @@ async function toggleBotMode(){
   if(btn)btn.disabled=false;
 }
 
-/* ── INBOX FILTERS (bound once — work in both live & demo mode) ── */
+/* ── INBOX FILTERS (bound once) ── */
 var _intentFilter='all',_channelFilter='all';
 function updateChannelCounts(){var cc={whatsapp:0,facebook:0,instagram:0};convoGroups.forEach(function(g){var p=threadPlatform(g);if(cc[p]==null)cc[p]=0;cc[p]++;});var s=function(id,v){var e=document.getElementById(id);if(e)e.textContent='('+v+')';};s('fcAll',convoGroups.length);s('fcWhatsapp',cc.whatsapp);s('fcFacebook',cc.facebook);s('fcInstagram',cc.instagram);}
 function updateIntentCounts(){
@@ -1194,18 +1185,17 @@ function applyInboxFilters(){var gs=convoGroups;if(_channelFilter!=='all')gs=gs.
 document.querySelectorAll('.inbox-filters .filter-pill[data-filter]').forEach(p=>{p.addEventListener('click',()=>{
   document.querySelectorAll('.inbox-filters .filter-pill[data-filter]').forEach(x=>x.classList.remove('active'));p.classList.add('active');
   _intentFilter=p.dataset.filter;
-  if(window._demoMode)renderDemoThreadList();else applyInboxFilters();
+  applyInboxFilters();
 });});
 document.querySelectorAll('.channel-tabs .filter-pill[data-channel]').forEach(p=>{p.addEventListener('click',()=>{
   document.querySelectorAll('.channel-tabs .filter-pill[data-channel]').forEach(x=>x.classList.remove('active'));p.classList.add('active');
   _channelFilter=p.dataset.channel;
-  if(window._demoMode)renderDemoThreadList();else applyInboxFilters();
+  applyInboxFilters();
 });});
 
 /* ── CONTACTS ── */
 let allCustomers=[],customerLoyalty={};
 async function loadContacts(){
-  if(window._demoMode){renderDemoContacts();return;}
   try{
     const r1=await dbQuery({table:'customers',action:'select',select:'*',order:{column:'last_contact',ascending:false},limit:1000});
     allCustomers=r1.data||[];customerLoyalty={};
@@ -1223,7 +1213,6 @@ document.getElementById('contactSearch')?.addEventListener('input',e=>{const q=e
 /* ── DAILY LOG ── */
 async function loadDailyLog(){
   const today=new Date().toISOString().slice(0,10);document.getElementById('dailyDate').textContent=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-  if(window._demoMode){renderDemoDailyLog();return;}
   try{
     const res=await dbQuery({table:'bookings',action:'select',select:'*,customers(name,phone)',filters:[{column:'date',op:'eq',value:today}],order:{column:'time',ascending:true},limit:500});
     const data=res.data||[];
@@ -1235,14 +1224,12 @@ async function loadDailyLog(){
   }catch(e){document.getElementById('dailyTable').innerHTML='<tr><td colspan="8" class="empty-inline">No bookings today</td></tr>';}
 }
 async function confirmBooking(id){
-  if(window._demoMode)return;
   try{await dbQuery({table:'bookings',action:'update',values:{status:'confirmed',confirmed_by:'staff'},filters:[{column:'id',op:'eq',value:id}]});}catch(e){alert('Update failed: '+e.message);}
   loadDailyLog();
 }
 
 /* ── LOYALTY ── */
 async function loadLoyalty(){
-  if(window._demoMode){renderDemoLoyalty();return;}
   try{
     const res=await dbQuery({table:'loyalty',action:'select',select:'*,customers(name,phone)',order:{column:'total_points',ascending:false},limit:1000});
     const members=res.data||[];
@@ -1266,7 +1253,6 @@ async function loadLoyalty(){
 
 /* ── FEEDBACK ── */
 async function loadFeedback(){
-  if(window._demoMode){renderDemoFeedbackPage();return;}
   try{
     const res=await dbQuery({table:'feedback',action:'select',select:'*,customers(name)',order:{column:'created_at',ascending:false},limit:1000,count:true});
     const all=res.data||[];
@@ -1289,7 +1275,6 @@ async function loadFeedback(){
 
 /* ── CRM ── */
 async function loadCRM(){
-  if(window._demoMode){renderDemoCRM();return;}
   try{
     const[s1,s2,s3]=await Promise.allSettled([
       dbQuery({table:'crm_campaigns',action:'select',select:'*',order:{column:'created_at',ascending:false},limit:200}),
@@ -1312,7 +1297,6 @@ document.querySelectorAll('.var-chip').forEach(chip=>{chip.addEventListener('cli
 async function saveCrmCampaign(){
   const name=document.getElementById('crmCampaignName').value.trim(),template=crmTA.value.trim(),segment=document.getElementById('crmSegment').value;
   if(!name||!template)return alert('Name and message required');
-  if(window._demoMode)return alert('Demo mode — connect the API to save campaigns.');
   try{
     await dbQuery({table:'crm_campaigns',action:'insert',values:{name,segment,message_template:template}});
     document.getElementById('crmCampaignName').value='';crmTA.value='';crmTA.dispatchEvent(new Event('input'));loadCRM();
@@ -1335,9 +1319,8 @@ async function saveCrmCampaign(){
   gs.addEventListener('keydown',e=>{if(e.key==='Enter'){clearTimeout(timer);applySearch();}});
 })();
 
-/* ── PIPELINE (real bookings; demo only when offline) ── */
+/* ── PIPELINE (real bookings) ── */
 let pipelineData=[];
-let recentlyAdded=[];
 
 function catChip(cat){
   const m={BOOKING:'green',INQUIRY:'blue',COMPLAINT:'red',FEEDBACK:'amber'};
@@ -1366,27 +1349,23 @@ function renderPipelineCard(item){
   return`<div class="pipeline-card"><div style="display:flex;justify-content:space-between;align-items:center"><div class="pc-name">${escapeHTML(item.name)}</div>${catChip(item.category)}</div><div class="pc-phone">${escapeHTML(item.phone)}</div><div class="pc-details"><span class="chip">${item.party||0} pax</span><span class="chip">${escapeHTML(item.occasion||'—')}</span><span class="chip">${fmtDate(item.date)}</span><span class="chip">${escapeHTML(item.time||'—')}</span></div><div class="pc-details" style="margin-top:4px"><span style="font-size:12px;font-weight:600">LKR ${(item.amount||0).toLocaleString()}</span></div>${actions}</div>`;
 }
 async function loadPipeline(){
-  if(window._demoMode){
-    if(!pipelineData.length)pipelineData=generateDemoPipeline();
-  }else{
-    try{
-      const res=await dbQuery({table:'bookings',action:'select',select:'*,customers(name,phone)',order:{column:'created_at',ascending:false},limit:200});
-      pipelineData=(res.data||[]).map(b=>({
-        id:b.id,
-        name:b.customers?.name||'Unknown',
-        phone:b.customers?.phone||'—',
-        party:b.party_size||0,
-        occasion:b.occasion||'',
-        category:'BOOKING',
-        date:b.date,
-        time:b.time?String(b.time).slice(0,5):'—',
-        amount:parseFloat(b.payment_amount||0),
-        stage:bookingToStage(b),
-        created:b.created_at,
-        notes:''
-      }));
-    }catch(e){console.warn('Pipeline load error',e);pipelineData=[];}
-  }
+  try{
+    const res=await dbQuery({table:'bookings',action:'select',select:'*,customers(name,phone)',order:{column:'created_at',ascending:false},limit:200});
+    pipelineData=(res.data||[]).map(b=>({
+      id:b.id,
+      name:b.customers?.name||'Unknown',
+      phone:b.customers?.phone||'—',
+      party:b.party_size||0,
+      occasion:b.occasion||'',
+      category:'BOOKING',
+      date:b.date,
+      time:b.time?String(b.time).slice(0,5):'—',
+      amount:parseFloat(b.payment_amount||0),
+      stage:bookingToStage(b),
+      created:b.created_at,
+      notes:''
+    }));
+  }catch(e){console.warn('Pipeline load error',e);pipelineData=[];}
   renderPipeline();
 }
 function renderPipeline(){
@@ -1402,14 +1381,6 @@ function renderPipeline(){
   document.getElementById('pp-cat-inquiry').textContent=cats.INQUIRY;
   document.getElementById('pp-cat-complaint').textContent=cats.COMPLAINT;
   document.getElementById('pp-cat-feedback').textContent=cats.FEEDBACK;
-  if(window._demoMode){
-    try{
-      document.getElementById('inboxBookingCount').textContent='Bookings: '+cats.BOOKING;
-      document.getElementById('inboxInquiryCount').textContent='Inquiries: '+cats.INQUIRY;
-      document.getElementById('inboxComplaintCount').textContent='Complaints: '+cats.COMPLAINT;
-      document.getElementById('inboxFeedbackCount').textContent='Feedback: '+cats.FEEDBACK;
-    }catch(e){}
-  }
   document.getElementById('pp-col-inquiry').textContent=stages.inquiry.length;
   document.getElementById('pp-col-awaiting').textContent=stages.awaiting.length;
   document.getElementById('pp-col-review').textContent=stages.review.length;
@@ -1424,11 +1395,6 @@ function renderPipeline(){
   document.getElementById('pipelineCount').textContent=total;
 }
 async function movePipeline(id,newStage){
-  if(window._demoMode){
-    const item=pipelineData.find(p=>p.id===id);
-    if(item){item.stage=newStage;renderPipeline();}
-    return;
-  }
   const values=newStage==='awaiting'?{payment_status:'awaiting'}
     :newStage==='review'?{payment_status:'paid'}
     :newStage==='confirmed'?{status:'confirmed',confirmed_by:'staff'}
@@ -1459,26 +1425,6 @@ async function addNewCustomer(){
     document.getElementById('nc-segment').value='new';
     document.getElementById('nc-occasion').value='';
   };
-  if(window._demoMode){
-    const entry={
-      id:'pp-'+Date.now(),name,phone,email,
-      party:parseInt(party)||2,occasion:occasion||'Casual',category:'BOOKING',
-      date:date||new Date().toISOString().slice(0,10),time:time||'19:00',
-      amount:parseInt(amount)||0,stage:'inquiry',created:new Date().toISOString(),notes,dietary,segment
-    };
-    pipelineData.unshift(entry);
-    recentlyAdded.unshift({name,phone,segment,date:entry.date,time:entry.time,added:new Date().toISOString()});
-    if(window.demoInboxThreads){
-      window.demoInboxThreads.unshift({name,phone,intent:'BOOKING',msgs:[
-        {direction:'inbound',message:`New customer registered: ${name} (${phone}). Booking for ${entry.party} pax on ${fmtDate(entry.date)} at ${entry.time}.`,timestamp:new Date().toISOString(),intent:'BOOKING'}
-      ]});
-    }
-    clearForm();
-    st.textContent='Customer added! (demo)';st.style.color='var(--green)';st.style.display='inline';setTimeout(()=>st.style.display='none',3000);
-    loadRecentCustomers();renderPipeline();
-    document.getElementById('contactsCount').textContent=parseInt(document.getElementById('contactsCount').textContent||'0')+1;
-    return;
-  }
   st.textContent='Saving...';st.style.color='var(--text-muted)';st.style.display='inline';
   try{
     const custRes=await dbQuery({table:'customers',action:'insert',values:{
@@ -1504,11 +1450,6 @@ async function addNewCustomer(){
 
 async function loadRecentCustomers(){
   const tb=document.getElementById('recentCustomersTable');
-  if(window._demoMode){
-    if(!recentlyAdded.length){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No customers added yet</td></tr>';return;}
-    tb.innerHTML=recentlyAdded.slice(0,10).map(c=>`<tr><td style="font-weight:500">${escapeHTML(c.name)}</td><td class="muted">${escapeHTML(c.phone)}</td><td>${segChip(c.segment)}</td><td class="muted" style="font-size:12px">${c.date?fmtDate(c.date)+' '+escapeHTML(c.time||''):'—'}</td><td class="muted" style="font-size:12px">${fmt(c.added)}</td></tr>`).join('');
-    return;
-  }
   try{
     const res=await dbQuery({table:'customers',action:'select',select:'name,phone,segment,created_at',order:{column:'created_at',ascending:false},limit:10});
     const data=res.data||[];
@@ -1517,7 +1458,7 @@ async function loadRecentCustomers(){
   }catch(e){tb.innerHTML='<tr><td colspan="5" class="empty-inline">No customers added yet</td></tr>';}
 }
 
-/* ── REPORTS (real conversations data; demo only when offline) ── */
+/* ── REPORTS (real conversations data) ── */
 let _reportRows=[];
 function renderReportsView(rows){
   const now=new Date(),todayStr=now.toISOString().slice(0,10);
@@ -1539,7 +1480,6 @@ function renderReportsView(rows){
   }).join('');
 }
 async function loadReports(){
-  if(window._demoMode){_reportRows=demoReachOuts;renderReportsView(demoReachOuts);return;}
   const monthAgo=new Date(Date.now()-30*864e5).toISOString();
   try{
     let res;
@@ -1564,7 +1504,7 @@ async function loadReports(){
   }
 }
 function downloadReport(period){
-  const source=window._demoMode?demoReachOuts:_reportRows;
+  const source=_reportRows;
   let items,filename;
   const now=new Date(),todayStr=now.toISOString().slice(0,10);
   if(period==='daily'){
@@ -1602,11 +1542,6 @@ async function sendManualReply(){
   var message=input.value.trim();
   var _rt=window._replyTarget||{};
   if(!message||!_rt.to)return;
-  if(window._demoMode){
-    status.style.display='block';status.style.color='#f59e0b';
-    status.textContent='Demo mode — connect the API to send messages.';
-    return;
-  }
   status.style.display='block';
   status.style.color='#888';
   status.textContent='Sending...';
@@ -1649,246 +1584,17 @@ async function sendManualReply(){
   input.focus();
 }
 
-/* ── DEMO DATA (shown only when the API is unreachable) ── */
-const DEMO_NAMES=['Kasun Perera','Nimali Fernando','Ruwan Silva','Tharushi Jayawardena','Dinesh Rathnayake','Sachini De Silva','Amara Wickramasinghe','Pradeep Bandara','Hashini Gunawardena','Lakshan Mendis','Dulani Samarasinghe','Isuru Pathirana','Kavindya Rajapaksa','Nimal Herath','Sanduni Ekanayake','Chamara Dissanayake','Rashmi Abeysekara','Janith Kumara','Iresha Weerasinghe','Tharindu Gunasekara'];
-const DEMO_PHONES=['+94 77 234 5678','+94 71 890 1234','+94 76 456 7890','+94 75 123 4567','+94 77 567 8901','+94 71 345 6789','+94 76 789 0123','+94 75 901 2345','+94 77 012 3456','+94 71 678 9012','+94 76 234 5678','+94 75 456 7890','+94 77 890 1234','+94 71 012 3456','+94 76 567 8901','+94 75 789 0123','+94 77 345 6789','+94 71 901 2345','+94 76 012 3456','+94 75 234 5678'];
-const DEMO_INTENTS=['BOOKING','INQUIRY','COMPLAINT','FEEDBACK','CANCEL','OTHER'];
-const DEMO_CHANNELS=['WhatsApp','Phone Call','Phone Call','WhatsApp','WhatsApp','Phone Call'];
-const DEMO_MESSAGES=['Hi, I want to book a table for 4 this Saturday','What are your opening hours?','The food was cold last time we visited','Amazing service, thank you so much!','Need to cancel my reservation for tomorrow','Do you have parking available?','Can I book the private dining room?','Is there a kids menu?','We had a wonderful anniversary dinner','Table for 2 tonight please','Do you cater for events?','I called earlier about my booking','Is the chef\'s special still available?','We want to celebrate a birthday','Can I change my reservation time?','What vegetarian options do you have?','We loved the ambience last visit','Booking for a corporate lunch, 12 people','Any gluten-free desserts?','Quick question about the menu'];
-const demoFeedback=[
-  {name:'Sachini De Silva',rating:5,comment:'Best fish we\'ve had in Colombo! The ambience was perfect for our date night.'},
-  {name:'Kasun Perera',rating:4,comment:'Good food, friendly staff. A bit noisy during peak hours.'},
-  {name:'Tharushi Jayawardena',rating:5,comment:'The seafood platter was incredible. Will be back!'},
-  {name:'Dinesh Rathnayake',rating:3,comment:'Food was decent but the wait time was too long.'},
-  {name:'Amara Wickramasinghe',rating:4,comment:'Lovely place. The chef\'s special was amazing.'}
-];
-
-function generateDemoPipeline(){
-  const occasions=['Birthday','Anniversary','Business','Date Night','Family','Casual'];
-  const categories=['BOOKING','BOOKING','BOOKING','INQUIRY','INQUIRY','COMPLAINT','FEEDBACK','BOOKING','BOOKING','INQUIRY','BOOKING','BOOKING','COMPLAINT','FEEDBACK','BOOKING','BOOKING','INQUIRY','BOOKING'];
-  const entries=[];
-  for(let i=0;i<18;i++){
-    const idx=Math.floor(Math.random()*DEMO_NAMES.length);
-    let stage;
-    if(i<4) stage='inquiry';
-    else if(i<8) stage='awaiting';
-    else if(i<12) stage='review';
-    else if(i<16) stage='confirmed';
-    else stage='rejected';
-    entries.push({
-      id:'pp-'+i,
-      name:DEMO_NAMES[idx],
-      phone:DEMO_PHONES[idx],
-      party:Math.floor(Math.random()*8)+2,
-      occasion:occasions[Math.floor(Math.random()*occasions.length)],
-      category:categories[i]||'BOOKING',
-      date:new Date(Date.now()+Math.floor(Math.random()*14)*864e5).toISOString().slice(0,10),
-      time:['11:30','12:00','13:00','18:00','19:00','19:30','20:00'][Math.floor(Math.random()*7)],
-      amount:Math.floor(Math.random()*30+5)*1000,
-      stage:stage,
-      created:new Date(Date.now()-Math.floor(Math.random()*5)*864e5).toISOString(),
-      notes:''
-    });
-  }
-  return entries;
-}
-
-function generateDemoReachOuts(days){
-  const data=[];
-  for(let d=0;d<days;d++){
-    const date=new Date(Date.now()-d*864e5);
-    const count=Math.floor(Math.random()*8)+4;
-    for(let i=0;i<count;i++){
-      const idx=Math.floor(Math.random()*DEMO_NAMES.length);
-      const hr=Math.floor(Math.random()*12)+8;
-      const mn=Math.floor(Math.random()*60);
-      const ts=new Date(date);ts.setHours(hr,mn,0,0);
-      data.push({
-        timestamp:ts.toISOString(),
-        name:DEMO_NAMES[idx],
-        phone:DEMO_PHONES[idx],
-        channel:DEMO_CHANNELS[Math.floor(Math.random()*DEMO_CHANNELS.length)],
-        intent:DEMO_INTENTS[Math.floor(Math.random()*DEMO_INTENTS.length)],
-        message:DEMO_MESSAGES[Math.floor(Math.random()*DEMO_MESSAGES.length)],
-        direction:Math.random()>0.4?'inbound':'outbound'
-      });
-    }
-  }
-  return data.sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp));
-}
-const demoReachOuts=generateDemoReachOuts(30);
-
-function renderDemoOverview(){
-  document.getElementById('ov-bookings').textContent='7';
-  document.getElementById('ov-revenue').textContent='184,500';
-  document.getElementById('ov-contacts').textContent='14';
-  document.getElementById('ov-pending').textContent='3';
-  document.getElementById('ov-msgin').textContent='68';
-  document.getElementById('ov-msgout').textContent='42';
-  document.getElementById('ov-avgrating').textContent='4.3';
-  document.getElementById('ov-loyalty').textContent='26';
-  document.getElementById('ov-complaints').textContent='2';
-  document.getElementById('ov-total').textContent='143';
-  document.getElementById('ov-goldplus').textContent='8';
-  document.getElementById('ov-lapsed').textContent='11';
-  var _setch=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v;};
-  _setch('ov-wamsgs','51');_setch('ov-fbmsgs','11');_setch('ov-igmsgs','6');
-  document.getElementById('contactsCount').textContent='143';
-  document.getElementById('loyaltyCount').textContent='26';
-  document.getElementById('inboxCount').textContent='12';
-  const demoConvos=demoReachOuts.slice(0,8);
-  document.getElementById('ov-feed').innerHTML=demoConvos.map(c=>`<tr><td><span class="chip ${c.direction==='inbound'?'':'solid'}">${escapeHTML(c.direction)}</span></td><td>${escapeHTML(c.name)}</td><td style="max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escapeHTML(c.message)}</td><td class="muted" style="font-size:12px">${fmt(c.timestamp)}</td></tr>`).join('');
-  document.getElementById('ov-feedback-list').innerHTML=demoFeedback.map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${escapeHTML(f.name)}</span>${starsHTML(f.rating)}</div><div class="feedback-comment">"${escapeHTML(f.comment)}"</div><div style="font-size:11px;color:var(--text-subtle);margin-top:6px">Today</div></div>`).join('');
-  document.getElementById('feedbackCount').textContent='5';
-  try{
-    const labels=[],counts=[];
-    for(let i=6;i>=0;i--){const d=new Date(Date.now()-i*864e5);labels.push(d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric'}));counts.push(Math.floor(Math.random()*6)+3);}
-    drawBookingsChart(labels,counts);
-  }catch(e){}
-  document.getElementById('lastUpdated').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-}
-
-function renderDemoContacts(){
-  document.getElementById('contactsTable').innerHTML=DEMO_NAMES.slice(0,15).map((n,i)=>{
-    const segs=['vip','returning','new','first-timer','lapsed'];
-    const tiers=['Bronze','Silver','Gold','Platinum'];
-    const seg=segs[i%segs.length];const tier=tiers[Math.min(i%4,3)];const pts=Math.floor(Math.random()*500)+10;
-    return`<tr><td style="font-weight:500">${escapeHTML(n)}</td><td class="muted">${escapeHTML(DEMO_PHONES[i])}</td><td>${segChip(seg)}</td><td>${Math.floor(Math.random()*20)+1}</td><td>${tierBadge(tier)}</td><td>${pts}</td><td class="muted" style="font-size:12px">${fmtDate(new Date(Date.now()-Math.floor(Math.random()*30)*864e5))}</td></tr>`;
-  }).join('');
-}
-
-function buildDemoInbox(){
-  const intentMap={0:'BOOKING',1:'INQUIRY',2:'COMPLAINT',3:'FEEDBACK',4:'BOOKING',5:'INQUIRY',6:'BOOKING',7:'INQUIRY',8:'FEEDBACK',9:'BOOKING',10:'INQUIRY',11:'BOOKING'};
-  window.demoInboxThreads=DEMO_NAMES.slice(0,12).map((n,i)=>{
-    const intent=intentMap[i]||'BOOKING';
-    const replies=[
-      {direction:'inbound',message:DEMO_MESSAGES[i],timestamp:new Date(Date.now()-i*3600000).toISOString(),intent},
-      {direction:'outbound',message:['Thank you for reaching out! Let me check availability.','Sure, I can help with that.','We appreciate your feedback!','I\'ll look into this right away.','Your table is being prepared.','Let me get back to you shortly.'][i%6],timestamp:new Date(Date.now()-i*3600000+300000).toISOString(),intent}
-    ];
-    if(Math.random()>0.5) replies.push({direction:'inbound',message:['Great, thank you!','Perfect, see you then.','Sounds good.','Alright, we\'ll wait.','Thanks for the quick response!'][Math.floor(Math.random()*5)],timestamp:new Date(Date.now()-i*3600000+600000).toISOString(),intent});
-    const platforms=['whatsapp','whatsapp','facebook','instagram','whatsapp','facebook','whatsapp','instagram','whatsapp','facebook','instagram','whatsapp'];
-    return{name:n,phone:DEMO_PHONES[i],intent,platform:platforms[i]||'whatsapp',msgs:replies};
-  });
-}
-
-function renderDemoThreads(threads){
-  if(!threads.length){document.getElementById('threadList').innerHTML='<div class="empty-inline">No conversations on this channel yet</div>';return;}
-  document.getElementById('threadList').innerHTML=threads.map((t,i)=>{
-    const lastMsg=t.msgs[t.msgs.length-1];
-    const catColors={BOOKING:'green',INQUIRY:'blue',COMPLAINT:'red',FEEDBACK:'amber'};
-    return`<div class="thread-item" onclick="openDemoThread(${i})" id="thread-${i}"><div class="avatar">${initials(t.name)}</div><div><div class="thread-name">${escapeHTML(t.name)}${channelBadge(t.platform||'whatsapp')} <span class="chip ${catColors[t.intent]||''}" style="font-size:9px;vertical-align:middle;margin-left:4px">${escapeHTML(t.intent)}</span></div><div class="thread-preview">${escapeHTML((lastMsg.message||'—').slice(0,55))}</div></div><div class="thread-meta"><div class="thread-time">${fmt(lastMsg.timestamp)}</div>${t.msgs.length>1?`<div class="thread-badge">${t.msgs.length}</div>`:''}</div></div>`;
-  }).join('');
-}
-
-let _demoFilteredThreads=[];
-function renderDemoThreadList(){
-  if(!window.demoInboxThreads)buildDemoInbox();
-  let threads=window.demoInboxThreads.slice();
-  if(_channelFilter!=='all')threads=threads.filter(t=>(t.platform||'whatsapp')===_channelFilter);
-  const channelThreads=threads.slice();
-  if(_intentFilter!=='all')threads=threads.filter(t=>t.intent===_intentFilter);
-  _demoFilteredThreads=threads;
-  renderDemoThreads(threads);
-  const inboxCats={BOOKING:0,INQUIRY:0,COMPLAINT:0,FEEDBACK:0};
-  channelThreads.forEach(t=>{if(inboxCats[t.intent]!==undefined)inboxCats[t.intent]++;});
-  const s=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent='('+v+')';};
-  s('fpAll',channelThreads.length);s('fpBooking',inboxCats.BOOKING);s('fpInquiry',inboxCats.INQUIRY);s('fpComplaint',inboxCats.COMPLAINT);s('fpFeedback',inboxCats.FEEDBACK);
-  const cc={whatsapp:0,facebook:0,instagram:0};window.demoInboxThreads.forEach(t=>{var p=t.platform||'whatsapp';if(cc[p]!=null)cc[p]++;});
-  s('fcAll',window.demoInboxThreads.length);s('fcWhatsapp',cc.whatsapp);s('fcFacebook',cc.facebook);s('fcInstagram',cc.instagram);
-  document.getElementById('inboxTotalLabel').textContent=channelThreads.length+' threads';
-}
-
-window.openDemoThread=function(i){
-  const t=_demoFilteredThreads[i]||window.demoInboxThreads[i];
-  if(!t)return;
-  document.querySelectorAll('.thread-item').forEach(el=>el.classList.remove('active'));
-  document.getElementById('thread-'+i)?.classList.add('active');
-  document.getElementById('chatAvatar').textContent=initials(t.name);
-  document.getElementById('chatName').textContent=t.name;
-  document.getElementById('chatPhone').textContent=t.phone+' · '+channelLabel(t.platform||'whatsapp');
-  document.getElementById('detailAvatar').textContent=initials(t.name);
-  document.getElementById('detailName').textContent=t.name;
-  document.getElementById('detailPhone').textContent=t.phone;
-  document.getElementById('detailSegment').textContent='returning';
-  document.getElementById('detailVisits').textContent=Math.floor(Math.random()*10)+1;
-  document.getElementById('detailFirst').textContent=fmtDate(new Date(Date.now()-90*864e5));
-  document.getElementById('detailLast').textContent=fmtDate(new Date());
-  document.getElementById('detailNotes').textContent='Connected via WhatsApp';
-  window._replyTarget={to:t.phone,platform:'whatsapp',customer_id:null};
-  fetchBotMode(null);
-  const pMatch=pipelineData.find(p=>p.name===t.name);
-  const stageLabel=pMatch?{inquiry:'New Inquiry',awaiting:'Awaiting Payment',review:'Payment Review',confirmed:'Confirmed',rejected:'Rejected'}[pMatch.stage]||'—':'Not in pipeline';
-  document.getElementById('detailPipelineStage').innerHTML=pMatch?`<span class="chip ${pMatch.stage==='confirmed'?'green':pMatch.stage==='rejected'?'red':pMatch.stage==='review'?'purple':'amber'}">${escapeHTML(stageLabel)}</span>`:escapeHTML(stageLabel);
-  document.getElementById('chatPipelineLink').innerHTML=pMatch?`<button class="btn sm secondary" onclick="show('pipeline')">View in Pipeline</button>`:'';
-  document.getElementById('chatMessages').innerHTML=t.msgs.map(m=>`<div class="bubble-row ${m.direction==='inbound'?'in':'out'}"><div class="bubble ${m.direction==='inbound'?'in':'out'}">${escapeHTML(m.message)}</div><div class="bubble-meta">${fmt(m.timestamp)} · ${escapeHTML(m.intent||'')} · ${(t.platform==='facebook'?'Messenger':t.platform==='instagram'?'Instagram':'WhatsApp')}</div></div>`).join('');
-  document.getElementById('chatMessages').scrollTop=99999;
-};
-
-function renderDemoDailyLog(){
-  document.getElementById('dl-bookings').textContent='7';document.getElementById('dl-confirmed').textContent='5';document.getElementById('dl-pending').textContent='2';document.getElementById('dl-guests').textContent='28';
-  const times=['11:30','12:00','12:30','13:00','18:00','19:00','20:00'];
-  document.getElementById('dailyTable').innerHTML=times.map((t,i)=>`<tr><td style="font-weight:600">${t}</td><td>${escapeHTML(DEMO_NAMES[i])}<br><span class="muted" style="font-size:11px">${escapeHTML(DEMO_PHONES[i])}</span></td><td>${Math.floor(Math.random()*6)+2}</td><td class="muted">${['Birthday','Anniversary','Business','Casual','Date Night','Family','Casual'][i]}</td><td class="muted" style="font-size:12px">${['None','Vegetarian','Gluten-free','None','Nut allergy','None','Halal'][i]}</td><td>${i<5?payChip('paid'):payChip('unpaid')}</td><td>${i<5?statusChip('confirmed'):statusChip('pending')}</td><td>${i<5?'<span class="muted" style="font-size:12px">Done</span>':'<button class="btn green sm">Confirm</button>'}</td></tr>`).join('');
-}
-
-function renderDemoLoyalty(){
-  document.getElementById('ly-bronze').textContent='10';document.getElementById('ly-silver').textContent='8';document.getElementById('ly-gold').textContent='5';document.getElementById('ly-plat').textContent='3';
-  document.getElementById('loyaltyList').innerHTML=DEMO_NAMES.slice(0,10).map((n,i)=>{const tiers=['Platinum','Gold','Gold','Silver','Silver','Silver','Bronze','Bronze','Bronze','Bronze'];const pts=[620,480,310,240,180,150,90,75,50,30];return`<div class="loyalty-card"><div class="avatar" style="width:36px;height:36px;font-size:13px">${initials(n)}</div><div class="loyalty-info"><div class="loyalty-name">${escapeHTML(n)}</div><div class="loyalty-detail">${escapeHTML(DEMO_PHONES[i])} · ${Math.floor(Math.random()*15)+3} visits · ${tierBadge(tiers[i])}</div></div><div class="loyalty-points"><div class="loyalty-pts">${pts[i]}</div><div class="loyalty-pts-label">points</div></div></div>`;}).join('');
-  document.getElementById('rewardsList').innerHTML=[{name:'Free Dessert',desc:'Any dessert on the house',tier:'Bronze',pts:50},{name:'10% Off Dinner',desc:'10% discount on total bill',tier:'Silver',pts:150},{name:'Free Bottle of Wine',desc:'House wine complimentary',tier:'Gold',pts:300},{name:'Private Dining Experience',desc:'2-hour private room booking',tier:'Platinum',pts:500}].map(r=>`<div class="reward-card"><div class="reward-name">${escapeHTML(r.name)}</div><div class="reward-desc">${escapeHTML(r.desc)}</div><div class="reward-meta">${tierBadge(r.tier)}<span class="reward-pts">${r.pts} pts</span></div></div>`).join('');
-  document.getElementById('pointsActivity').innerHTML=DEMO_NAMES.slice(0,8).map((n,i)=>{const types=['earned','earned','redeemed','earned','earned','earned','redeemed','earned'];const pts=[25,15,50,10,30,20,150,25];const reasons=['Visit bonus','Referral','Free Dessert','Visit bonus','Birthday bonus','Visit bonus','Wine reward','Visit bonus'];const sign=types[i]==='redeemed'?'-':'+';const color=types[i]==='redeemed'?'var(--red)':'var(--green)';return`<div style="padding:10px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center"><div><div style="font-size:12.5px;font-weight:500">${escapeHTML(n)}</div><div style="font-size:11px;color:var(--text-muted)">${escapeHTML(reasons[i])} · ${fmt(new Date(Date.now()-i*7200000))}</div></div><div style="font-weight:700;color:${color};font-size:14px">${sign}${pts[i]}</div></div>`;}).join('');
-}
-
-function renderDemoFeedbackPage(){
-  document.getElementById('fb-avg').textContent='4.3';document.getElementById('fb-food').textContent='4.5';document.getElementById('fb-service').textContent='4.2';document.getElementById('fb-ambience').textContent='4.1';
-  document.getElementById('fb-avg-stars').innerHTML=starsHTML(4);document.getElementById('fb-total-label').textContent='47 responses';
-  document.getElementById('fb-recommend').textContent='89%';
-  document.getElementById('cnt-5').textContent='21';document.getElementById('bar-5').style.width='45%';
-  document.getElementById('cnt-4').textContent='14';document.getElementById('bar-4').style.width='30%';
-  document.getElementById('cnt-3').textContent='8';document.getElementById('bar-3').style.width='17%';
-  document.getElementById('cnt-2').textContent='3';document.getElementById('bar-2').style.width='6%';
-  document.getElementById('cnt-1').textContent='1';document.getElementById('bar-1').style.width='2%';
-  document.getElementById('feedbackList').innerHTML=demoFeedback.concat([{name:'Lakshan Mendis',rating:5,comment:'Outstanding sushi! The presentation was beautiful.'},{name:'Pradeep Bandara',rating:4,comment:'Great value for money. Loved the seafood curry.'},{name:'Hashini Gunawardena',rating:3,comment:'Good food but service was a bit slow on Saturday night.'}]).map(f=>`<div class="feedback-card"><div class="feedback-header"><span style="font-weight:600;font-size:13px">${escapeHTML(f.name)}</span>${starsHTML(f.rating)}</div><div class="feedback-comment">"${escapeHTML(f.comment)}"</div><div class="feedback-scores"><div class="feedback-score"><div class="feedback-score-label">Food</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+4}</div></div><div class="feedback-score"><div class="feedback-score-label">Service</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+3}</div></div><div class="feedback-score"><div class="feedback-score-label">Ambience</div><div class="feedback-score-val">${Math.floor(Math.random()*2)+3}</div></div><div class="feedback-score"><div class="feedback-score-label">Recommend</div><div class="feedback-score-val">${Math.random()>0.15?'Yes':'No'}</div></div></div><div style="font-size:11px;color:var(--text-subtle);margin-top:8px">${fmt(new Date(Date.now()-Math.floor(Math.random()*7)*864e5))} · via whatsapp</div></div>`).join('');
-}
-
-function renderDemoCRM(){
-  document.getElementById('crm-total').textContent='3';document.getElementById('crm-sent').textContent='86';document.getElementById('crm-vip').textContent='12';document.getElementById('crm-lapsed').textContent='11';
-  document.getElementById('crmCampaigns').innerHTML=[{name:'Weekend Special Promo',seg:'all',sent:42,msg:'Hi {{name}}! This weekend enjoy 15% off our Chef\'s Special menu...'},{name:'VIP Loyalty Thank You',seg:'vip',sent:12,msg:'Dear {{name}}, as a valued {{tier}} member with {{points}} points...'},{name:'Win-Back Campaign',seg:'lapsed',sent:32,msg:'Hey {{name}}, we miss you! It\'s been a while since your last visit...'}].map(c=>`<div style="padding:14px 18px;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:13px">${escapeHTML(c.name)}</div><div class="muted" style="font-size:12px;margin-top:4px">${segChip(c.seg)} · Sent: ${c.sent} · ${fmtDate(new Date(Date.now()-Math.floor(Math.random()*14)*864e5))}</div><div class="muted" style="font-size:12px;margin-top:6px">${escapeHTML(c.msg.slice(0,100))}...</div></div>`).join('');
-}
-
-function renderDemoData(){
-  renderDemoOverview();
-  pipelineData=generateDemoPipeline();
-  buildDemoInbox();
-  renderPipeline();
-  renderDemoThreadList();
-  renderDemoContacts();
-  renderDemoDailyLog();
-  renderDemoLoyalty();
-  renderDemoFeedbackPage();
-  renderDemoCRM();
-  _reportRows=demoReachOuts;
-  renderReportsView(demoReachOuts);
-  loadRecentCustomers();
-}
-
 /* ── BOOT ── */
 async function boot(){
-  const ok=await checkConnection();
-  window._demoMode=!ok;
-  if(ok){
-    loadOverview();
-  }else{
-    renderDemoData();
-  }
+  // Always reflect live connection status, then pull real data from the channels.
+  await checkConnection();
+  loadOverview();
   show('inbox-all');
   // 30-second polling refresh of the active view (replaces realtime subscriptions)
   if(!window._autoRefreshTimer){
     window._autoRefreshTimer=setInterval(async()=>{
       if(document.hidden||!DASHBOARD_KEY)return;
-      if(window._demoMode){
-        const ok2=await checkConnection();
-        if(ok2){window._demoMode=false;loadOverview();}
-        return;
-      }
+      checkConnection();
       const v=document.querySelector('.view.active');
       const name=v&&v.dataset.view;
       if(name&&loaders[name])loaders[name]();

@@ -252,6 +252,4 @@ module.exports = async function handler(req, res) {
     });
   } catch (err) {
     console.error('[wa-bridge] error:', err);
-    return res.status(500).json({ error: 'internal error', detail: err.message });
-  }
-};
+    return res.status(500).json

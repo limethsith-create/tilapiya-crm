@@ -1,0 +1,6 @@
+node_modules/
+.env
+.wwebjs_pair/
+.wwebjs_auth/
+.wwebjs_cache/
+bridge-log.txt

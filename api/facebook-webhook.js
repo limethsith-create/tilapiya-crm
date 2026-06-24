@@ -23,22 +23,14 @@ const {
   handleMessengerPost
 } = require('../lib/messenger');
 
-const VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || process.env.WEBHOOK_VERIFY_TOKEN || 'tilapiya_meta_2026';
-const FB_APP_SECRET = process.env.FB_APP_SECRET || process.env.META_APP_SECRET || '7bf29d84bbdcc9001c5fb24d53e80ee7';
-const FB_PAGE_TOKEN = process.env.FB_PAGE_TOKEN || 'EAAVQfRuhk5UBRtcZAOFb53nWZBsH9sGEi3egxcD81pMDxeaQGnYt7iGZC9D0dTdf4QFzzqbdWHmLV2AuyjvjsQAN4vegSPnu7DlqZAIOhSK2QtOonmxCHZBFPeqLZA1CdbL2U4lZBGeGsk3ZAg0RFB38dMQzZBX591VFuT6RcWfr1S5lc2SIIlxOxnWrWEmXWBrTHQy4P8SfxIDiZCGwO6sela6RaiXAZDZD';
+const VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || process.env.WEBHOOK_VERIFY_TOKEN;
+const FB_APP_SECRET = process.env.FB_APP_SECRET || process.env.META_APP_SECRET;
+const FB_PAGE_TOKEN = process.env.FB_PAGE_TOKEN;
 const FB_PAGE_ID = process.env.FB_PAGE_ID; // optional
 
 module.exports = async function handler(req, res) {
   // --- GET: webhook verification handshake ---
   if (req.method === 'GET') {
-    if (req.query.setup === '1') {
-      var sbase = 'https://graph.facebook.com/v22.0';
-      var sout = {};
-      try { var meR = await fetch(sbase + '/me?fields=id,name&access_token=' + encodeURIComponent(FB_PAGE_TOKEN)); sout.page = await meR.json(); } catch (e) { sout.pageError = String(e); }
-      try { var subR = await fetch(sbase + '/me/subscribed_apps?subscribed_fields=messages,messaging_postbacks&access_token=' + encodeURIComponent(FB_PAGE_TOKEN), { method: 'POST' }); sout.subscribeStatus = subR.status; sout.subscribeResult = await subR.json(); } catch (e) { sout.subscribeError = String(e); }
-      try { var curR = await fetch(sbase + '/me/subscribed_apps?access_token=' + encodeURIComponent(FB_PAGE_TOKEN)); sout.current = await curR.json(); } catch (e) { sout.currentError = String(e); }
-      return res.status(200).json(sout);
-    }
     if (!VERIFY_TOKEN) {
       console.error('WEBHOOK_VERIFY_TOKEN not set');
       return res.status(500).send('Server misconfigured');
@@ -46,7 +38,7 @@ module.exports = async function handler(req, res) {
     var mode = req.query['hub.mode'];
     var token = req.query['hub.verify_token'];
     var challenge = req.query['hub.challenge'];
-    if (mode === 'subscribe' && (token === VERIFY_TOKEN || token === 'tilapiya_meta_2026')) {
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
       console.log('Facebook webhook verified');
       return res.status(200).send(challenge);
     }

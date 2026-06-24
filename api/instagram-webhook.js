@@ -23,25 +23,14 @@ const {
   handleMessengerPost
 } = require('../lib/messenger');
 
-const VERIFY_TOKEN = process.env.IG_VERIFY_TOKEN || process.env.FB_VERIFY_TOKEN || process.env.WEBHOOK_VERIFY_TOKEN || 'tilapiya_meta_2026';
-const IG_APP_SECRET = process.env.IG_APP_SECRET || process.env.FB_APP_SECRET || process.env.META_APP_SECRET || 'cfa507befc2038d69f0c8e72a66e2bae';
-const IG_PAGE_TOKEN = process.env.IG_PAGE_TOKEN || 'IGAAWEtLoAjLlBZAGIwREJDWWRaT3NXODJzS1VJWE9tVUh1UXhjTUUtb0hnVGZAXYnJIaTNDSWNOUTBSRHRDV3hXSlhFM2hsUnJlRXEwcFNXOVhZAcFpyUkdxRnZAKenVxSVQyQjJmRVBWX0QyVGN6My1KWDJwTXdMX3owOFdpTG43OAZDZD';
+const VERIFY_TOKEN = process.env.IG_VERIFY_TOKEN || process.env.FB_VERIFY_TOKEN || process.env.WEBHOOK_VERIFY_TOKEN;
+const IG_APP_SECRET = process.env.IG_APP_SECRET || process.env.FB_APP_SECRET || process.env.META_APP_SECRET;
+const IG_PAGE_TOKEN = process.env.IG_PAGE_TOKEN;
 const IG_PAGE_ID = process.env.IG_PAGE_ID; // optional
 
 module.exports = async function handler(req, res) {
   // --- GET: webhook verification handshake ---
   if (req.method === 'GET') {
-    // One-time setup helper: /api/instagram-webhook?setup=1 subscribes this
-    // Instagram account to the 'messages' webhook so Meta delivers DMs.
-    if (req.query.setup === '1') {
-      var sbase = 'https://graph.instagram.com/v22.0';
-      var sout = {};
-      try { var meR = await fetch(sbase + '/me?fields=user_id,username&access_token=' + encodeURIComponent(IG_PAGE_TOKEN)); sout.account = await meR.json(); } catch (e) { sout.accountError = String(e); }
-      try { var llR = await fetch(sbase + '/access_token?grant_type=ig_exchange_token&client_secret=' + encodeURIComponent(IG_APP_SECRET) + '&access_token=' + encodeURIComponent(IG_PAGE_TOKEN)); sout.longLived = await llR.json(); } catch (e) { sout.longLivedError = String(e); }
-      try { var subR = await fetch(sbase + '/me/subscribed_apps?subscribed_fields=messages&access_token=' + encodeURIComponent(IG_PAGE_TOKEN), { method: 'POST' }); sout.subscribeStatus = subR.status; sout.subscribeResult = await subR.json(); } catch (e) { sout.subscribeError = String(e); }
-      try { var curR = await fetch(sbase + '/me/subscribed_apps?access_token=' + encodeURIComponent(IG_PAGE_TOKEN)); sout.current = await curR.json(); } catch (e) { sout.currentError = String(e); }
-      return res.status(200).json(sout);
-    }
     if (!VERIFY_TOKEN) {
       console.error('WEBHOOK_VERIFY_TOKEN not set');
       return res.status(500).send('Server misconfigured');
@@ -49,7 +38,7 @@ module.exports = async function handler(req, res) {
     var mode = req.query['hub.mode'];
     var token = req.query['hub.verify_token'];
     var challenge = req.query['hub.challenge'];
-    if (mode === 'subscribe' && (token === VERIFY_TOKEN || token === 'tilapiya_meta_2026')) {
+    if (mode === 'subscribe' && token === VERIFY_TOKEN) {
       console.log('Instagram webhook verified');
       return res.status(200).send(challenge);
     }

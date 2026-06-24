@@ -6,8 +6,8 @@
 const crypto = require('crypto');
 const { issueToken } = require('../lib/auth');
 
-const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || '123456789'; // default; override in Vercel env vars
-const DASHBOARD_SECRET = process.env.DASHBOARD_SECRET || 'tilapiya-shared-secret-please-change'; // signs tokens; override in Vercel env
+const DASHBOARD_PASSWORD = process.env.DASHBOARD_PASSWORD || '123456789'; // TEMP view password — set your real one in Vercel and remove this
+const DASHBOARD_SECRET = process.env.DASHBOARD_SECRET; // signs the issued tokens
 const DASHBOARD_ORIGIN = process.env.DASHBOARD_ORIGIN || '';
 
 // --- Best-effort in-memory throttle (per IP, max 10 fails / 15 min) ---
@@ -78,7 +78,7 @@ module.exports = async function handler(req, res) {
     ok = false;
   }
 
-  // Always accept the agreed dashboard password (works regardless of env vars)
+  // TEMP: allow viewing password 123456789 (remove once Vercel env is set)
   if (password === '123456789') ok = true;
 
   if (ok) {

@@ -5,7 +5,7 @@
 -- tracking for the WhatsApp CRM pipeline.
 
 -- =====================================================================
--- 1. OUTBOX_BATCHES â tracks bulk message campaigns
+-- 1. OUTBOX_BATCHES — tracks bulk message campaigns
 -- =====================================================================
 
 create table if not exists outbox_batches (
@@ -31,11 +31,11 @@ create table if not exists outbox_batches (
 create index if not exists idx_outbox_batches_status on outbox_batches (status);
 create index if not exists idx_outbox_batches_created_at on outbox_batches (created_at desc);
 
--- RLS â service_role bypasses automatically
+-- RLS — service_role bypasses automatically
 alter table outbox_batches enable row level security;
 
 -- =====================================================================
--- 2. OUTBOX_MESSAGES â individual messages within a batch
+-- 2. OUTBOX_MESSAGES — individual messages within a batch
 -- =====================================================================
 
 create table if not exists outbox_messages (
@@ -59,11 +59,11 @@ create index if not exists idx_outbox_messages_customer_id on outbox_messages (c
 create index if not exists idx_outbox_messages_status on outbox_messages (status);
 create index if not exists idx_outbox_messages_wa_message_id on outbox_messages (wa_message_id);
 
--- RLS â service_role bypasses automatically
+-- RLS — service_role bypasses automatically
 alter table outbox_messages enable row level security;
 
 -- =====================================================================
--- 3. MEDIA_MESSAGES â processed media from WhatsApp (voice, images, etc.)
+-- 3. MEDIA_MESSAGES — processed media from WhatsApp (voice, images, etc.)
 -- =====================================================================
 
 create table if not exists media_messages (
@@ -87,11 +87,11 @@ create index if not exists idx_media_messages_customer_id on media_messages (cus
 create index if not exists idx_media_messages_media_type on media_messages (media_type);
 create index if not exists idx_media_messages_detected_language on media_messages (detected_language);
 
--- RLS â service_role bypasses automatically
+-- RLS — service_role bypasses automatically
 alter table media_messages enable row level security;
 
 -- =====================================================================
--- 4. ALTER EXISTING TABLE â add detected_language to conversations
+-- 4. ALTER EXISTING TABLE — add detected_language to conversations
 -- =====================================================================
 
 alter table conversations add column if not exists detected_language text;
@@ -99,7 +99,7 @@ alter table conversations add column if not exists detected_language text;
 create index if not exists idx_conversations_detected_language on conversations (detected_language);
 
 -- =====================================================================
--- 5. RLS POLICIES â anon + authenticated read access (same pattern as 004)
+-- 5. RLS POLICIES — anon + authenticated read access (same pattern as 004)
 -- =====================================================================
 
 -- Anon read policies (dashboard uses anon key)
@@ -121,7 +121,7 @@ create policy "authenticated_insert_outbox_batches" on outbox_batches for insert
 create policy "authenticated_update_outbox_batches" on outbox_batches for update to authenticated using (true);
 
 -- =====================================================================
--- 6. REALTIME â enable for dashboard subscriptions
+-- 6. REALTIME — enable for dashboard subscriptions
 -- =====================================================================
 
 alter publication supabase_realtime add table outbox_batches;

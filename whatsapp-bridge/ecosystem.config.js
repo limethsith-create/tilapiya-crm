@@ -14,4 +14,6 @@ module.exports = {
       max_restarts: 100,
       restart_delay: 5000,
       time: true,
-   
+    },
+  ],
+};

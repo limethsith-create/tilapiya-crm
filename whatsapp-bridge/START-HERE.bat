@@ -24,4 +24,4 @@ node index.js >> bridge-log.txt 2>&1
 echo.
 echo Bridge stopped, restarting in 8s. Close this window to stop.
 timeout /t 8 /nobreak >nul
-goto
+goto loop

@@ -2,7 +2,7 @@
 //
 // The bridge (whatsapp-bridge/, running on a computer with WhatsApp Web linked
 // to the restaurant's phone) POSTs every inbound customer message here. We run
-// it through the same OpenAI restaurant brain the Meta webhook uses, save the
+// it through the Groq restaurant brain, save the
 // whole conversation into Supabase, and return the reply text. The bridge then
 // sends that reply back over WhatsApp Web — no Meta Cloud API needed.
 //
@@ -15,7 +15,9 @@ const crypto = require('crypto');
 const { normalizePhone } = require('../lib/phone');
 const { supabaseRequest } = require('../lib/supabase');
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+// AI engine: Groq (OpenAI-compatible API). Set GROQ_API_KEY in Vercel.
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 const DEFAULT_BRIDGE_SECRET = '0ed3044a61fc16eb2d599bae52f3d75849987e768520dd72';
 
 // ---- Tilapiya restaurant brain (same as api/webhook.js) ---------------------
@@ -127,10 +129,10 @@ async function getHistory(customerId, limit) {
   }));
 }
 
-// ---- Generate AI reply via OpenAI ------------------------------------------
+// ---- Generate AI reply via Groq --------------------------------------------
 async function generateReply(text, history, customer, intent) {
-  if (!OPENAI_API_KEY) {
-    console.error('[wa-bridge] OPENAI_API_KEY not set');
+  if (!GROQ_API_KEY) {
+    console.error('[wa-bridge] GROQ_API_KEY not set');
     return null;
   }
   const customerInfo =
@@ -144,22 +146,22 @@ async function generateReply(text, history, customer, intent) {
   messages.push({ role: 'user', content: text });
 
   try {
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': 'Bearer ' + OPENAI_API_KEY,
+        'Authorization': 'Bearer ' + GROQ_API_KEY,
         'Content-Type': 'application/json'
       },
       signal: AbortSignal.timeout(25000),
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: GROQ_MODEL,
         messages: messages,
         max_tokens: 300,
         temperature: 0.7
       })
     });
     if (!response.ok) {
-      console.error('[wa-bridge] OpenAI error', response.status, await response.text());
+      console.error('[wa-bridge] Groq error', response.status, await response.text());
       return null;
     }
     const data = await response.json();
@@ -168,7 +170,7 @@ async function generateReply(text, history, customer, intent) {
     }
     return null;
   } catch (err) {
-    console.error('[wa-bridge] OpenAI failed:', err.message);
+    console.error('[wa-bridge] Groq failed:', err.message);
     return null;
   }
 }
@@ -180,7 +182,7 @@ module.exports = async function handler(req, res) {
     const secretSet = !!(process.env.BRIDGE_SECRET);
     return res.status(200).json({
       ok: true,
-      configured: !!OPENAI_API_KEY,
+      configured: !!GROQ_API_KEY,
       bridge_secret_set: secretSet,
       note: secretSet ? null : 'Using baked-in default BRIDGE_SECRET — override in Vercel for production.'
     });
@@ -252,4 +254,6 @@ module.exports = async function handler(req, res) {
     });
   } catch (err) {
     console.error('[wa-bridge] error:', err);
-    return res.status(500).json
+    return res.status(500).json({ error: 'internal error', detail: err.message });
+  }
+};

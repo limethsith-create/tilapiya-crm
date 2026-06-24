@@ -13,7 +13,7 @@ require("dotenv").config();
 const { Client, LocalAuth } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 
-const BRAIN_URL = process.env.BRAIN_URL || "https://tilapiya-crm2.vercel.app/api/wa-bridge";
+const BRAIN_URL = process.env.BRAIN_URL || "https://tilapiya-crm.vercel.app/api/wa-bridge";
 const BRIDGE_SECRET = process.env.BRIDGE_SECRET || "0ed3044a61fc16eb2d599bae52f3d75849987e768520dd72";
 const PAIR_NUMBER = (process.env.PAIR_NUMBER || "").replace(/[^\d]/g, "");
 const REPLY_TO_GROUPS = (process.env.REPLY_TO_GROUPS || "false").toLowerCase() === "true";

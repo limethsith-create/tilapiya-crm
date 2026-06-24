@@ -135,6 +135,18 @@ create table loyalty_transactions (
   created_at timestamptz default now()
 );
 
+create table visits (
+  id uuid primary key default gen_random_uuid(),
+  customer_id uuid references customers(id) on delete cascade,
+  order_total decimal(10,2) default 0,
+  items jsonb default '[]'::jsonb,
+  pos_reference text,
+  visit_type text default 'dine_in' check (visit_type in ('dine_in', 'takeaway', 'delivery')),
+  notes text,
+  visited_at timestamptz default now(),
+  created_at timestamptz default now()
+);
+
 -- ===================== INDEXES =====================
 
 create index idx_customers_phone on customers (phone);
@@ -157,6 +169,9 @@ create index idx_loyalty_customer_id on loyalty (customer_id);
 create index idx_loyalty_tier on loyalty (tier);
 create index idx_loyalty_transactions_customer_id on loyalty_transactions (customer_id);
 create index idx_rewards_is_active on rewards (is_active);
+create index idx_visits_customer_id on visits (customer_id);
+create index idx_visits_visited_at on visits (visited_at desc);
+create index idx_visits_pos_reference on visits (pos_reference);
 
 -- ===================== ROW LEVEL SECURITY =====================
 -- FIXED: No more open anon access. Only service_role (used by Vercel API) can read/write.
@@ -173,6 +188,7 @@ alter table feedback enable row level security;
 alter table loyalty enable row level security;
 alter table rewards enable row level security;
 alter table loyalty_transactions enable row level security;
+alter table visits enable row level security;
 
 -- Service role bypasses RLS automatically, so these policies only affect anon/authenticated roles.
 -- We DENY all access to anon — everything goes through the Vercel API using service_role key.
